@@ -4,26 +4,36 @@
     "slug": "WAYLO",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "jsEngine": "jsc",
+    "scheme": "waylo",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.waylo.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "WAYLO needs camera access to take photos and scan QR codes",
+        "NSPhotoLibraryUsageDescription": "WAYLO needs photo library access to save and upload photos",
+        "NSMicrophoneUsageDescription": "WAYLO needs microphone access for video recording"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.waylo.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/images/favicon.png"
+    },
+    "assetBundlePatterns": ["**/*"]
   }
 }
