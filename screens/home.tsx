@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { cn } from 'lib/utils';
-import { auth as firebaseAuth } from 'firebase';
+import { cn } from '@lib/utils';
+import { auth as firebaseAuth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useAppDispatch, useAppSelector } from 'hooks';
 import Toast from 'react-native-toast-message';
@@ -13,20 +13,20 @@ import Toast from 'react-native-toast-message';
 import { logout } from '@slices/auth';
 import { fetchSentimentsCount } from '@slices/sentiments';
 
-import BookIcon from 'assets/icons/book.svg';
-import ClockIcon from 'assets/icons/clock.svg';
-import CryingEmoji from 'assets/icons/emoji-loudly-crying-face.svg';
-import NeutralEmoji from 'assets/icons/emoji-neutral-face.svg';
-import SadEmoji from 'assets/icons/emoji-pensive-face.svg';
-import AngryEmoji from 'assets/icons/emoji-pouting-face.svg';
-import HappyEmoji from 'assets/icons/emoji-slightly-smiling-face.svg';
-import GameIcon from 'assets/icons/game.svg';
-import HealthIcon from 'assets/icons/health.svg';
-import Microphone2Icon from 'assets/icons/microphone-2.svg';
-import MicrophoneIcon from 'assets/icons/microphone.svg';
-import NoteIcon from 'assets/icons/note.svg';
-import VideoVerticalIcon from 'assets/icons/video-vertical.svg';
-import VideoIcon from 'assets/icons/video.svg';
+import BookIcon from '../assets/icons/book.svg';
+import ClockIcon from '../assets/icons/clock.svg';
+import CryingEmoji from '../assets/icons/emoji-loudly-crying-face.svg';
+import NeutralEmoji from '../assets/icons/emoji-neutral-face.svg';
+import SadEmoji from '../assets/icons/emoji-pensive-face.svg';
+import AngryEmoji from '../assets/icons/emoji-pouting-face.svg';
+import HappyEmoji from '../assets/icons/emoji-slightly-smiling-face.svg';
+import GameIcon from '../assets/icons/game.svg';
+import HealthIcon from '../assets/icons/health.svg';
+import Microphone2Icon from '../assets/icons/microphone-2.svg';
+import MicrophoneIcon from '../assets/icons/microphone.svg';
+import NoteIcon from '../assets/icons/note.svg';
+import VideoVerticalIcon from '../assets/icons/video-vertical.svg';
+import VideoIcon from '../assets/icons/video.svg';
 
 export const HomeScreen = () => {
 	const router = useRouter()
@@ -84,7 +84,7 @@ export const HomeScreen = () => {
 					const fullDay = entry.day
 					if (!fullDay || !response[fullDay]) return entry
 
-					const mostFrequentSentiment = Object.entries(response[fullDay] as Record<string, number>).reduce((a, b) =>
+					const mostFrequentSentiment = Object.entries(response[fullDay]).reduce((a, b) =>
 						a[1] > b[1] ? a : b
 					)[0]
 
@@ -126,14 +126,14 @@ export const HomeScreen = () => {
 						</View>
 						<View className="relative">
 							<Image
-								source={require('assets/images/waves.png')}
+								source={require('../assets/images/waves.png')}
 								className="!w-full"
 								resizeMode="cover"
 							/>
 							<View className="absolute z-10 h-full w-full bg-[#AE9FFF99]" />
 						</View>
 						<Image
-							source={require('assets/images/avatar.png')}
+							source={require('../assets/images/avatar.png')}
 							style={{ width: 150, height: 150 }}
 							resizeMode="contain"
 							className="absolute right-0 top-4 z-10"
@@ -144,12 +144,12 @@ export const HomeScreen = () => {
 							</Text>
 							<View className="flex flex-row items-center">
 								<Image
-									source={require('assets/images/home_img_1.png')}
+									source={require('../assets/images/home_img_1.png')}
 									className="z-30 rounded-full border border-white"
 									style={{ width: 24, height: 24 }}
 								/>
 								<Image
-									source={require('assets/images/home_img_2.png')}
+									source={require('../assets/images/home_img_2.png')}
 									className="relative z-20 -ml-1.5 rounded-full border border-white"
 									style={{ width: 24, height: 24 }}
 								/>

@@ -4,19 +4,20 @@ import { useForm } from 'react-hook-form'
 import { Image, Text, View } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import Toast from 'react-native-toast-message'
-import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 
 import * as yup from 'yup'
 
 import { Button } from '@components/ui/button'
 import { FormInput } from '@components/ui/input'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { cn } from 'lib/utils'
+import { cn } from '@lib/utils'
 import { login } from '@slices/auth'
 import { useAppDispatch } from 'hooks'
 
-import LockIcon from 'assets/icons/lock.svg'
-import MailIcon from 'assets/icons/mail.svg'
+import LockIcon from '../assets/icons/lock.svg'
+import MailIcon from '../assets/icons/mail.svg'
+
+// Add Plus Jakarta Sans font imports
 
 interface LoginForm {
 	email: string
@@ -25,14 +26,8 @@ interface LoginForm {
 export const LoginScreen = () => {
 	const dispatch = useAppDispatch()
 	const router = useRouter()
-	const [isLoading, setIsLoading] = useState(false)
 
-	let [fontsLoaded] = useFonts({
-		PlusJakartaSans_400Regular,
-		PlusJakartaSans_500Medium,
-		PlusJakartaSans_600SemiBold,
-		PlusJakartaSans_700Bold
-	})
+	const [isLoading, setIsLoading] = useState(false)
 
 	const schema = yup.object<LoginForm>().shape({
 		email: yup.string().required('Email is required').email('Enter a valid email'),
@@ -49,36 +44,27 @@ export const LoginScreen = () => {
 		setIsLoading(true)
 		try {
 			await dispatch(login(data)).unwrap()
-			Toast.show({ text1: 'Login successful' })
+			Toast.show({ text1: 'Login successfull' })
 			setIsLoading(false)
-			router.replace('/(private)')
+			router.push('/')
 		} catch (err: any) {
 			Toast.show({ type: 'error', text1: err ?? 'Login Failed' })
 			setIsLoading(false)
 		}
 	}
 
-	if (!fontsLoaded) {
-		return (
-			<View className="flex-1 items-center justify-center">
-				<Chase size={24} color="#CBC0FE" />
-				<Text>Loading...</Text>
-			</View>
-		)
-	}
-
 	return (
 		<View className="relative flex flex-col items-center">
 			<Image
-				source={require('assets/images/dark-blue-rectangle.png')}
+				source={require('../assets/images/dark-blue-rectangle.png')}
 				className="absolute left-0 top-0 -z-10"
 			/>
 			<Image
-				source={require('assets/images/light-blue-rectangle.png')}
+				source={require('../assets/images/light-blue-rectangle.png')}
 				className="absolute left-[15%] top-0 -z-20"
 			/>
 			<Image
-				source={require('assets/images/logo-2.png')}
+				source={require('../assets/images/logo-2.png')}
 				className="mt-24"
 				style={{ width: 246, height: 118 }}
 			/>

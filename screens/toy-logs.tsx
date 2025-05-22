@@ -1,30 +1,26 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 import { Audio } from 'expo-av'
 import { useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 
-import { cn } from 'lib/utils'
-import { addMessage, toyLogs } from '@slices/logs'
+import { cn } from '@lib/utils'
+import { toyLogs } from '@slices/logs'
 import { format } from 'date-fns'
 import { useAppDispatch, useAppSelector } from 'hooks'
 
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg'
-import PlayIcon from 'assets/icons/play.svg'
-import WyloIcon from 'assets/icons/wylo.svg'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import PlayIcon from '../assets/icons/play.svg'
+import WyloIcon from '../assets/icons/wylo.svg'
 
-interface ToyLog {
-	type: string;
-	id: React.Key | null | undefined;
-	audioUri?: string;
-	message: any;
-	time: string | number | Date;
+interface AudioMessageProps {
+	uri: string;
 }
 
-const AudioMessage = ({ uri }: { uri: string }) => {
+const AudioMessage: React.FC<AudioMessageProps> = ({ uri }) => {
 	const [sound, setSound] = useState<Audio.Sound | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
@@ -99,20 +95,12 @@ const AudioMessage = ({ uri }: { uri: string }) => {
 	);
 };
 
-export const ToyLogsScreen = () => {
+export const ToyLogsScreen: React.FC = () => {
 	const dispatch = useAppDispatch()
 	const logs = useAppSelector((state) => state.logs.toyLogs)
 	const router = useRouter()
-	const [message, setMessage] = useState('')
-	const [isRecording, setIsRecording] = useState(false)
-	const [recording, setRecording] = useState<Audio.Recording | null>(null)
-	const [recordingDuration, setRecordingDuration] = useState(0)
-	const pulseAnim = useRef(new Animated.Value(1)).current
-	const recordingInterval = useRef<NodeJS.Timeout | undefined>(undefined)
 	const scrollViewRef = useRef<ScrollView>(null)
 	const [isLoading, setIsLoading] = useState(true)
-	const inputRef = useRef<TextInput>(null)
-	const messageToSend = useRef('')
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -132,150 +120,7 @@ export const ToyLogsScreen = () => {
 			}
 		}
 		fetchToyLogs()
-	}, [])
-
-	useEffect(() => {
-		if (isRecording) {
-			Animated.loop(
-				Animated.sequence([
-					Animated.timing(pulseAnim, {
-						toValue: 1.2,
-						duration: 1000,
-						useNativeDriver: true,
-					}),
-					Animated.timing(pulseAnim, {
-						toValue: 1,
-						duration: 1000,
-						useNativeDriver: true,
-					}),
-				])
-			).start()
-
-			recordingInterval.current = setInterval(() => {
-				setRecordingDuration((prev) => prev + 1)
-			}, 1000)
-		} else {
-			pulseAnim.setValue(1)
-			setRecordingDuration(0)
-			if (recordingInterval.current) {
-				clearInterval(recordingInterval.current)
-			}
-		}
-
-		return () => {
-			if (recordingInterval.current) {
-				clearInterval(recordingInterval.current)
-			}
-		}
-	}, [isRecording])
-
-	const formatDuration = (seconds: number) => {
-		const minutes = Math.floor(seconds / 60)
-		const remainingSeconds = seconds % 60
-		return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-	}
-
-	const handleSendMessage = useCallback(() => {
-		const currentMessage = messageToSend.current || message;
-		if (!currentMessage.trim()) return;
-
-		// Create and dispatch message immediately
-		dispatch(addMessage({
-			id: Date.now().toString(),
-			type: 'user_request',
-			message: currentMessage.trim(),
-			time: new Date().toISOString()
-		}));
-
-		// Clear input and refs
-		messageToSend.current = '';
-		setMessage('');
-
-		// Scroll after a very short delay to ensure message is rendered
-		setTimeout(() => {
-			scrollViewRef.current?.scrollToEnd({ animated: true });
-		}, 10);
-	}, [dispatch, message]);
-
-	const handleTextChange = useCallback((text: string) => {
-		setMessage(text);
-		messageToSend.current = text;
-	}, []);
-
-	const startRecording = useCallback(async () => {
-		try {
-			// Set recording state immediately for UI feedback
-			setIsRecording(true);
-
-			const { status } = await Audio.requestPermissionsAsync();
-			if (status !== 'granted') {
-				setIsRecording(false);
-				Toast.show({ type: 'error', text1: 'Permission required for audio recording' });
-				return;
-			}
-
-			await Audio.setAudioModeAsync({
-				allowsRecordingIOS: true,
-				playsInSilentModeIOS: true,
-				staysActiveInBackground: true,
-			});
-
-			const recordingOptions = {
-				...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-				android: {
-					...Audio.RecordingOptionsPresets.HIGH_QUALITY.android,
-					isAudioInputPresent: true
-				},
-				ios: {
-					...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios,
-					extension: '.m4a',
-					outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-				}
-			};
-
-			const { recording } = await Audio.Recording.createAsync(recordingOptions);
-			setRecording(recording);
-		} catch (err) {
-			setIsRecording(false);
-			Toast.show({ type: 'error', text1: 'Failed to start recording' });
-		}
-	}, []);
-
-	const stopRecording = useCallback(async () => {
-		if (!recording) {
-			setIsRecording(false);
-			return;
-		}
-
-		try {
-			// Update UI state immediately
-			setIsRecording(false);
-			const recordingInstance = recording;
-			setRecording(null);
-
-			// Stop recording
-			await recordingInstance.stopAndUnloadAsync();
-			const uri = recordingInstance.getURI();
-
-			if (uri) {
-				// Dispatch message immediately
-				dispatch(addMessage({
-					id: Date.now().toString(),
-					type: 'user_request',
-					message: '',
-					audioUri: uri,
-					time: new Date().toISOString()
-				}));
-
-				// Scroll after a very short delay
-				setTimeout(() => {
-					scrollViewRef.current?.scrollToEnd({ animated: true });
-				}, 10);
-			}
-		} catch (err) {
-			Toast.show({ type: 'error', text1: 'Failed to stop recording' });
-		}
-	}, [recording, dispatch]);
+	}, [dispatch])
 
 	if (!fontsLoaded) {
 		return null
@@ -318,7 +163,7 @@ export const ToyLogsScreen = () => {
 									showsVerticalScrollIndicator={false}
 									onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
 									<View className="flex flex-col gap-4 py-4 mb-14">
-										{logs.map((log: ToyLog) => (
+										{logs.map((log) => (
 											<View
 												className={cn("flex w-full flex-row", {
 													"justify-end": log.type === "user_request"

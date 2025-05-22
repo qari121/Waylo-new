@@ -6,12 +6,12 @@ import { Image, Platform, Pressable, SafeAreaView, ScrollView, Text, View } from
 import { logout } from '@slices/auth'
 import { useAppDispatch } from 'hooks'
 
-import CharacterIcon from 'assets/icons/character.svg'
-import HelpCircleIcon from 'assets/icons/help-circle.svg'
-import LogoutIcon from 'assets/icons/log-out.svg'
-import ProfileIcon from 'assets/icons/profile.svg'
-import SubscriptionsIcon from 'assets/icons/subscriptions.svg'
-import WifiIcon from 'assets/icons/wifi.svg'
+import CharacterIcon from '../assets/icons/character.svg'
+import HelpCircleIcon from '../assets/icons/help-circle.svg'
+import LogoutIcon from '../assets/icons/log-out.svg'
+import ProfileIcon from '../assets/icons/profile.svg'
+import SubscriptionsIcon from '../assets/icons/subscriptions.svg'
+import WifiIcon from '../assets/icons/wifi.svg'
 
 export const ProfileScreen = () => {
 	const profileItems = [
@@ -59,7 +59,7 @@ export const ProfileScreen = () => {
 						<View className="flex flex-row items-center gap-3 py-3">
 							<View className="relative">
 								<Image
-									source={require('assets/images/avatar.png')}
+									source={require('../assets/images/avatar.png')}
 									className="rounded-full"
 									resizeMode="cover"
 									style={{ width: 48, height: 48 }}

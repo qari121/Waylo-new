@@ -1,7 +1,7 @@
 import { Check } from '@lib/icons/Check'
 import { ChevronDown } from '@lib/icons/ChevronDown'
 import { ChevronUp } from '@lib/icons/ChevronUp'
-import { cn } from 'lib/utils'
+import { cn } from '@lib/utils'
 import * as SelectPrimitive from '@rn-primitives/select'
 import * as React from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
@@ -25,7 +25,7 @@ const SelectTrigger = React.forwardRef<SelectPrimitive.TriggerRef, SelectPrimiti
 				className
 			)}
 			{...props}>
-			{typeof children === 'function' ? null : children}
+			<>{children}</>
 			<ChevronDown size={16} aria-hidden={true} className="text-[#979797]" />
 		</SelectPrimitive.Trigger>
 	)

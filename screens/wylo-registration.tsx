@@ -1,4 +1,5 @@
 /* eslint-disable react-native/no-color-literals */
+import React from 'react'
 import { useRouter } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
 import { Image, ImageBackground, Pressable, ScrollView, Text, View } from 'react-native'
@@ -16,15 +17,14 @@ import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { Label } from '@components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { cn } from 'lib/utils'
+import { cn } from '@lib/utils'
 import { fetchInterestLogs } from '@slices/logs'
 import { useAppDispatch, useAppSelector } from 'hooks'
 
-import PlusIcon from 'assets/icons/add.svg'
-import ArrowDownIcon from 'assets/icons/arrow-down.svg'
-import ArrowUpIcon from 'assets/icons/arrow-up.svg'
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg'
-import React from 'react'
+import PlusIcon from '../assets/icons/add.svg'
+import ArrowDownIcon from '../assets/icons/arrow-down.svg'
+import ArrowUpIcon from '../assets/icons/arrow-up.svg'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 
 interface FormValues {
 	name: string
@@ -164,7 +164,7 @@ export const WyloRegistrationScreen = () => {
 			</BottomSheetModal>
 
 			<Image
-				source={require('assets/images/registration-background.png')}
+				source={require('../assets/images/registration-background.png')}
 				resizeMode="stretch"
 				className="absolute left-0 top-0 -z-10 flex-1 -translate-y-4 web:!h-[470px] web:!w-full web:-translate-y-36 web:!object-cover"
 			/>
@@ -177,7 +177,7 @@ export const WyloRegistrationScreen = () => {
 			</View>
 			<View className="flex flex-row items-center justify-center gap-1.5 px-5">
 				<Image
-					source={require('assets/images/avatar.png')}
+					source={require('../assets/images/avatar.png')}
 					className="mt-5"
 					style={{ width: 203, height: 272 }}
 				/>
@@ -186,17 +186,17 @@ export const WyloRegistrationScreen = () => {
 					<Text className="mt-1 text-xl font-semibold text-[#0E2C76]">Friendly teddy bear</Text>
 					<View className="mt-4 flex flex-row items-center">
 						<Image
-							source={require('assets/images/avatar.png')}
+							source={require('../assets/images/avatar.png')}
 							className="z-30 rounded-full border border-white"
 							style={{ width: 24, height: 24 }}
 						/>
 						<Image
-							source={require('assets/images/avatar.png')}
+							source={require('../assets/images/avatar.png')}
 							className="relative z-20 -ml-1.5 rounded-full border border-white"
 							style={{ width: 24, height: 24 }}
 						/>
 						<Image
-							source={require('assets/images/avatar.png')}
+							source={require('../assets/images/avatar.png')}
 							className="relative z-10 -ml-1.5 rounded-full border border-white"
 							style={{ width: 24, height: 24 }}
 						/>
@@ -254,9 +254,12 @@ export const WyloRegistrationScreen = () => {
 						<TabsContent value="info">
 							<View className="mt-5 flex flex-col gap-9 web:mt-[29px]">
 								<View className="flex flex-row items-center gap-5">
-									<Label rootClassName="basis-[17%] text-sm text-black">Name:</Label>
+									<Label rootClassName="basis-[17%]" className="text-sm text-black" nativeID="name">
+										Name:
+									</Label>
 									<Input
 										value={formValues.name}
+										nativeID="name"
 										style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
 										className="native:basis-[78%] basis-[80%] rounded border border-[#F2F2F2] bg-white"
 										onChangeText={(text: string) =>
@@ -265,7 +268,9 @@ export const WyloRegistrationScreen = () => {
 									/>
 								</View>
 								<View className="flex flex-row items-center gap-5">
-									<Label rootClassName="basis-[17%] text-sm text-black">Age:</Label>
+									<Label rootClassName="basis-[17%]" className="text-sm text-black" nativeID="name">
+										Age:
+									</Label>
 									<View
 										style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
 										className="align-stretch flex h-12 w-[95px] flex-row items-center rounded bg-white">
@@ -304,7 +309,12 @@ export const WyloRegistrationScreen = () => {
 									</View>
 								</View>
 								<View className="flex flex-row items-center gap-5">
-									<Label rootClassName="basis-[17%] whitespace-nowrap text-sm text-black">Gender:</Label>
+									<Label
+										rootClassName="basis-[17%]"
+										className="whitespace-nowrap text-sm text-black"
+										nativeID="name">
+										Gender:
+									</Label>
 									<View className="flex flex-row items-center gap-[23px]">
 										<Pressable
 											style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
@@ -344,7 +354,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Animals')}
 										className="native:h-[132px] native:w-[174px] flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/animals.png')}
+											source={require('../assets/images/animals.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="h-full w-full flex-1 rounded p-2">
@@ -365,7 +375,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Space')}
 										className="native:h-[132px] native:w-[174px] flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/space.png')}
+											source={require('../assets/images/space.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="h-full w-full flex-1 rounded p-2">
@@ -386,7 +396,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Sports')}
 										className="native:h-[132px] native:w-[174px] flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/sports.png')}
+											source={require('../assets/images/sports.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="h-full w-full flex-1 rounded p-2">
@@ -407,7 +417,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Math')}
 										className="native:h-[132px] native:w-[174px] flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/math.png')}
+											source={require('../assets/images/math.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="h-full w-full flex-1 rounded p-2">
@@ -428,7 +438,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Science')}
 										className="native:h-[132px] native:w-[174px] flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/science.png')}
+											source={require('../assets/images/science.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="h-full w-full flex-1 rounded p-2">
@@ -449,7 +459,7 @@ export const WyloRegistrationScreen = () => {
 										onPress={() => handleInterestSelection('Science')}
 										className="native:h-[132px] native:w-[174px] invisible flex-1 basis-[45%] overflow-hidden rounded web:[&>div]:!h-full web:[&>div]:!w-full">
 										<ImageBackground
-											source={require('assets/images/science.png')}
+											source={require('../assets/images/science.png')}
 											resizeMode="cover"
 											className="native:h-[132px] native:w-[174px] min-h-[132px] overflow-hidden rounded md:min-w-[174px] web:[&>div]:!h-full web:[&>div]:!w-full">
 											<View className="native:h-[132px] native:w-[174px] min-h-[132px] flex-1 rounded p-2 web:h-full web:w-full md:min-w-[174px]">
@@ -472,7 +482,7 @@ export const WyloRegistrationScreen = () => {
 									className="native:basis-[calc(33%-16px)] flex basis-[calc(33%-16px)] flex-col items-center gap-1 lg:web:basis-[calc(25%-16px)]">
 									<View className="relative rounded-lg">
 										<Image
-											source={require('assets/images/english.png')}
+											source={require('../assets/images/english.png')}
 											resizeMode="cover"
 											className="native:h-[80px] native:w-[80px] h-full w-full"
 										/>
@@ -497,7 +507,7 @@ export const WyloRegistrationScreen = () => {
 									className="native:basis-[calc(33%-16px)] flex basis-[calc(33%-16px)] flex-col items-center gap-1 lg:web:basis-[calc(25%-16px)]">
 									<View className="relative rounded-lg">
 										<Image
-											source={require('assets/images/spanish.png')}
+											source={require('../assets/images/spanish.png')}
 											resizeMode="cover"
 											className="native:h-[80px] native:w-[80px] h-full w-full"
 										/>
@@ -522,7 +532,7 @@ export const WyloRegistrationScreen = () => {
 									className="native:basis-[calc(33%-16px)] flex basis-[calc(33%-16px)] flex-col items-center gap-1 lg:web:basis-[calc(25%-16px)]">
 									<View className="relative rounded-lg">
 										<Image
-											source={require('assets/images/german.png')}
+											source={require('../assets/images/german.png')}
 											resizeMode="cover"
 											className="native:h-[80px] native:w-[80px] h-full w-full"
 										/>
@@ -547,7 +557,7 @@ export const WyloRegistrationScreen = () => {
 									className="native:basis-[calc(33%-16px)] flex basis-[calc(33%-16px)] flex-col items-center gap-1 lg:web:basis-[calc(25%-16px)]">
 									<View className="relative rounded-lg">
 										<Image
-											source={require('assets/images/chinese.png')}
+											source={require('../assets/images/chinese.png')}
 											resizeMode="cover"
 											className="native:h-[80px] native:w-[80px] h-full w-full"
 										/>
@@ -572,7 +582,7 @@ export const WyloRegistrationScreen = () => {
 									className="native:basis-[calc(33%-16px)] flex basis-[calc(33%-16px)] flex-col items-center gap-1 lg:web:basis-[calc(25%-16px)]">
 									<View className="relative rounded-lg">
 										<Image
-											source={require('assets/images/french.png')}
+											source={require('../assets/images/french.png')}
 											resizeMode="cover"
 											className="native:h-[80px] native:w-[80px] h-full w-full"
 										/>

@@ -1,3 +1,6 @@
+console.log('[LAYOUT] Promise is', global.Promise?.name ?? global.Promise);
+
+
 import 'react-native-reanimated'
 import '../global.css'
 
@@ -17,7 +20,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import { NAV_THEME } from 'lib/constants'
 import { useColorScheme } from 'lib/useColorScheme'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import store from 'store'
+import store from '../store'
 
 // Enable screens for better navigation performance
 enableScreens(true)

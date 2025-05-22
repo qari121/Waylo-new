@@ -5,10 +5,10 @@ import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View } from
 
 import { Button } from '@components/ui/button'
 
-import ApplePayIcon from 'assets/icons/apple-pay-logo.svg'
-import CheckmarkIcon from 'assets/icons/checkmark.svg'
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg'
-import VisaIcon from 'assets/icons/visa.svg'
+import ApplePayIcon from '../assets/icons/apple-pay-logo.svg'
+import CheckmarkIcon from '../assets/icons/checkmark.svg'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import VisaIcon from '../assets/icons/visa.svg'
 
 // Add Plus Jakarta Sans font imports
 import {
@@ -54,7 +54,7 @@ export const SubscriptionScreen = () => {
 				<View className="mt-4 flex flex-col gap-4">
 					{selectedSubscription === 0 ? (
 						<ImageBackground
-							source={require('assets/images/subscription-background.png')}
+							source={require('../assets/images/subscription-background.png')}
 							resizeMode="cover"
 							className="overflow-hidden rounded-[32px]">
 							<LinearGradient
@@ -127,7 +127,7 @@ export const SubscriptionScreen = () => {
 
 					{selectedSubscription === 1 ? (
 						<ImageBackground
-							source={require('assets/images/subscription-background.png')}
+							source={require('../assets/images/subscription-background.png')}
 							resizeMode="cover"
 							className="overflow-hidden rounded-[32px]">
 							<LinearGradient
@@ -228,7 +228,7 @@ export const SubscriptionScreen = () => {
 
 					{selectedSubscription === 2 ? (
 						<ImageBackground
-							source={require('assets/images/subscription-background.png')}
+							source={require('../assets/images/subscription-background.png')}
 							resizeMode="cover"
 							className="overflow-hidden rounded-[32px]">
 							<LinearGradient

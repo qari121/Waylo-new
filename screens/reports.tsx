@@ -1,6 +1,6 @@
 /* eslint-disable react-native/no-color-literals */
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { JSX, useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { LineChart } from 'react-native-gifted-charts'
@@ -18,30 +18,22 @@ import {
 	SelectTrigger,
 	SelectValue
 } from '@components/ui/select'
-import { Eye } from 'lib/icons/Eye'
+import { Eye } from '@lib/icons/Eye'
 import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '@slices/logs'
 import { fetchSentimentsByDate } from '@slices/sentiments'
 import { useAppDispatch, useAppSelector } from 'hooks'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import ClosedBookIcon from '../assets/icons/closed-book.svg'
+import DownloadIcon from '../assets/icons/download.svg'
+import CryingEmoji from '../assets/icons/emoji-loudly-crying-face.svg'
+import NeutralEmoji from '../assets/icons/emoji-neutral-face.svg'
+import SadEmoji from '../assets/icons/emoji-pensive-face.svg'
+import AngryEmoji from '../assets/icons/emoji-pouting-face.svg'
+import HappyEmoji from '../assets/icons/emoji-slightly-smiling-face.svg'
+import EyeIcon from '../assets/icons/eye.svg'
+import OpenBookIcon from '../assets/icons/open-book.svg'
 
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg'
-import ClosedBookIcon from 'assets/icons/closed-book.svg'
-import DownloadIcon from 'assets/icons/download.svg'
-import CryingEmoji from 'assets/icons/emoji-loudly-crying-face.svg'
-import NeutralEmoji from 'assets/icons/emoji-neutral-face.svg'
-import SadEmoji from 'assets/icons/emoji-pensive-face.svg'
-import AngryEmoji from 'assets/icons/emoji-pouting-face.svg'
-import HappyEmoji from 'assets/icons/emoji-slightly-smiling-face.svg'
-import EyeIcon from 'assets/icons/eye.svg'
-import OpenBookIcon from 'assets/icons/open-book.svg'
-
-// Add Plus Jakarta Sans font imports
-import {
-	PlusJakartaSans_400Regular,
-	PlusJakartaSans_500Medium,
-	PlusJakartaSans_600SemiBold,
-	PlusJakartaSans_700Bold
-} from '@expo-google-fonts/plus-jakarta-sans'
-import { useFonts } from 'expo-font'
+// Remove useFonts and expo-font
 
 export const ReportScreen = () => {
 	const router = useRouter()
@@ -52,14 +44,7 @@ export const ReportScreen = () => {
 	const weeklyLogRanges = useAppSelector((state) => state.logs.weeklyLogs)
 	const dailyLogRanges = useAppSelector((state) => state.logs.dailyLogs)
 
-	// Load Plus Jakarta Sans fonts
-	let [fontsLoaded] = useFonts({
-		PlusJakartaSans_400Regular,
-		PlusJakartaSans_500Medium,
-		PlusJakartaSans_600SemiBold,
-		PlusJakartaSans_700Bold
-	})
-	if (!fontsLoaded) return null;
+	// Remove useFonts and font loading logic
 
 	const [isLoading, setIsLoading] = useState(true)
 	const [reportDuration, setReportDuration] = useState<Option>(
@@ -75,7 +60,7 @@ export const ReportScreen = () => {
 		)
 
 		return sortedWeeks.map(([_, logs], index) => {
-			const totalHours = (logs as any[]).reduce((sum, log) => sum + log.hours, 0)
+			const totalHours = logs.reduce((sum, log) => sum + log.hours, 0)
 
 			return {
 				value: totalHours,
@@ -122,7 +107,7 @@ export const ReportScreen = () => {
 		angry: <AngryEmoji width={14} height={14} className="size-3.5" />,
 		anxious: <CryingEmoji width={14} height={14} className="size-3.5" />,
 		sad: <SadEmoji width={14} height={14} className="size-3.5" />
-	} as { [mood: string]: JSX.Element }
+	} as { [mood: string]: React.ReactElement }
 
 	const customLabel = (val: string) => {
 		return (
@@ -204,7 +189,7 @@ export const ReportScreen = () => {
 							<View className="flex flex-row items-center gap-2">
 								<Select
 									value={reportDuration}
-									onValueChange={(option: any) => {
+									onValueChange={(option) => {
 										setIsLoading(true)
 										setReportDuration(option)
 									}}>
@@ -224,7 +209,7 @@ export const ReportScreen = () => {
 									</SelectContent>
 								</Select>
 								<Button
-									style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+									style={{ elevation: 5 }}
 									className="size-9 rounded-lg border-[0.5px] border-[#D9D9D9] bg-white">
 									<DownloadIcon />
 								</Button>
@@ -290,7 +275,7 @@ export const ReportScreen = () => {
 										resizeMode="stretch"
 										height={104}
 										width={WINDOW_DIMENSIONS.width}
-										source={require('assets/images/sleep-image.png')}
+										source={require('../assets/images/sleep-image.png')}
 										className="absolute inset-0 web:!h-full web:!w-full"
 									/>
 									<View className="flex flex-row items-center justify-between">
@@ -303,7 +288,7 @@ export const ReportScreen = () => {
 									</View>
 								</View>
 								<View
-									style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+									style={{ elevation: 5 }}
 									className="flex min-h-[88px] flex-1 flex-col justify-between rounded-lg border-[0.5px] border-[#D9D9D9] bg-white p-3">
 									<View className="flex grow flex-row items-center justify-between">
 										<View className="flex grow flex-col justify-between gap-3">
@@ -316,12 +301,12 @@ export const ReportScreen = () => {
 												<Text className="text-xs text-[#515151]" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>8 lessons</Text>
 											</View>
 										</View>
-										<Image source={require('assets/images/study-image.png')} />
+										<Image source={require('../assets/images/study-image.png')} />
 									</View>
 								</View>
 							</View>
 							<View
-								style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+								style={{ elevation: 5 }}
 								className="flex flex-1 grow basis-1/2 flex-col justify-between self-stretch overflow-hidden rounded-lg border-[0.5px] border-[#D9D9D9] px-3 pt-3">
 								<View className="flex flex-col gap-3">
 									<View className="flex w-full grow flex-row items-center justify-between">
@@ -357,7 +342,7 @@ export const ReportScreen = () => {
 										))}
 									</ScrollView>
 								</View>
-								<Image source={require('assets/images/mood-report-image.png')} />
+								<Image source={require('../assets/images/mood-report-image.png')} />
 							</View>
 						</View>
 					</ScrollView>

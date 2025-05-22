@@ -1,6 +1,6 @@
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg';
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
-import { cn } from 'lib/utils';
+import { cn } from '@lib/utils';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Image, ImageSourcePropType, Pressable, ScrollView, Text, View } from 'react-native';
@@ -32,42 +32,42 @@ const getTimeAgo = (date: Date) => {
 // Example Notification Data (static for now)
 const notifications = [
 	{
-		image: require('assets/images/sleep.png'),
+		image: require('../assets/images/sleep.png'),
 		title: "Thursday's Sleep Report",
 		description: 'Anna had perfect sleep',
 		createdAt: new Date('2025-04-28T08:30:00'),
 		unread: true,
 	},
 	{
-		image: require('assets/images/book.png'),
+		image: require('../assets/images/book.png'),
 		title: 'Anna Study Report',
 		description: 'Learned new words related to science',
 		createdAt: new Date('2025-04-26T14:15:00'),
 		unread: false,
 	},
 	{
-		image: require('assets/images/speech.png'),
+		image: require('../assets/images/speech.png'),
 		title: 'Speech Interaction',
 		description: 'Last chance to add a little extra to your Tuesday delivery.',
 		createdAt: new Date('2025-04-25T19:45:00'),
 		unread: true,
 	},
 	{
-		image: require('assets/images/tool.png'),
+		image: require('../assets/images/tool.png'),
 		title: 'Wylo Update',
 		description: 'New additional features added for interactions.',
 		createdAt: new Date('2025-04-24T11:50:00'),
 		unread: false,
 	},
 	{
-		image: require('assets/images/profile.png'),
+		image: require('../assets/images/profile.png'),
 		title: 'Profile Features updated',
 		description: 'New sound for interaction added by you',
 		createdAt: new Date('2025-04-22T07:10:00'),
 		unread: false,
 	},
 	{
-		image: require('assets/images/bonus.png'),
+		image: require('../assets/images/bonus.png'),
 		title: 'Weekend Bonus!',
 		description: 'Get 10% off on a surprise side for your next update.',
 		createdAt: new Date('2025-04-18T10:30:00'),
@@ -85,11 +85,15 @@ export const NotificationScreen = () => {
 	});
 
 	useEffect(() => {
-		// Temporarily comment out notification setup
-		// setupNotificationHandlers();
-		// requestUserPermission();
-		// const cleanup = notificationListener();
-		// return cleanup;
+		// Set up notification handlers
+		setupNotificationHandlers();
+
+		// Request permissions and set up listeners
+		requestUserPermission();
+		const cleanup = notificationListener();
+
+		// Clean up listeners on unmount
+		return cleanup;
 	}, []);
 
 	if (!fontsLoaded) {

@@ -1,8 +1,6 @@
-import React from 'react';
-/* eslint-disable react-native/no-color-literals */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
 	useAnimatedStyle,
@@ -13,20 +11,12 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 
 import { Button } from '@components/ui/button';
-import { cn } from 'lib/utils';
+import { cn } from '@lib/utils';
 
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg';
-import TripleArrowsIcon from 'assets/icons/triple-arrows.svg';
-import UnionIcon from 'assets/icons/union.svg';
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
+import TripleArrowsIcon from '../assets/icons/triple-arrows.svg';
+import UnionIcon from '../assets/icons/union.svg';
 
-// Add Plus Jakarta Sans font imports
-import {
-	PlusJakartaSans_400Regular,
-	PlusJakartaSans_500Medium,
-	PlusJakartaSans_600SemiBold,
-	PlusJakartaSans_700Bold
-} from '@expo-google-fonts/plus-jakarta-sans';
-import { useFonts } from 'expo-font';
 
 export const QRCodeScreen = () => {
 	const router = useRouter()
@@ -35,15 +25,6 @@ export const QRCodeScreen = () => {
 	const [permission, requestPermission] = useCameraPermissions()
 
 	const translateY = useSharedValue(30)
-
-	// Load Plus Jakarta Sans fonts
-	let [fontsLoaded] = useFonts({
-		PlusJakartaSans_400Regular,
-		PlusJakartaSans_500Medium,
-		PlusJakartaSans_600SemiBold,
-		PlusJakartaSans_700Bold
-	})
-	if (!fontsLoaded) return null;
 
 	useEffect(() => {
 		requestPermission()
@@ -76,7 +57,7 @@ export const QRCodeScreen = () => {
 				className="relative flex flex-1 flex-col bg-[#535353] px-5 web:mx-auto md:web:w-1/3"
 				showsHorizontalScrollIndicator={false}>
 				<Image
-					source={require('assets/images/qrcode-background.png')}
+					source={require('../assets/images/qrcode-background.png')}
 					resizeMode="contain"
 					className="absolute inset-0"
 				/>

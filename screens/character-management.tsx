@@ -4,18 +4,17 @@ import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState } from 'react'
 import { Dimensions, Image, Pressable, SafeAreaView, Text, View } from 'react-native'
-import Carousel from 'react-native-reanimated-carousel'
-import type { ICarouselInstance } from 'react-native-reanimated-carousel'
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated'
+import Carousel, { Pagination } from 'react-native-snap-carousel'
 
-import ChevronLeftIcon from 'assets/icons/chevron-left.svg'
-import GalleryExportIcon from 'assets/icons/gallery-export.svg'
-import TierLockIcon from 'assets/icons/tier-lock.svg'
-import TripleArrowsIcon from 'assets/icons/triple-arrows.svg'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import GalleryExportIcon from '../assets/icons/gallery-export.svg'
+import TierLockIcon from '../assets/icons/tier-lock.svg'
+import TripleArrowsIcon from '../assets/icons/triple-arrows.svg'
 
 const { width: screenWidth } = Dimensions.get('window')
 const ITEM_WIDTH = screenWidth * 0.4
 const ITEM_HORIZONTAL_PADDING = 14
+const SLIDER_WIDTH = screenWidth
 
 interface CarouselItem {
 	id: string
@@ -26,7 +25,7 @@ interface CarouselItem {
 
 export const CharacterManagementScreen = () => {
 	const router = useRouter()
-	const carouselRef = useRef<ICarouselInstance | null>(null)
+	const carouselRef = useRef<Carousel<CarouselItem>>(null)
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -36,9 +35,9 @@ export const CharacterManagementScreen = () => {
 
 	const [activeIndex, setActiveIndex] = useState(1)
 	const [characters, setCharacters] = useState<CarouselItem[]>([
-		{ id: 'pro1', image: require('assets/images/pro1.png'), label: 'Pro 1', type: 'default' },
-		{ id: 'free', image: require('assets/images/avatar.png'), label: 'Free', type: 'default' },
-		{ id: 'pro2', image: require('assets/images/pro2.png'), label: 'Pro 2', type: 'default' }
+		{ id: 'pro1', image: require('../assets/images/pro1.png'), label: 'Pro 1', type: 'default' },
+		{ id: 'free', image: require('../assets/images/avatar.png'), label: 'Free', type: 'default' },
+		{ id: 'pro2', image: require('../assets/images/pro2.png'), label: 'Pro 2', type: 'default' }
 	])
 
 	const handleCustomImage = async () => {
@@ -89,19 +88,6 @@ export const CharacterManagementScreen = () => {
 		)
 	}
 
-	const PaginationDot = ({ active }: { active: boolean }) => {
-		const animatedStyle = useAnimatedStyle(() => ({
-			width: withSpring(active ? 24 : 4),
-			height: 4,
-			borderRadius: 2,
-			backgroundColor: '#AE9FFF',
-			opacity: active ? 1 : 0.3,
-			marginHorizontal: 2
-		}))
-
-		return <Animated.View style={animatedStyle} />
-	}
-
 	if (!fontsLoaded) {
 		return null // Or a loading component
 	}
@@ -120,40 +106,60 @@ export const CharacterManagementScreen = () => {
 				</View>
 
 				<View className="flex-1">
-					<View className="h-[470px] justify-center">
+					<View className="h-[470px] justify-center">  {/* Increased height for better spacing */}
 						<Carousel
 							ref={carouselRef}
-							loop={false}
-							width={ITEM_WIDTH}
-							height={(ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -6)) * 1.2}
 							data={characters}
 							renderItem={renderCarouselItem}
-							defaultIndex={activeIndex}
+							sliderWidth={SLIDER_WIDTH}
+							itemWidth={ITEM_WIDTH}
+							inactiveSlideScale={0.85}  // Adjusted scale for inactive slides
+							inactiveSlideOpacity={0.5}  // Adjusted opacity for inactive slides
+							firstItem={activeIndex}
+							layout="default"
 							onSnapToItem={setActiveIndex}
-							mode="parallax"
-							modeConfig={{
-								parallaxScrollingScale: 0.85,
-								parallaxScrollingOffset: 50,
-							}}
-							style={{
-								width: screenWidth,
+							enableSnap={true}
+							loop={false}
+							activeSlideAlignment="center"
+							inactiveSlideShift={0}  // Removed shift to match design
+							contentContainerCustomStyle={{
 								alignItems: 'center',
+								paddingVertical: 20  // Added padding for better spacing
 							}}
 						/>
-						<View className="mt-4 flex-row justify-center">
-							{characters.map((_, index) => (
-								<PaginationDot key={index} active={index === activeIndex} />
-							))}
-						</View>
+						<Pagination
+							dotsLength={characters.length}
+							activeDotIndex={activeIndex}
+							containerStyle={{
+								paddingVertical: 0,
+								marginTop: -20  // Adjusted spacing
+							}}
+							dotStyle={{
+								width: 24,
+								height: 4,
+								borderRadius: 2,
+								backgroundColor: '#AE9FFF',
+								marginHorizontal: 2
+							}}
+							inactiveDotStyle={{
+								width: 4,
+								height: 4,
+								borderRadius: 2,
+								backgroundColor: '#AE9FFF'
+							}}
+							inactiveDotOpacity={0.3}
+							inactiveDotScale={1}
+							dotContainerStyle={{ marginHorizontal: 2 }}
+						/>
 					</View>
 
 					<View className="mt-5 flex flex-row items-center justify-center gap-4 px-5 web:flex-wrap">
 						<View className="items-center">
 							<View
-								style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+								style={{ elevation: 5 }}
 								className="relative size-[72px] overflow-hidden rounded-xl border border-[#CACACA] bg-white">
 								<Image
-									source={require('assets/images/free-tier-icon.png')}
+									source={require('../assets/images/free-tier-icon.png')}
 									resizeMode="contain"
 									className="absolute bottom-0 left-0 right-0 h-full w-full"
 								/>
@@ -165,10 +171,10 @@ export const CharacterManagementScreen = () => {
 
 						<View className="items-center">
 							<View
-								style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+								style={{ elevation: 5 }}
 								className="relative flex size-[72px] items-center justify-center overflow-hidden rounded-xl border border-[#CACACA] bg-white">
 								<Image
-									source={require('assets/images/pro-tier-icon-1.png')}
+									source={require('../assets/images/pro-tier-icon-1.png')}
 									resizeMode="contain"
 									className="absolute bottom-0 left-0 right-0 h-full w-full"
 								/>
@@ -181,10 +187,10 @@ export const CharacterManagementScreen = () => {
 
 						<View className="items-center">
 							<View
-								style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+								style={{ elevation: 5 }}
 								className="relative flex size-[72px] items-center justify-center overflow-hidden rounded-xl border border-[#CACACA] bg-white">
 								<Image
-									source={require('assets/images/pro-tier-icon-2.png')}
+									source={require('../assets/images/pro-tier-icon-2.png')}
 									resizeMode="contain"
 									className="absolute bottom-0 left-0 right-0 h-full w-full"
 								/>
@@ -196,7 +202,7 @@ export const CharacterManagementScreen = () => {
 						</View>
 						<Pressable className="items-center" onPress={handleCustomImage}>
 							<View
-								style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
+								style={{ elevation: 5 }}
 								className="relative flex size-[72px] items-center justify-center gap-[3px] overflow-hidden rounded-xl border border-[#CACACA] bg-white">
 								<GalleryExportIcon />
 								<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="text-xs text-[#404040]">

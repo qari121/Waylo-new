@@ -9,13 +9,13 @@ import * as yup from 'yup'
 
 import { Button } from '@components/ui/button'
 import { FormInput } from '@components/ui/input'
-import { cn } from 'lib/utils'
+import { cn } from '@lib/utils'
 import { register } from '@slices/auth'
 import { useAppDispatch } from 'hooks'
 
-import LockIcon from 'assets/icons/lock.svg'
-import MailIcon from 'assets/icons/mail.svg'
-import UserIcon from 'assets/icons/user.svg'
+import LockIcon from '../assets/icons/lock.svg'
+import MailIcon from '../assets/icons/mail.svg'
+import UserIcon from '../assets/icons/user.svg'
 import { useState } from 'react'
 
 export interface SignupForm {
@@ -78,11 +78,11 @@ export const RegisterScreen = () => {
 			showsHorizontalScrollIndicator={false}>
 			<View className="relative flex flex-col items-center pb-14">
 				<Image
-					source={require('assets/images/dark-blue-rectangle.png')}
+					source={require('../assets/images/dark-blue-rectangle.png')}
 					className="absolute left-0 top-0 -z-10"
 				/>
 				<Image
-					source={require('assets/images/light-blue-rectangle.png')}
+					source={require('../assets/images/light-blue-rectangle.png')}
 					className="absolute left-[15%] top-0 -z-20"
 				/>
 
