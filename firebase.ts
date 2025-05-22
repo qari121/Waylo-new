@@ -1,24 +1,36 @@
-import { initializeApp } from 'firebase/app';
-import { initializeAuth } from 'firebase/auth';
-import { getReactNativePersistence } from 'firebase/auth/react-native'; 
+// firebase.ts
+import { initializeApp, getApps } from 'firebase/app';
+// @ts-ignore
+
+import { getAuth, initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Prevent initializing more than once
 const firebaseConfig = {
   apiKey: 'AIzaSyBaBPvrQVS8jsAqloKsTt49YkEEpIxciwk',
   authDomain: 'waylo-251e0.firebaseapp.com',
   projectId: 'waylo-251e0',
-  storageBucket: 'waylo-251e0.appspot.com',      // fixed typo
+  storageBucket: 'waylo-251e0.appspot.com',
   messagingSenderId: '899185164510',
   appId: '1:899185164510:web:786296bb1ba2690744824f',
 };
 
-const app  = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e: any) {
+  if (e.code === 'auth/already-initialized') {
+    auth = getAuth(app);
+  } else {
+    throw e;
+  }
+}
 
-const db   = getFirestore(app);
+const db = getFirestore(app);
 
 export { app, auth, db };

@@ -15,7 +15,7 @@
       "@services/*": ["services/*"],
       "@slices/*": ["slices/*"],
       "@types/*": ["types/*"],
-      "firebase/auth/react-native": ["firebase-auth-react-native.js"]
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/index.rn.d.ts"]
     },
 
     "esModuleInterop": true
