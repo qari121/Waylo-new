@@ -1,6 +1,6 @@
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
-import { cn } from '@lib/utils';
+import { cn } from '../lib/utils';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Image, ImageSourcePropType, Pressable, ScrollView, Text, View } from 'react-native';

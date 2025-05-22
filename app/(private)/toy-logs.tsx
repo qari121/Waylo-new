@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 
-import { FloatingMenu } from '@components/floating-menu'
-import { ToyLogsScreen } from '@screens/toy-logs'
+import { FloatingMenu } from '../../components/floating-menu'
+import { ToyLogsScreen } from '../../screens/toy-logs'
 
 export default function Page() {
 	return (

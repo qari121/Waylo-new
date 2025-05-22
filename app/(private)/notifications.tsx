@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 
-import { FloatingMenu } from '@components/floating-menu'
-import { NotificationScreen } from '@screens/notifications'
+import { FloatingMenu } from '../../components/floating-menu'
+import { NotificationScreen } from '../../screens/notifications'
 
 export default function Page() {
 	return (

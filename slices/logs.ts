@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { differenceInCalendarWeeks, min, parseISO } from 'date-fns'
-import { db } from 'firebase'
+import { db } from '../firebase'
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 
 export const toyLogs = createAsyncThunk('logs/toy', async (_, thunkAPI) => {

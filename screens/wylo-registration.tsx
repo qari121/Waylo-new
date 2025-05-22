@@ -13,13 +13,13 @@ import {
 	BottomSheetView
 } from '@gorhom/bottom-sheet'
 
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
-import { Label } from '@components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { cn } from '@lib/utils'
-import { fetchInterestLogs } from '@slices/logs'
-import { useAppDispatch, useAppSelector } from 'hooks'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { cn } from '../lib/utils'
+import { fetchInterestLogs } from '../slices/logs'
+import { useAppDispatch, useAppSelector } from '../hooks'
 
 import PlusIcon from '../assets/icons/add.svg'
 import ArrowDownIcon from '../assets/icons/arrow-down.svg'

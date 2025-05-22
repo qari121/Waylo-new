@@ -7,10 +7,10 @@ import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 
-import { cn } from '@lib/utils'
-import { toyLogs } from '@slices/logs'
+import { cn } from '../lib/utils'
+import { toyLogs } from '../slices/logs'
 import { format } from 'date-fns'
-import { useAppDispatch, useAppSelector } from 'hooks'
+import { useAppDispatch, useAppSelector } from '../hooks'
 
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import PlayIcon from '../assets/icons/play.svg'

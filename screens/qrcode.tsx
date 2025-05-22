@@ -10,8 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
-import { Button } from '@components/ui/button';
-import { cn } from '@lib/utils';
+import { Button } from '../components/ui/button';
+import { cn } from '../lib/utils';
 
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import TripleArrowsIcon from '../assets/icons/triple-arrows.svg';

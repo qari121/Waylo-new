@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 
-import { FloatingMenu } from '@components/floating-menu'
-import { CharacterManagementScreen } from '@screens/character-management'
+import { FloatingMenu } from '../../components/floating-menu'
+import { CharacterManagementScreen } from '../../screens/character-management'
 
 export default function Page() {
 	return (

@@ -7,12 +7,12 @@ import Toast from 'react-native-toast-message'
 
 import * as yup from 'yup'
 
-import { Button } from '@components/ui/button'
-import { FormInput } from '@components/ui/input'
+import { Button } from '../components/ui/button'
+import { FormInput } from '../components/ui/input'
 import { yupResolver } from '@hookform/resolvers/yup'
-import { cn } from '@lib/utils'
-import { login } from '@slices/auth'
-import { useAppDispatch } from 'hooks'
+import { cn } from '../lib/utils'
+import { login } from '../slices/auth'
+import { useAppDispatch } from '../hooks'
 
 import LockIcon from '../assets/icons/lock.svg'
 import MailIcon from '../assets/icons/mail.svg'

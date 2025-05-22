@@ -9,7 +9,7 @@ import Toast from 'react-native-toast-message'
 
 import { format } from 'date-fns'
 
-import { Button } from '@components/ui/button'
+import { Button } from '../components/ui/button'
 import {
 	Option,
 	Select,
@@ -17,11 +17,11 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue
-} from '@components/ui/select'
-import { Eye } from '@lib/icons/Eye'
-import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '@slices/logs'
-import { fetchSentimentsByDate } from '@slices/sentiments'
-import { useAppDispatch, useAppSelector } from 'hooks'
+} from '../components/ui/select'
+import { Eye } from '../lib/icons/Eye'
+import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '../slices/logs'
+import { fetchSentimentsByDate } from '../slices/sentiments'
+import { useAppDispatch, useAppSelector } from '../hooks'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import ClosedBookIcon from '../assets/icons/closed-book.svg'
 import DownloadIcon from '../assets/icons/download.svg'

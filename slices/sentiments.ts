@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { format } from 'date-fns'
-import { db } from 'firebase'
+import { db } from '../firebase'
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 
 export const fetchSentimentsCount = createAsyncThunk('sentiment/count', async (_, thunkAPI) => {

@@ -4,14 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { cn } from '@lib/utils';
+import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useAppDispatch, useAppSelector } from 'hooks';
+import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
 
-import { logout } from '@slices/auth';
-import { fetchSentimentsCount } from '@slices/sentiments';
+import { logout } from '../slices/auth';
+import { fetchSentimentsCount } from '../slices/sentiments';
 
 import BookIcon from '../assets/icons/book.svg';
 import ClockIcon from '../assets/icons/clock.svg';

@@ -3,8 +3,8 @@ import { useFonts } from 'expo-font'
 import { Link } from 'expo-router'
 import { Image, Platform, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
-import { logout } from '@slices/auth'
-import { useAppDispatch } from 'hooks'
+import { logout } from '../slices/auth'
+import { useAppDispatch } from '../hooks'
 
 import CharacterIcon from '../assets/icons/character.svg'
 import HelpCircleIcon from '../assets/icons/help-circle.svg'

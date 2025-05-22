@@ -1,34 +1,30 @@
 module.exports = function (api) {
 	api.cache(true);
-  
 	return {
-	  presets: [
-		['babel-preset-expo', { jsxImportSource: 'nativewind' }],
-		'nativewind/babel',
-	  ],
+	  presets: ['babel-preset-expo'],
 	  plugins: [
+		/* ----------  ADD THIS BLOCK  ---------- */
 		[
 		  'module-resolver',
 		  {
-			root: ['.'],
+			extensions: [
+			  '.ios.js',
+			  '.android.js',
+			  '.js',
+			  '.ts',
+			  '.tsx',
+			  '.json',
+			],
 			alias: {
-			  // BOTH forms you use in imports ↓
 			  '@components': './components',
-			  '@screens':    './screens',
-			  '@lib':        './lib',
-			  'lib':         './lib',
-			  '@hooks':      './hooks',
-			  'hooks':       './hooks',
-			  '@services':   './services',
-			  '@slices':     './slices',
-			  '@types':      './types',
-			  'store':       './store',    // you import 'store'
+			  '@screens': './screens',
+			  '@hooks': './hooks',
+			  '@lib': './lib',
 			},
-			extensions: ['.tsx', '.ts', '.js', '.json'],
 		  },
 		],
-  
-		'react-native-reanimated/plugin',   // ← KEEP THIS LAST
+		/* ----------  KEEP THIS LAST  ---------- */
+		'react-native-reanimated/plugin',
 	  ],
 	};
   };

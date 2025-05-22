@@ -3,29 +3,21 @@
     "strict": true,
     "baseUrl": ".",
     "jsx": "react-native",
+    "module": "Node16",
+    "moduleResolution": "node16",
+    "allowImportingTsExtensions": true, 
+    
     "paths": {
-      "@components/*": [
-        "components/*"
-      ],
-      "@hooks/*": [
-        "hooks/*"
-      ],
-      "@lib/*": [
-        "lib/*"
-      ],
-      "@screens/*": [
-        "screens/*"
-      ],
-      "@services/*": [
-        "services/*"
-      ],
-      "@slices/*": [
-        "slices/*"
-      ],
-      "@types/*": [
-        "types/*"
-      ]
+      "@components/*": ["components/*"],
+      "@hooks/*": ["hooks/*"],
+      "@lib/*": ["lib/*"],
+      "@screens/*": ["screens/*"],
+      "@services/*": ["services/*"],
+      "@slices/*": ["slices/*"],
+      "@types/*": ["types/*"],
+      "firebase/auth/react-native": ["firebase-auth-react-native.js"]
     },
+
     "esModuleInterop": true
   },
   "extends": "expo/tsconfig.base"

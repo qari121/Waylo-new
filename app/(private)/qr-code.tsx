@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 
-import { FloatingMenu } from '@components/floating-menu'
-import { QRCodeScreen } from '@screens/qrcode'
+import { FloatingMenu } from '../../components/floating-menu'
+import { QRCodeScreen } from '../../screens/qrcode'
 
 export default function Page() {
 	return (

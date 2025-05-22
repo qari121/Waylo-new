@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
-import { Button } from '@components/ui/button'
+import { Button } from '../components/ui/button'
 
 import ApplePayIcon from '../assets/icons/apple-pay-logo.svg'
 import CheckmarkIcon from '../assets/icons/checkmark.svg'

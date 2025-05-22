@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, Text, View } from 'react-native'
 
-import { Button } from '@components/ui/button'
+import { Button } from '../components/ui/button'
 import { QRCodeIcon, WiFiIcon } from './qrcode'
 
-import ChevronLeftIcon from '@assets/icons/chevron-left.svg'
-import TripleArrowsIcon from '@assets/icons/triple-arrows.svg'
+import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import TripleArrowsIcon from '../assets/icons/triple-arrows.svg'
 
 export const WifiPairingScreen = () => {
 	const router = useRouter()

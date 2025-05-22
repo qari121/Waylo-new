@@ -1,4 +1,4 @@
-import AuthMiddleware from '@components/auth-middleware'
+import AuthMiddleware from '../../components/auth-middleware'
 import { Stack } from 'expo-router'
 import { Platform, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
