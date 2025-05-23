@@ -1,6 +1,6 @@
 import { Link, usePathname } from 'expo-router'
 import { memo, useMemo } from 'react'
-import { Image, Platform, View, ViewStyle } from 'react-native'
+import { Image, Platform, View, ViewStyle, StyleSheet } from 'react-native'
 import Svg, { G, Path } from 'react-native-svg'
 
 import ActiveIndicatorIcon from '../assets/icons/active-indicator.svg'
@@ -25,21 +25,19 @@ const activeIndicatorStyle: ViewStyle = Platform.OS !== 'web'
 const MenuItem = memo(({ href, icon: Icon, isActive, isProfile = false }: MenuItemProps) => {
 	return (
 		<Link href={href}>
-			<View className="relative flex flex-col items-center">
+			<View style={styles.menuItemContainer}>
 				{isProfile ? (
 					<Image
 						source={require('../assets/images/avatar.png')}
-						className="rounded-full"
+						style={styles.profileImage}
 						resizeMode="cover"
-						style={{ width: 30, height: 30 }}
 					/>
 				) : Icon && (
 					<Icon width={30} height={30} color={isActive ? '#416EC8' : '#C5C5C5'} />
 				)}
 				{isActive && (
 					<ActiveIndicatorIcon
-						style={activeIndicatorStyle}
-						className="absolute z-10 web:!-bottom-3.5 web:left-1/2 web:-translate-x-1/2"
+						style={[activeIndicatorStyle, styles.activeIndicatorIcon]}
 					/>
 				)}
 			</View>
@@ -60,8 +58,14 @@ export const FloatingMenu = memo(() => {
 
 	return (
 		<View
-			style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
-			className="absolute bottom-[24px] left-1/2 flex w-[316px] -translate-x-1/2 flex-row items-center justify-between overflow-hidden rounded-[20px] bg-white px-8 py-3">
+			style={[
+				{
+					elevation: 5,
+					boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)',
+				},
+				styles.floatingMenu
+			]}
+		>
 			{menuItems.map((item) => (
 				<MenuItem
 					key={item.href}
@@ -74,6 +78,39 @@ export const FloatingMenu = memo(() => {
 		</View>
 	)
 })
+
+const styles = StyleSheet.create({
+	floatingMenu: {
+		position: 'absolute',
+		bottom: 24,
+		left: '50%',
+		width: 316,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		overflow: 'hidden',
+		borderRadius: 20,
+		backgroundColor: 'white',
+		paddingHorizontal: 32, // px-8 (8*4)
+		paddingVertical: 12, // py-3 (3*4)
+		transform: [{ translateX: -158 }], // -translate-x-1/2 of width 316
+		zIndex: 100,
+	},
+	menuItemContainer: {
+		position: 'relative',
+		flexDirection: 'column',
+		alignItems: 'center',
+	},
+	profileImage: {
+		width: 30,
+		height: 30,
+		borderRadius: 15,
+	},
+	activeIndicatorIcon: {
+		zIndex: 10,
+		// For web: bottom: -14, left: '50%', transform: [{ translateX: -0.5 }]
+	},
+});
 
 const BellIcon = memo(({ width = 24, height = 24, color = 'currentColor' }: IconProps) => {
 	return (

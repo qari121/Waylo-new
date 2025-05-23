@@ -1,7 +1,7 @@
 import { Link, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Image, Text, View } from 'react-native'
+import { Image, Text, View, StyleSheet, Platform } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import Toast from 'react-native-toast-message'
 
@@ -54,82 +54,84 @@ export const LoginScreen = () => {
 	}
 
 	return (
-		<View className="relative flex flex-col items-center">
+		<View style={styles.container}>
 			<Image
 				source={require('../assets/images/dark-blue-rectangle.png')}
-				className="absolute left-0 top-0 -z-10"
+				style={styles.darkBlueRectangle}
 			/>
 			<Image
 				source={require('../assets/images/light-blue-rectangle.png')}
-				className="absolute left-[15%] top-0 -z-20"
+				style={styles.lightBlueRectangle}
 			/>
 			<Image
 				source={require('../assets/images/logo-2.png')}
-				className="mt-24"
-				style={{ width: 246, height: 118 }}
+				style={styles.logo}
 			/>
-			<View className="mt-12 flex w-full flex-col items-center justify-center self-stretch web:mx-auto md:web:w-3/4">
-				<Text className="text-2xl text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Welcome back!</Text>
-				<Text className="mt-[18px] text-sm text-muted-foreground" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>
+			<View style={styles.contentContainer}>
+				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Welcome back!</Text>
+				<Text style={[styles.subtitleText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 					Log in to existing Wylo account
 				</Text>
-				<View className="native:w-10/12 mx-auto mt-[50px] flex w-10/12 flex-col self-stretch lg:web:w-1/3">
+				<View style={styles.formContainer}>
 					<View>
-						<View className="relative flex items-center">
+						<View style={styles.inputWrapper}>
 							<FormInput
 								placeholder="Email"
 								control={form.control}
 								name="email"
-								className={cn('pl-14', {
-									'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.email
-								})}
+								style={[
+									styles.input,
+									form.formState.errors.email && styles.inputError
+								]}
 							/>
-							<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+							<View style={styles.iconContainer}>
 								<MailIcon width={14} height={14} />
 							</View>
 						</View>
 						{form.formState.errors.email && (
-							<Text className="mt-1 text-xs text-red-500" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>
+							<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 								{form.formState.errors.email.message}
 							</Text>
 						)}
 					</View>
 
-					<View className="mt-[25px]">
-						<View className="relative flex items-center">
+					<View style={styles.passwordContainer}>
+						<View style={styles.inputWrapper}>
 							<FormInput
 								placeholder="Password"
 								control={form.control}
 								secureTextEntry
 								name="password"
-								className={cn('pl-14', {
-									'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.password
-								})}
+								style={[
+									styles.input,
+									form.formState.errors.password && styles.inputError
+								]}
 							/>
-							<View className="absolute left-6 top-1/2 -translate-y-1/2">
+							<View style={styles.iconContainer}>
 								<LockIcon width={13} height={13} />
 							</View>
 						</View>
 						{form.formState.errors.password && (
-							<Text className="mt-1 text-xs text-red-500" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>
+							<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 								{form.formState.errors.password.message}
 							</Text>
 						)}
 					</View>
 
-					<Text className="mt-2 text-right text-sm font-medium text-muted-foreground" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
+					<Text style={[styles.forgotPassword, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
 						Forgot Password?
 					</Text>
 					<Button
 						onPress={form.handleSubmit(onSubmit)}
-						style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
-						className="mx-auto mt-8 flex w-fit flex-row items-center gap-1 uppercase">
+						style={styles.loginButton}>
 						{isLoading && <Chase size={16} color="white" />}
-						<Text className="text-white" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>{isLoading ? 'Please Wait...' : 'Log In'}</Text>
+						<Text style={[styles.loginButtonText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
+							{isLoading ? 'Please Wait...' : 'Log In'}
+						</Text>
 					</Button>
-					<Text className="mt-12 text-center text-sm font-medium text-muted-foreground" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
+					<Text style={[styles.signupText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
 						Don&apos;t have an account?{' '}
-						<Link href="/register" className="font-bold text-black web:cursor-pointer" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>
+						<Link href="/register" style={[styles.signupLink, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 							Sign up
 						</Link>
 					</Text>
@@ -138,3 +140,127 @@ export const LoginScreen = () => {
 		</View>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		position: 'relative',
+		flexDirection: 'column',
+		alignItems: 'center',
+	},
+	darkBlueRectangle: {
+		position: 'absolute',
+		left: 0,
+		top: 0,
+		zIndex: -10,
+	},
+	lightBlueRectangle: {
+		position: 'absolute',
+		left: '15%',
+		top: 0,
+		zIndex: -20,
+	},
+	logo: {
+		marginTop: 96, // mt-24 equivalent
+		width: 246,
+		height: 118,
+	},
+	contentContainer: {
+		marginTop: 48, // mt-12 equivalent
+		width: '100%',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		alignSelf: 'stretch',
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			'@media (min-width: 768px)': {
+				width: '75%',
+			},
+		}),
+	},
+	welcomeText: {
+		fontSize: 24, // text-2xl
+		color: '#000000',
+	},
+	subtitleText: {
+		marginTop: 18,
+		fontSize: 14, // text-sm
+		color: '#6B7280', // text-muted-foreground
+	},
+	formContainer: {
+		marginTop: 50,
+		width: Platform.OS === 'web' ? '33.333333%' : '83.333333%', // w-10/12 equivalent
+		flexDirection: 'column',
+		alignSelf: 'stretch',
+		marginHorizontal: 'auto',
+		...(Platform.OS === 'web' && {
+			'@media (min-width: 1024px)': {
+				width: '33.333333%',
+			},
+		}),
+	},
+	inputWrapper: {
+		position: 'relative',
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	input: {
+		paddingLeft: 56, // pl-14 equivalent
+	},
+	inputError: {
+		borderColor: '#EF4444', // red-500
+		...(Platform.OS === 'web' && {
+			boxShadow: '0 0 0 1px #EF4444',
+		}),
+	},
+	iconContainer: {
+		position: 'absolute',
+		left: 24, // left-6 equivalent
+		top: '50%',
+		transform: [{ translateY: -7 }], // -translate-y-1/2 equivalent
+	},
+	errorText: {
+		marginTop: 4,
+		fontSize: 12, // text-xs
+		color: '#EF4444', // text-red-500
+	},
+	passwordContainer: {
+		marginTop: 25,
+	},
+	forgotPassword: {
+		marginTop: 8,
+		fontSize: 14, // text-sm
+		fontWeight: '500',
+		color: '#6B7280', // text-muted-foreground
+		textAlign: 'right',
+	},
+	loginButton: {
+		marginTop: 32, // mt-8 equivalent
+		marginHorizontal: 'auto',
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		textTransform: 'uppercase',
+		elevation: 5,
+		...(Platform.OS === 'web' && {
+			boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)',
+		}),
+	},
+	loginButtonText: {
+		color: '#FFFFFF',
+	},
+	signupText: {
+		marginTop: 48, // mt-12 equivalent
+		fontSize: 14, // text-sm
+		fontWeight: '500',
+		color: '#6B7280', // text-muted-foreground
+		textAlign: 'center',
+	},
+	signupLink: {
+		fontWeight: 'bold',
+		color: '#000000',
+		...(Platform.OS === 'web' && {
+			cursor: 'pointer',
+		}),
+	},
+})

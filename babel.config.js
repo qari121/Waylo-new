@@ -1,9 +1,10 @@
 module.exports = function (api) {
 	api.cache(true);
 	return {
-	  presets: ['babel-preset-expo'],
+	  presets: [
+		['babel-preset-expo'],
+	  ],
 	  plugins: [
-		/* ----------  ADD THIS BLOCK  ---------- */
 		[
 		  'module-resolver',
 		  {
@@ -23,7 +24,6 @@ module.exports = function (api) {
 			},
 		  },
 		],
-		/* ----------  KEEP THIS LAST  ---------- */
 		'react-native-reanimated/plugin',
 	  ],
 	};

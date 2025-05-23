@@ -1,37 +1,68 @@
-import { cn } from '../../lib/utils'
 import * as TabsPrimitive from '@rn-primitives/tabs'
 import { TextClassContext } from '../ui/text'
 import * as React from 'react'
+import { StyleSheet, Platform, StyleProp, ViewStyle, Text } from 'react-native'
 
 const Tabs = TabsPrimitive.Root
 
-const TabsList = React.forwardRef<TabsPrimitive.ListRef, TabsPrimitive.ListProps>(
-	({ className, ...props }, ref) => (
+const styles = StyleSheet.create({
+	list: {
+		height: Platform.select({ native: 48, default: 40 }),
+		alignItems: 'center',
+		justifyContent: 'center',
+		...Platform.select({ web: { flexDirection: 'row' } }),
+	},
+	trigger: {
+		fontSize: Platform.select({ native: 16, default: 14 }),
+		fontWeight: '500',
+	},
+	triggerDisabled: {
+		opacity: 0.5,
+	},
+	triggerText: {
+		fontSize: Platform.select({ native: 16, default: 14 }),
+		fontWeight: '500',
+		color: 'var(--muted-foreground)',
+	},
+	triggerTextActive: {
+		color: 'var(--foreground)',
+	},
+	content: {
+		// Add appropriate styles for the content
+	},
+})
+
+interface TabsListProps extends Omit<TabsPrimitive.ListProps, 'style'> {
+	style?: StyleProp<ViewStyle>
+}
+
+const TabsList = React.forwardRef<TabsPrimitive.ListRef, TabsListProps>(
+	({ style, ...props }, ref) => (
 		<TabsPrimitive.List
 			ref={ref}
-			className={cn('native:h-12 h-10 items-center justify-center web:inline-flex', className)}
+			style={[styles.list, style]}
 			{...props}
 		/>
 	)
 )
 TabsList.displayName = TabsPrimitive.List.displayName
 
-const TabsTrigger = React.forwardRef<TabsPrimitive.TriggerRef, TabsPrimitive.TriggerProps>(
-	({ className, ...props }, ref) => {
-		const { value } = TabsPrimitive.useRootContext()
+interface TabsTriggerProps extends Omit<TabsPrimitive.TriggerProps, 'style'> {
+	style?: StyleProp<ViewStyle>
+}
+
+const TabsTrigger = React.forwardRef<TabsPrimitive.TriggerRef, TabsTriggerProps>(
+	({ style, disabled, value, ...props }, ref) => {
+		const { value: selectedValue } = TabsPrimitive.useRootContext()
+		const isActive = selectedValue === value
+
 		return (
-			<TextClassContext.Provider
-				value={cn(
-					'text-sm native:text-base font-medium text-muted-foreground web:transition-all',
-					value === props.value && 'text-foreground'
-				)}>
+			<TextClassContext.Provider value={isActive ? 'text-foreground' : 'text-muted-foreground'}>
 				<TabsPrimitive.Trigger
 					ref={ref}
-					className={cn(
-						'text-sm font-medium shadow-none web:whitespace-nowrap web:ring-offset-background web:transition-all web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2',
-						props.disabled && 'opacity-50 web:pointer-events-none',
-						className
-					)}
+					style={[disabled && styles.triggerDisabled, style]}
+					disabled={disabled}
+					value={value}
 					{...props}
 				/>
 			</TextClassContext.Provider>
@@ -40,14 +71,15 @@ const TabsTrigger = React.forwardRef<TabsPrimitive.TriggerRef, TabsPrimitive.Tri
 )
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
-const TabsContent = React.forwardRef<TabsPrimitive.ContentRef, TabsPrimitive.ContentProps>(
-	({ className, ...props }, ref) => (
+interface TabsContentProps extends Omit<TabsPrimitive.ContentProps, 'style'> {
+	style?: StyleProp<ViewStyle>
+}
+
+const TabsContent = React.forwardRef<TabsPrimitive.ContentRef, TabsContentProps>(
+	({ style, ...props }, ref) => (
 		<TabsPrimitive.Content
 			ref={ref}
-			className={cn(
-				'web:ring-offset-background web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2',
-				className
-			)}
+			style={[styles.content, style]}
 			{...props}
 		/>
 	)

@@ -1,19 +1,39 @@
-import { cn } from '../../lib/utils'
 import * as React from 'react'
 import { Control, useController } from 'react-hook-form'
-import { TextInput, type TextInputProps } from 'react-native'
+import { TextInput, type TextInputProps, StyleSheet, Platform, StyleProp, TextStyle } from 'react-native'
 
-const Input = React.forwardRef<React.ElementRef<typeof TextInput>, TextInputProps>(
-	({ className, placeholderClassName, ...props }, ref) => {
+const styles = StyleSheet.create({
+	input: {
+		height: Platform.select({ native: 48, default: 40 }),
+		width: '100%',
+		borderRadius: 6,
+		borderWidth: 1,
+		borderColor: 'var(--input)',
+		backgroundColor: 'var(--background)',
+		paddingHorizontal: 12,
+		fontSize: Platform.select({ native: 14, default: 14 }),
+		lineHeight: Platform.select({ native: 17.5, default: 20 }),
+		color: 'var(--foreground)',
+	},
+	disabled: {
+		opacity: 0.5,
+	},
+	placeholder: {
+		color: '#C5C5C5',
+	},
+})
+
+type InputProps = Omit<TextInputProps, 'style'> & {
+	style?: StyleProp<TextStyle>
+}
+
+const Input = React.forwardRef<React.ElementRef<typeof TextInput>, InputProps>(
+	({ editable, style, ...props }, ref) => {
 		return (
 			<TextInput
 				ref={ref}
-				className={cn(
-					'native:h-12 native:text-sm native:leading-[1.25] h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground file:border-0 file:bg-transparent file:font-medium web:flex web:py-2 web:ring-offset-background web:placeholder:text-[#C5C5C5] web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2 lg:text-sm',
-					props.editable === false && 'opacity-50 web:cursor-not-allowed',
-					className
-				)}
-				placeholderClassName={cn('text-[#C5C5C5]', placeholderClassName)}
+				style={[styles.input, editable === false && styles.disabled, style]}
+				placeholderTextColor="#C5C5C5"
 				{...props}
 			/>
 		)
@@ -22,14 +42,13 @@ const Input = React.forwardRef<React.ElementRef<typeof TextInput>, TextInputProp
 
 Input.displayName = 'Input'
 
-interface FormInputProps extends TextInputProps {
+interface FormInputProps extends InputProps {
 	name: string
 	control: Control<any, any>
 	placeholder?: string
-	className?: string
 }
 
-const FormInput = ({ name, control, placeholder, className, ...rest }: FormInputProps) => {
+const FormInput = ({ name, control, placeholder, style, ...rest }: FormInputProps) => {
 	const { field } = useController({
 		control,
 		name
@@ -40,7 +59,7 @@ const FormInput = ({ name, control, placeholder, className, ...rest }: FormInput
 			value={field.value}
 			onChangeText={field.onChange}
 			placeholder={placeholder}
-			className={className}
+			style={style}
 		/>
 	)
 }

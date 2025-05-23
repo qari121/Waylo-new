@@ -1,34 +1,64 @@
-import { cn } from '../../lib/utils'
 import * as RadioGroupPrimitive from '@rn-primitives/radio-group'
 import * as React from 'react'
-import { View } from 'react-native'
+import { View, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native'
 
-const RadioGroup = React.forwardRef<RadioGroupPrimitive.RootRef, RadioGroupPrimitive.RootProps>(
-	({ className, ...props }, ref) => {
-		return (
-			<RadioGroupPrimitive.Root className={cn('gap-2 web:grid', className)} {...props} ref={ref} />
-		)
-	}
+const styles = StyleSheet.create({
+	root: {
+		gap: 8,
+		...Platform.select({ web: { flexDirection: 'row', flexWrap: 'wrap' } }),
+	},
+	item: {
+		height: Platform.select({ native: 20, default: 16 }),
+		width: Platform.select({ native: 20, default: 16 }),
+		aspectRatio: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 9999,
+		borderWidth: 1,
+		borderColor: 'var(--primary)',
+	},
+	itemDisabled: {
+		opacity: 0.5,
+	},
+	indicator: {
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	indicatorDot: {
+		height: Platform.select({ native: 10, default: 9 }),
+		width: Platform.select({ native: 10, default: 9 }),
+		aspectRatio: 1,
+		borderRadius: 9999,
+		backgroundColor: 'var(--primary)',
+	},
+})
+
+interface RadioGroupProps extends RadioGroupPrimitive.RootProps {
+	style?: StyleProp<ViewStyle>
+}
+
+interface RadioGroupItemProps extends RadioGroupPrimitive.ItemProps {
+	style?: StyleProp<ViewStyle>
+}
+
+const RadioGroup = React.forwardRef<RadioGroupPrimitive.RootRef, RadioGroupProps>(
+	({ style, ...props }, ref) => (
+		<RadioGroupPrimitive.Root style={[styles.root, style]} {...props} ref={ref} />
+	)
 )
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
 
-const RadioGroupItem = React.forwardRef<RadioGroupPrimitive.ItemRef, RadioGroupPrimitive.ItemProps>(
-	({ className, ...props }, ref) => {
-		return (
-			<RadioGroupPrimitive.Item
-				ref={ref}
-				className={cn(
-					'native:h-5 native:w-5 aspect-square h-4 w-4 items-center justify-center rounded-full border border-primary text-primary web:ring-offset-background web:focus:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2',
-					props.disabled && 'opacity-50 web:cursor-not-allowed',
-					className
-				)}
-				{...props}>
-				<RadioGroupPrimitive.Indicator className="flex items-center justify-center">
-					<View className="native:h-[10] native:w-[10] aspect-square h-[9px] w-[9px] rounded-full bg-primary" />
-				</RadioGroupPrimitive.Indicator>
-			</RadioGroupPrimitive.Item>
-		)
-	}
+const RadioGroupItem = React.forwardRef<RadioGroupPrimitive.ItemRef, RadioGroupItemProps>(
+	({ style, disabled, ...props }, ref) => (
+		<RadioGroupPrimitive.Item
+			ref={ref}
+			style={[styles.item, disabled && styles.itemDisabled, style]}
+			{...props}>
+			<RadioGroupPrimitive.Indicator style={styles.indicator}>
+				<View style={styles.indicatorDot} />
+			</RadioGroupPrimitive.Indicator>
+		</RadioGroupPrimitive.Item>
+	)
 )
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
 

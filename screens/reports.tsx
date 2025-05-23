@@ -1,11 +1,13 @@
 /* eslint-disable react-native/no-color-literals */
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View } from 'react-native'
+import { Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { LineChart } from 'react-native-gifted-charts'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
+import { Ionicons } from '@expo/vector-icons'
 
 import { format } from 'date-fns'
 
@@ -18,7 +20,7 @@ import {
 	SelectTrigger,
 	SelectValue
 } from '../components/ui/select'
-import { Eye } from '../lib/icons/Eye'
+import { Eye as EyeIcon } from 'lucide-react-native'
 import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '../slices/logs'
 import { fetchSentimentsByDate } from '../slices/sentiments'
 import { useAppDispatch, useAppSelector } from '../hooks'
@@ -30,10 +32,18 @@ import NeutralEmoji from '../assets/icons/emoji-neutral-face.svg'
 import SadEmoji from '../assets/icons/emoji-pensive-face.svg'
 import AngryEmoji from '../assets/icons/emoji-pouting-face.svg'
 import HappyEmoji from '../assets/icons/emoji-slightly-smiling-face.svg'
-import EyeIcon from '../assets/icons/eye.svg'
 import OpenBookIcon from '../assets/icons/open-book.svg'
 
-// Remove useFonts and expo-font
+const WINDOW_DIMENSIONS = Dimensions.get('window')
+
+const emojiIcons = {
+	happy: HappyEmoji,
+	excited: HappyEmoji,
+	neutral: NeutralEmoji,
+	angry: AngryEmoji,
+	anxious: CryingEmoji,
+	sad: SadEmoji
+} as { [mood: string]: React.ElementType }
 
 export const ReportScreen = () => {
 	const router = useRouter()
@@ -43,8 +53,12 @@ export const ReportScreen = () => {
 	const sentimentsByDate = useAppSelector((state) => state.sentiments.sentimentsByDate)
 	const weeklyLogRanges = useAppSelector((state) => state.logs.weeklyLogs)
 	const dailyLogRanges = useAppSelector((state) => state.logs.dailyLogs)
-
-	// Remove useFonts and font loading logic
+	const [fontsLoaded] = useFonts({
+		PlusJakartaSans_400Regular,
+		PlusJakartaSans_500Medium,
+		PlusJakartaSans_600SemiBold,
+		PlusJakartaSans_700Bold,
+	})
 
 	const [isLoading, setIsLoading] = useState(true)
 	const [reportDuration, setReportDuration] = useState<Option>(
@@ -86,7 +100,6 @@ export const ReportScreen = () => {
 		})
 	}
 
-	const WINDOW_DIMENSIONS = useWindowDimensions()
 	const CHART_WIDTH = WINDOW_DIMENSIONS.width - 70
 
 	const data =
@@ -99,19 +112,9 @@ export const ReportScreen = () => {
 		right: 12
 	}
 
-	const emojiIcons = {
-		happy: <HappyEmoji width={14} height={14} className="size-3.5" />,
-		excited: <HappyEmoji width={14} height={14} className="size-3.5" />,
-		positive: <HappyEmoji width={14} height={14} className="size-3.5" />,
-		neutral: <NeutralEmoji width={14} height={14} className="size-3.5" />,
-		angry: <AngryEmoji width={14} height={14} className="size-3.5" />,
-		anxious: <CryingEmoji width={14} height={14} className="size-3.5" />,
-		sad: <SadEmoji width={14} height={14} className="size-3.5" />
-	} as { [mood: string]: React.ReactElement }
-
 	const customLabel = (val: string) => {
 		return (
-			<View className="w-16">
+			<View style={styles.labelContainer}>
 				<Text style={{ textAlign: 'right', color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}>{val}</Text>
 			</View>
 		)
@@ -151,55 +154,48 @@ export const ReportScreen = () => {
 		fetchSentiments()
 	}, [reportDuration])
 
+	if (!fontsLoaded) {
+		return null
+	}
+
 	return (
 		<React.Fragment>
 			{isLoading ? (
-				<View className="flex h-screen flex-col items-center justify-center gap-2">
+				<View style={styles.loadingContainer}>
 					<Chase size={24} color="#CBC0FE" />
-					<Text className="text-lg text-primary" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Loading Reports...</Text>
+					<Text style={[styles.loadingText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Loading Reports...</Text>
 				</View>
 			) : (
-				<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+				<SafeAreaView style={styles.safeArea}>
 					<ScrollView
 						horizontal={false}
 						bounces={false}
-						nestedScrollEnabled
 						showsVerticalScrollIndicator
-						stickyHeaderIndices={[0]}
-						className="flex flex-col px-5 web:mx-auto md:web:w-1/3"
+						style={[styles.container, styles.scrollView]}
 						showsHorizontalScrollIndicator={false}>
-						<View className="flex w-full flex-row items-center justify-between bg-white py-5">
+						<View style={styles.header}>
 							<Pressable onPress={() => router.dismiss()}>
 								<ChevronLeftIcon />
 							</Pressable>
-							<Text
-								className="text-center text-black"
-								style={{
-									fontFamily: 'PlusJakartaSans_700Bold',
-									fontSize: 18,
-									letterSpacing: 0.2,
-								}}
-							>
-								Reports
-							</Text>
+							<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Reports</Text>
 							<Text />
 						</View>
-						<View className="mt-10 flex flex-row items-center justify-between">
-							<Text className="font-medium text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Interaction Report</Text>
-							<View className="flex flex-row items-center gap-2">
+						<View style={styles.interactionReportContainer}>
+							<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
+							<View style={styles.interactionReportControls}>
 								<Select
 									value={reportDuration}
 									onValueChange={(option) => {
 										setIsLoading(true)
 										setReportDuration(option)
 									}}>
-									<SelectTrigger className="w-[79px] rounded-lg border-[0.5px] border-[#D9D9D9] !p-2.5">
+									<SelectTrigger style={styles.selectTrigger}>
 										<SelectValue
-											className="native:text-xs text-xs !text-[#92929D]"
+											style={styles.selectValue}
 											placeholder="Duration"
 										/>
 									</SelectTrigger>
-									<SelectContent insets={contentInsets} className="w-[79px]">
+									<SelectContent insets={contentInsets} style={styles.selectContent}>
 										<SelectItem label="Day" value="day">
 											Day
 										</SelectItem>
@@ -209,13 +205,12 @@ export const ReportScreen = () => {
 									</SelectContent>
 								</Select>
 								<Button
-									style={{ elevation: 5 }}
-									className="size-9 rounded-lg border-[0.5px] border-[#D9D9D9] bg-white">
+									style={[styles.downloadButton, { elevation: 5 }]}>
 									<DownloadIcon />
 								</Button>
 							</View>
 						</View>
-						<View className="mt-4 w-full">
+						<View style={styles.chartContainer}>
 							<LineChart
 								areaChart
 								thickness={5}
@@ -249,11 +244,8 @@ export const ReportScreen = () => {
 									activatePointersOnLongPress: true,
 									pointerLabelComponent: (items: any) => (
 										<View
-											style={{ transform: 'translateY(-20px)' }}
-											className="relative flex flex-row items-center justify-center rounded-[35px] bg-[#0E2C76] px-[18px] py-[5px]">
-											<Text
-												style={{ color: 'white', fontSize: 12, flexShrink: 0, fontFamily: 'PlusJakartaSans_400Regular' }}
-												className="shrink-0 text-xs text-white">
+											style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
+											<Text style={styles.pointerLabelText}>
 												${items[0].value}
 											</Text>
 										</View>
@@ -264,54 +256,48 @@ export const ReportScreen = () => {
 								endFillColor={'#AE9FFF1A'}
 							/>
 						</View>
-						<View className="mt-4 flex flex-row items-center justify-center gap-1.5">
-							<View className="size-[15px] rounded bg-[#AE9FFF]" />
-							<Text className="text-sm text-[#666]" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>Interaction</Text>
+						<View style={styles.chartLegend}>
+							<View style={styles.legendIndicator} />
+							<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
 						</View>
-						<View className="mb-28 mt-6 flex flex-1 flex-row items-stretch gap-4">
-							<View className="flex flex-1 grow basis-1/2 flex-col gap-4">
-								<View className="relative flex min-h-[104px] w-full flex-1 flex-col justify-between overflow-hidden rounded-lg p-3">
+						<View style={styles.statsContainer}>
+							<View style={styles.statsLeftColumn}>
+								<View style={styles.sleepCard}>
 									<Image
 										resizeMode="stretch"
 										height={104}
 										width={WINDOW_DIMENSIONS.width}
 										source={require('../assets/images/sleep-image.png')}
-										className="absolute inset-0 web:!h-full web:!w-full"
+										style={styles.sleepImage}
 									/>
-									<View className="flex flex-row items-center justify-between">
-										<Text className="font-medium text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Sleep</Text>
-										<EyeIcon />
+									<View style={styles.sleepHeader}>
+										<Text style={[styles.sleepTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Sleep</Text>
+										<EyeIcon size={16} color="#C5C5C5" />
 									</View>
-									<View className="flex flex-col">
-										<Text className="text-xs font-light text-white" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>Avg. time</Text>
-										<Text className="font-medium text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>8hrs 20mins</Text>
+									<View style={styles.sleepContent}>
+										<Text style={[styles.sleepLabel, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Avg. time</Text>
+										<Text style={[styles.sleepValue, { fontFamily: 'PlusJakartaSans_500Medium' }]}>8hrs 20mins</Text>
 									</View>
 								</View>
-								<View
-									style={{ elevation: 5 }}
-									className="flex min-h-[88px] flex-1 flex-col justify-between rounded-lg border-[0.5px] border-[#D9D9D9] bg-white p-3">
-									<View className="flex grow flex-row items-center justify-between">
-										<View className="flex grow flex-col justify-between gap-3">
-											<View className="flex flex-row items-center gap-2">
-												<Text className="font-medium text-[#515151]" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Study</Text>
-												<OpenBookIcon />
-											</View>
-											<ClosedBookIcon />
-											<View className="flex flex-row items-center gap-1">
-												<Text className="text-xs text-[#515151]" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>8 lessons</Text>
-											</View>
+								<View style={[styles.studyCard, { elevation: 5 }]}>
+									<View style={styles.studyContent}>
+										<View style={styles.studyHeader}>
+											<Text style={[styles.studyTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Study</Text>
+											<OpenBookIcon />
 										</View>
-										<Image source={require('../assets/images/study-image.png')} />
+										<ClosedBookIcon />
+										<View style={styles.studyStats}>
+											<Text style={[styles.studyStatsText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>8 lessons</Text>
+										</View>
 									</View>
+									<Image source={require('../assets/images/study-image.png')} />
 								</View>
 							</View>
-							<View
-								style={{ elevation: 5 }}
-								className="flex flex-1 grow basis-1/2 flex-col justify-between self-stretch overflow-hidden rounded-lg border-[0.5px] border-[#D9D9D9] px-3 pt-3">
-								<View className="flex flex-col gap-3">
-									<View className="flex w-full grow flex-row items-center justify-between">
-										<Text className="font-medium text-[#515151]" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Mood Report</Text>
-										<Eye className="size-4 text-[#C5C5C5]" />
+							<View style={[styles.moodReportCard, { elevation: 5 }]}>
+								<View style={styles.moodReportContent}>
+									<View style={styles.moodReportHeader}>
+										<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood Report</Text>
+										<Ionicons name="eye-outline" size={16} color="#C5C5C5" />
 									</View>
 									<ScrollView
 										horizontal={false}
@@ -319,22 +305,20 @@ export const ReportScreen = () => {
 										nestedScrollEnabled
 										showsVerticalScrollIndicator
 										showsHorizontalScrollIndicator={false}
-										className="flex h-[80px] flex-col gap-3">
+										style={styles.moodReportScroll}>
 										{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
-											<View key={index} className="flex flex-col gap-2">
-												<Text className="text-center text-sm font-bold" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>
+											<View key={index} style={styles.moodReportEntry}>
+												<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 													{format(new Date(date), 'dd MMM yyyy')}
 												</Text>
-												<View className="flex grow flex-col items-start gap-1">
+												<View style={styles.moodReportList}>
 													{Object.entries(records ?? {}).map(([mood, number], index) => (
-														<View
-															key={index}
-															className="flex w-11/12 flex-row items-center justify-between">
-															<View className="flex flex-row items-center gap-0.5">
-																<Text className="text-sm capitalize" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>{mood}</Text>
-																{emojiIcons[mood]}
+														<View key={index} style={styles.moodReportItem}>
+															<View style={styles.moodLabel}>
+																<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
+																{React.createElement(emojiIcons[mood])}
 															</View>
-															<Text className="text-sm" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>{number}</Text>
+															<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
 														</View>
 													))}
 												</View>
@@ -342,7 +326,7 @@ export const ReportScreen = () => {
 										))}
 									</ScrollView>
 								</View>
-								<Image source={require('../assets/images/mood-report-image.png')} />
+								<Image source={require('../assets/images/mood-report-image.png')} style={styles.moodReportImage} />
 							</View>
 						</View>
 					</ScrollView>
@@ -351,3 +335,288 @@ export const ReportScreen = () => {
 		</React.Fragment>
 	)
 }
+
+const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+		backgroundColor: 'white',
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingVertical: 20,
+	},
+	backButton: {
+		color: '#0E2C76',
+	},
+	headerTitle: {
+		fontSize: 18,
+		letterSpacing: 0.2,
+		color: 'black',
+	},
+	content: {
+		flex: 1,
+	},
+	statsContainer: {
+		marginBottom: 112,
+		marginTop: 24,
+		flex: 1,
+		flexDirection: 'row',
+		alignItems: 'stretch',
+		gap: 16,
+	},
+	statsLeftColumn: {
+		flex: 1,
+		flexDirection: 'column',
+		gap: 16,
+	},
+	sleepCard: {
+		position: 'relative',
+		minHeight: 104,
+		width: '100%',
+		flex: 1,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		overflow: 'hidden',
+		borderRadius: 8,
+		padding: 12,
+	},
+	sleepImage: {
+		position: 'absolute',
+		inset: 0,
+		...(Platform.OS === 'web' && {
+			height: '100%',
+			width: '100%',
+		}),
+	},
+	sleepHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	sleepTitle: {
+		fontWeight: '500',
+		color: 'white',
+	},
+	sleepContent: {
+		flexDirection: 'column',
+	},
+	sleepLabel: {
+		fontSize: 12,
+		fontWeight: '300',
+		color: 'white',
+	},
+	sleepValue: {
+		fontWeight: '500',
+		color: 'white',
+	},
+	studyCard: {
+		minHeight: 88,
+		flex: 1,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		borderRadius: 8,
+		borderWidth: 0.5,
+		borderColor: '#D9D9D9',
+		backgroundColor: 'white',
+		padding: 12,
+	},
+	studyContent: {
+		flexGrow: 1,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	studyHeader: {
+		flexGrow: 1,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		gap: 12,
+	},
+	studyTitle: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		fontWeight: '500',
+		color: '#515151',
+	},
+	studyStats: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+	},
+	studyStatsText: {
+		fontSize: 12,
+		color: '#515151',
+	},
+	moodReportCard: {
+		flex: 1,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		alignSelf: 'stretch',
+		overflow: 'hidden',
+		borderRadius: 8,
+		borderWidth: 0.5,
+		borderColor: '#D9D9D9',
+		paddingHorizontal: 12,
+		paddingTop: 12,
+	},
+	moodReportContent: {
+		flexDirection: 'column',
+		gap: 12,
+	},
+	moodReportHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		width: '100%',
+	},
+	moodReportTitle: {
+		fontWeight: '500',
+		color: '#515151',
+	},
+	moodReportScroll: {
+		height: 80,
+		flexDirection: 'column',
+		gap: 12,
+	},
+	moodReportEntry: {
+		flexDirection: 'column',
+		gap: 8,
+	},
+	moodReportDate: {
+		textAlign: 'center',
+		fontSize: 14,
+		fontWeight: '700',
+	},
+	moodReportList: {
+		flexGrow: 1,
+		flexDirection: 'column',
+		alignItems: 'flex-start',
+		gap: 4,
+	},
+	moodReportItem: {
+		width: '91.666667%',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	moodLabel: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 2,
+	},
+	moodText: {
+		fontSize: 14,
+		textTransform: 'capitalize',
+	},
+	moodCount: {
+		fontSize: 14,
+	},
+	moodReportImage: {
+		width: '100%',
+		height: 'auto',
+	},
+	container: {
+		flex: 1,
+		flexDirection: 'column',
+		paddingHorizontal: 20,
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			width: '33.333333%',
+		}),
+	},
+	scrollView: {
+		flex: 1,
+	},
+	labelContainer: {
+		width: 64,
+	},
+	loadingContainer: {
+		flex: 1,
+		height: '100%',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 8,
+	},
+	loadingText: {
+		fontSize: 18,
+		color: '#0E2C76',
+	},
+	interactionReportContainer: {
+		marginTop: 40,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	interactionReportTitle: {
+		fontWeight: '500',
+		color: 'black',
+	},
+	interactionReportControls: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	selectTrigger: {
+		width: 79,
+		borderRadius: 8,
+		borderWidth: 0.5,
+		borderColor: '#D9D9D9',
+		padding: 10,
+	},
+	selectValue: {
+		fontSize: 12,
+		color: '#92929D',
+	},
+	selectContent: {
+		width: 79,
+	},
+	downloadButton: {
+		width: 36,
+		height: 36,
+		borderRadius: 8,
+		borderWidth: 0.5,
+		borderColor: '#D9D9D9',
+		backgroundColor: 'white',
+	},
+	chartContainer: {
+		marginTop: 16,
+		width: '100%',
+	},
+	pointerLabel: {
+		position: 'relative',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 35,
+		backgroundColor: '#0E2C76',
+		paddingHorizontal: 18,
+		paddingVertical: 5,
+	},
+	pointerLabelText: {
+		color: 'white',
+		fontSize: 12,
+		flexShrink: 0,
+		fontFamily: 'PlusJakartaSans_400Regular',
+	},
+	chartLegend: {
+		marginTop: 16,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 6,
+	},
+	legendIndicator: {
+		width: 15,
+		height: 15,
+		borderRadius: 15,
+		backgroundColor: '#AE9FFF',
+	},
+	legendText: {
+		fontSize: 14,
+		color: '#666666',
+	},
+})

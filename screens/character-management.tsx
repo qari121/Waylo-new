@@ -3,7 +3,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState } from 'react'
-import { Dimensions, Image, Pressable, SafeAreaView, Text, View } from 'react-native'
+import { Dimensions, Image, Pressable, SafeAreaView, Text, View, StyleSheet, Platform, ScrollView } from 'react-native'
 import Carousel, { Pagination } from 'react-native-snap-carousel'
 
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
@@ -74,14 +74,10 @@ export const CharacterManagementScreen = () => {
 
 	const renderCarouselItem = ({ item }: { item: CarouselItem }) => {
 		return (
-			<View className="items-center justify-center">
+			<View style={styles.carouselItemContainer}>
 				<Image
 					source={item.image}
-					style={{
-						width: ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -4),
-						height: (ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -6)) * 1.2,
-						borderRadius: 12
-					}}
+					style={styles.carouselItemImage}
 					resizeMode="contain"
 				/>
 			</View>
@@ -94,137 +90,293 @@ export const CharacterManagementScreen = () => {
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-			<View className="flex-1 bg-white">
-				<View className="mt-2 flex w-full flex-row items-center justify-between bg-white px-5 py-5">
-					<Pressable onPress={() => router.dismiss()}>
+			<View style={{ flex: 1, backgroundColor: 'white' }}>
+				<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: 'white' }}>
+					<Pressable onPress={() => router.back()}>
 						<ChevronLeftIcon />
 					</Pressable>
-					<Text style={{ fontFamily: 'PlusJakartaSans_700Bold' }} className="text-center text-[20px] text-black">
+					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 						Character Management
 					</Text>
-					<View className="w-6" />
+					<View />
 				</View>
 
-				<View className="flex-1">
-					<View className="h-[470px] justify-center">  {/* Increased height for better spacing */}
-						<Carousel
-							ref={carouselRef}
-							data={characters}
-							renderItem={renderCarouselItem}
-							sliderWidth={SLIDER_WIDTH}
-							itemWidth={ITEM_WIDTH}
-							inactiveSlideScale={0.85}  // Adjusted scale for inactive slides
-							inactiveSlideOpacity={0.5}  // Adjusted opacity for inactive slides
-							firstItem={activeIndex}
-							layout="default"
-							onSnapToItem={setActiveIndex}
-							enableSnap={true}
-							loop={false}
-							activeSlideAlignment="center"
-							inactiveSlideShift={0}  // Removed shift to match design
-							contentContainerCustomStyle={{
-								alignItems: 'center',
-								paddingVertical: 20  // Added padding for better spacing
-							}}
-						/>
-						<Pagination
-							dotsLength={characters.length}
-							activeDotIndex={activeIndex}
-							containerStyle={{
-								paddingVertical: 0,
-								marginTop: -20  // Adjusted spacing
-							}}
-							dotStyle={{
-								width: 24,
-								height: 4,
-								borderRadius: 2,
-								backgroundColor: '#AE9FFF',
-								marginHorizontal: 2
-							}}
-							inactiveDotStyle={{
-								width: 4,
-								height: 4,
-								borderRadius: 2,
-								backgroundColor: '#AE9FFF'
-							}}
-							inactiveDotOpacity={0.3}
-							inactiveDotScale={1}
-							dotContainerStyle={{ marginHorizontal: 2 }}
-						/>
-					</View>
-
-					<View className="mt-5 flex flex-row items-center justify-center gap-4 px-5 web:flex-wrap">
-						<View className="items-center">
-							<View
-								style={{ elevation: 5 }}
-								className="relative size-[72px] overflow-hidden rounded-xl border border-[#CACACA] bg-white">
-								<Image
-									source={require('../assets/images/free-tier-icon.png')}
-									resizeMode="contain"
-									className="absolute bottom-0 left-0 right-0 h-full w-full"
-								/>
-							</View>
-							<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="mt-2 text-sm text-[#404040]">
-								Free
-							</Text>
+				<ScrollView
+					horizontal={false}
+					bounces={false}
+					showsVerticalScrollIndicator
+					style={styles.scrollView}
+					showsHorizontalScrollIndicator={false}>
+					<View style={{ flex: 1, paddingHorizontal: 20 }}>
+						<View style={styles.carouselContainer}>
+							<Carousel
+								ref={carouselRef}
+								data={characters}
+								renderItem={renderCarouselItem}
+								sliderWidth={SLIDER_WIDTH}
+								itemWidth={ITEM_WIDTH}
+								inactiveSlideScale={0.85}
+								inactiveSlideOpacity={0.5}
+								firstItem={activeIndex}
+								layout="default"
+								onSnapToItem={setActiveIndex}
+								enableSnap={true}
+								loop={false}
+								activeSlideAlignment="center"
+								inactiveSlideShift={0}
+								contentContainerCustomStyle={{
+									alignItems: 'center',
+									paddingVertical: 20
+								}}
+							/>
+							<Pagination
+								dotsLength={characters.length}
+								activeDotIndex={activeIndex}
+								containerStyle={{
+									paddingVertical: 0,
+									marginTop: -20
+								}}
+								dotStyle={styles.paginationDot}
+								inactiveDotStyle={styles.paginationDotInactive}
+								inactiveDotOpacity={0.3}
+								inactiveDotScale={1}
+								dotContainerStyle={{ marginHorizontal: 2 }}
+							/>
 						</View>
 
-						<View className="items-center">
-							<View
-								style={{ elevation: 5 }}
-								className="relative flex size-[72px] items-center justify-center overflow-hidden rounded-xl border border-[#CACACA] bg-white">
-								<Image
-									source={require('../assets/images/pro-tier-icon-1.png')}
-									resizeMode="contain"
-									className="absolute bottom-0 left-0 right-0 h-full w-full"
-								/>
-								<TierLockIcon className="absolute" />
-							</View>
-							<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="mt-2 text-sm text-[#404040]">
-								Pro 1
-							</Text>
-						</View>
-
-						<View className="items-center">
-							<View
-								style={{ elevation: 5 }}
-								className="relative flex size-[72px] items-center justify-center overflow-hidden rounded-xl border border-[#CACACA] bg-white">
-								<Image
-									source={require('../assets/images/pro-tier-icon-2.png')}
-									resizeMode="contain"
-									className="absolute bottom-0 left-0 right-0 h-full w-full"
-								/>
-								<TierLockIcon className="absolute" />
-							</View>
-							<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="mt-2 text-sm text-[#404040]">
-								Pro 2
-							</Text>
-						</View>
-						<Pressable className="items-center" onPress={handleCustomImage}>
-							<View
-								style={{ elevation: 5 }}
-								className="relative flex size-[72px] items-center justify-center gap-[3px] overflow-hidden rounded-xl border border-[#CACACA] bg-white">
-								<GalleryExportIcon />
-								<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="text-xs text-[#404040]">
-									Custom
+						<View style={styles.tierContainer}>
+							<View style={styles.tierItem}>
+								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
+									<Image
+										source={require('../assets/images/free-tier-icon.png')}
+										resizeMode="contain"
+										style={styles.tierIcon}
+									/>
+								</View>
+								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+									Free
 								</Text>
 							</View>
-							<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="mt-2 text-sm text-[#404040]">
-								Custom
-							</Text>
-						</Pressable>
-					</View>
 
-					<View className="mx-5 mb-5 mt-6 flex shrink-0 flex-row items-center justify-between rounded-lg border border-dashed border-[#AE9FFF] bg-[#AE9FFF1C] p-3 pr-4">
-						<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="text-sm text-[#7D65FC] max-md:w-10/12">
-							Unlock all the Characters by upgrading to
-							<Text style={{ fontFamily: 'PlusJakartaSans_700Bold' }} className="text-sm text-black"> PRO </Text>
-							version. Use Wylo with full potential
-						</Text>
-						<TripleArrowsIcon className="shrink-0" />
+							<View style={styles.tierItem}>
+								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
+									<Image
+										source={require('../assets/images/pro-tier-icon-1.png')}
+										resizeMode="contain"
+										style={styles.tierIcon}
+									/>
+									<TierLockIcon style={styles.tierLockIcon} />
+								</View>
+								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+									Pro 1
+								</Text>
+							</View>
+
+							<View style={styles.tierItem}>
+								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
+									<Image
+										source={require('../assets/images/pro-tier-icon-2.png')}
+										resizeMode="contain"
+										style={styles.tierIcon}
+									/>
+									<TierLockIcon style={styles.tierLockIcon} />
+								</View>
+								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+									Pro 2
+								</Text>
+							</View>
+							<Pressable style={styles.customTierItem} onPress={handleCustomImage}>
+								<View style={[styles.customTierIconContainer, { elevation: 5 }]}>
+									<GalleryExportIcon />
+									<Text style={[styles.customTierLabel, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+										Custom
+									</Text>
+								</View>
+								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+									Custom
+								</Text>
+							</Pressable>
+						</View>
+
+						<View style={styles.buttonContainer}>
+							<Pressable onPress={handleCustomImage} style={styles.upgradeButton}>
+								<View style={[styles.upgradeButtonContent, { elevation: 5 }]}>
+									<Text style={[styles.upgradeButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+										Upgrade to Pro
+									</Text>
+								</View>
+							</Pressable>
+						</View>
+
+						<View style={styles.upgradePromptContainer}>
+							<Text style={[styles.upgradePromptText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+								Unlock all the Characters by upgrading to
+								<Text style={[styles.upgradePromptHighlight, { fontFamily: 'PlusJakartaSans_700Bold' }]}> PRO </Text>
+								version. Use Wylo with full potential
+							</Text>
+							<TripleArrowsIcon style={styles.upgradePromptIcon} />
+						</View>
 					</View>
-				</View>
+				</ScrollView>
 			</View>
 		</SafeAreaView>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		backgroundColor: 'white',
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+		backgroundColor: 'white',
+	},
+	headerTitle: {
+		fontSize: 18,
+		color: 'black',
+		textAlign: 'center',
+	},
+	scrollView: {
+		flex: 1,
+	},
+	content: {
+		flex: 1,
+		paddingHorizontal: 20,
+	},
+	carouselContainer: {
+		marginTop: 20,
+	},
+	paginationDot: {
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+		backgroundColor: '#0E2C76',
+	},
+	paginationDotInactive: {
+		backgroundColor: '#D9D9D9',
+	},
+	tierContainer: {
+		marginTop: 20,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 16,
+		paddingHorizontal: 20,
+		...(Platform.OS === 'web' && {
+			flexWrap: 'wrap',
+		}),
+	},
+	tierItem: {
+		alignItems: 'center',
+	},
+	tierIconContainer: {
+		position: 'relative',
+		width: 72,
+		height: 72,
+		overflow: 'hidden',
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#CACACA',
+		backgroundColor: 'white',
+	},
+	tierIcon: {
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		width: '100%',
+		height: '100%',
+	},
+	tierLockIcon: {
+		position: 'absolute',
+	},
+	tierText: {
+		marginTop: 8,
+		fontSize: 14,
+		color: '#404040',
+	},
+	buttonContainer: {
+		marginTop: 32,
+		marginBottom: 20,
+	},
+	upgradeButton: {
+		width: '100%',
+	},
+	upgradeButtonContent: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: '#0E2C76',
+		borderRadius: 32,
+		paddingVertical: 16,
+	},
+	upgradeButtonText: {
+		color: 'white',
+		fontSize: 16,
+	},
+	carouselItemContainer: {
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	carouselItemImage: {
+		width: ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -4),
+		height: (ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -6)) * 1.2,
+		borderRadius: 12,
+	},
+	customTierItem: {
+		alignItems: 'center',
+	},
+	customTierIconContainer: {
+		position: 'relative',
+		width: 72,
+		height: 72,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 3,
+		overflow: 'hidden',
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#CACACA',
+		backgroundColor: 'white',
+	},
+	customTierLabel: {
+		fontSize: 12,
+		color: '#404040',
+	},
+	upgradePromptContainer: {
+		marginHorizontal: 20,
+		marginBottom: 20,
+		marginTop: 24,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderStyle: 'dashed',
+		borderColor: '#AE9FFF',
+		backgroundColor: '#AE9FFF1C',
+		padding: 12,
+		paddingRight: 16,
+	},
+	upgradePromptText: {
+		flex: 1,
+		fontSize: 14,
+		color: '#7D65FC',
+		...(Platform.OS === 'web' && {
+			maxWidth: '83.333333%',
+		}),
+	},
+	upgradePromptHighlight: {
+		fontSize: 14,
+		color: 'black',
+	},
+	upgradePromptIcon: {
+		flexShrink: 0,
+	},
+})

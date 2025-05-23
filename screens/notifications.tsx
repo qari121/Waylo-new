@@ -3,7 +3,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import { cn } from '../lib/utils';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Image, ImageSourcePropType, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, ImageSourcePropType, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Fix the import path to use relative path
@@ -102,25 +102,25 @@ export const NotificationScreen = () => {
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-			<View className="flex-1 bg-white">
-				<View className="flex-row items-center px-4 py-3 border-b border-gray-100">
+			<View style={styles.container}>
+				<View style={styles.header}>
 					<Pressable
 						onPress={() => router.dismiss()}
-						className="p-2"
+						style={styles.backButton}
 						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 					>
 						<ChevronLeftIcon width={24} height={24} />
 					</Pressable>
-					<View className="flex-1 items-center">
-						<Text style={{ fontFamily: 'PlusJakartaSans_700Bold' }} className="text-[20px] text-black">
+					<View style={styles.headerTitleContainer}>
+						<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 							Notifications
 						</Text>
 					</View>
-					<View className="w-10" />
+					<View style={styles.headerSpacer} />
 				</View>
 
 				<ScrollView
-					className="flex-1"
+					style={styles.scrollView}
 					showsVerticalScrollIndicator={false}
 				>
 					{notifications.map((notification, index) => (
@@ -133,7 +133,7 @@ export const NotificationScreen = () => {
 							unread={notification.unread}
 						/>
 					))}
-					<View className="h-32" />
+					<View style={styles.bottomSpacer} />
 				</ScrollView>
 			</View>
 		</SafeAreaView>
@@ -142,34 +142,109 @@ export const NotificationScreen = () => {
 
 const NotificationCard = ({ image, title, description, createdAt, unread }: NotificationCardProps) => {
 	return (
-		<View
-			className={cn(
-				'flex-row px-4 py-3 min-h-[76px]',
-				unread ? 'bg-[#F4F1FD]' : 'bg-white'
-			)}
-		>
-			<View className="w-10 h-10 mr-3 flex items-start mt-2xw">
+		<View style={[styles.card, unread ? styles.cardUnread : styles.cardRead]}>
+			<View style={styles.imageContainer}>
 				<Image
 					source={image}
-					className="w-10 h-10 mt-1"
+					style={styles.image}
 					resizeMode="contain"
 				/>
 			</View>
 
-			<View className="flex-1">
-				<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }} className="text-[15px] text-black mb-1">
+			<View style={styles.contentContainer}>
+				<Text style={[styles.title, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
 					{title}
 				</Text>
-				<Text style={{ fontFamily: 'PlusJakartaSans_400Regular' }} className="text-[13px] text-gray-500 leading-5">
+				<Text style={[styles.description, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 					{description}
 				</Text>
 			</View>
 
-			<View className="ml-3 items-end">
-				<Text style={{ fontFamily: 'PlusJakartaSans_400Regular' }} className="text-xs text-gray-400">
+			<View style={styles.timeContainer}>
+				<Text style={[styles.timeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 					{getTimeAgo(createdAt)}
 				</Text>
 			</View>
 		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		backgroundColor: 'white',
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		borderBottomWidth: 1,
+		borderBottomColor: '#F3F4F6',
+	},
+	backButton: {
+		padding: 8,
+	},
+	headerTitleContainer: {
+		flex: 1,
+		alignItems: 'center',
+	},
+	headerTitle: {
+		fontSize: 20,
+		color: 'black',
+	},
+	headerSpacer: {
+		width: 40,
+	},
+	scrollView: {
+		flex: 1,
+	},
+	bottomSpacer: {
+		height: 128,
+	},
+	card: {
+		flexDirection: 'row',
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		minHeight: 76,
+	},
+	cardRead: {
+		backgroundColor: 'white',
+	},
+	cardUnread: {
+		backgroundColor: '#F4F1FD',
+	},
+	imageContainer: {
+		width: 40,
+		height: 40,
+		marginRight: 12,
+		alignItems: 'flex-start',
+		marginTop: 2,
+	},
+	image: {
+		width: 40,
+		height: 40,
+		marginTop: 1,
+	},
+	contentContainer: {
+		flex: 1,
+	},
+	title: {
+		fontSize: 15,
+		color: 'black',
+		marginBottom: 4,
+	},
+	description: {
+		fontSize: 13,
+		color: '#6B7280',
+		lineHeight: 20,
+	},
+	timeContainer: {
+		marginLeft: 12,
+		alignItems: 'flex-end',
+	},
+	timeText: {
+		fontSize: 12,
+		color: '#9CA3AF',
+	},
+});

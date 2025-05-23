@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
+import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View, Platform, StyleSheet } from 'react-native'
 
 import { Button } from '../components/ui/button'
 
@@ -41,142 +41,93 @@ export const SubscriptionScreen = () => {
 				bounces={false}
 				showsVerticalScrollIndicator
 				stickyHeaderIndices={[0]}
-				className="flex flex-col px-5 web:mx-auto md:web:w-1/3"
+				style={styles.scrollView}
 				showsHorizontalScrollIndicator={false}>
-				<View className="flex w-full flex-row items-center justify-between bg-white py-5">
+				<View style={styles.header}>
 					<Pressable onPress={() => router.dismiss()}>
 						<ChevronLeftIcon />
 					</Pressable>
-					<Text className="text-center text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, letterSpacing: 0.2 }}>Subscription Management</Text>
+					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Subscription Management</Text>
 					<Text />
 				</View>
-				<Text className="mt-[26px] font-medium text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Choose your plan</Text>
-				<View className="mt-4 flex flex-col gap-4">
+				<Text style={[styles.planTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Choose your plan</Text>
+				<View style={styles.plansContainer}>
 					{selectedSubscription === 0 ? (
 						<ImageBackground
 							source={require('../assets/images/subscription-background.png')}
 							resizeMode="cover"
-							className="overflow-hidden rounded-[32px]">
+							style={styles.planCard}>
 							<LinearGradient
 								colors={['#AE9FFF', 'rgba(174, 159, 255, 0.40)']}
 								start={{ x: 0, y: 0 }}
 								end={{ x: 1, y: 1 }}
-								style={{
-									borderRadius: 32,
-									paddingHorizontal: 16,
-									paddingVertical: 20
-								}}>
+								style={styles.gradient}>
 								<View>
-									<View className="flex flex-row items-center justify-between">
-										<Text className="text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Freemium</Text>
-										<View className="size-8 rounded-full border-4 border-white bg-[#AE9FFF]"></View>
+									<View style={styles.planHeader}>
+										<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Freemium</Text>
+										<View style={styles.selectedIndicator} />
 									</View>
-									<View className="mt-5 flex flex-col gap-3.5 rounded-[32px] bg-white px-4 py-[17px]">
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+									<View style={styles.featuresContainer}>
+										<View style={styles.featureItem}>
+											<View style={styles.checkmarkContainer}>
 												<CheckmarkIcon />
 											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>1 Preloaded Character</Text>
+											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Preloaded Character</Text>
 										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+										<View style={styles.featureItem}>
+											<View style={styles.checkmarkContainer}>
 												<CheckmarkIcon />
 											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>1 Pre-installed voice</Text>
+											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Pre-installed voice</Text>
 										</View>
 									</View>
-									<View className="mt-3 flex flex-row justify-end web:mt-4">
-										<Button onPress={() => setSelectedSubscription(2)} className="rounded-3xl !py-0">
-											<Text className="text-sm text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Upgrade to pro</Text>
+									<View style={styles.upgradeButtonContainer}>
+										<Button onPress={() => setSelectedSubscription(2)} style={styles.upgradeButton}>
+											<Text style={[styles.upgradeButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Upgrade to pro</Text>
 										</Button>
 									</View>
 								</View>
 							</LinearGradient>
 						</ImageBackground>
-					) : (
-						<Pressable
-							onPress={() => setSelectedSubscription(0)}
-							className="rounded-[32px] border border-[#D7DDE4] px-4 py-5">
-							<View className="flex flex-row items-center justify-between">
-								<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Freemium</Text>
-								<View className="flex size-8 items-center justify-center rounded-full border-4 border-[#E6E6E6]">
-									<View className="size-4 rounded-full bg-[#C5C5C5]"></View>
-								</View>
-							</View>
-							<View className="mt-5 flex flex-col gap-3.5">
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>1 Preloaded Character</Text>
-								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>1 Pre-installed voice</Text>
-								</View>
-							</View>
-							<View className="native:-mt-4 flex flex-row justify-end web:-mt-1">
-								<Button onPress={() => setSelectedSubscription(2)} className="rounded-3xl !py-0">
-									<Text className="text-sm text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Upgrade to pro</Text>
-								</Button>
-							</View>
-						</Pressable>
-					)}
-
-					{selectedSubscription === 1 ? (
+					) : selectedSubscription === 1 ? (
 						<ImageBackground
 							source={require('../assets/images/subscription-background.png')}
 							resizeMode="cover"
-							className="overflow-hidden rounded-[32px]">
+							style={styles.planCard}>
 							<LinearGradient
 								colors={['#AE9FFF', 'rgba(174, 159, 255, 0.40)']}
 								start={{ x: 0, y: 0 }}
 								end={{ x: 1, y: 1 }}
-								style={{
-									borderRadius: 32,
-									paddingHorizontal: 16,
-									paddingVertical: 20
-								}}>
+								style={styles.gradient}>
 								<View>
-									<View className="flex flex-row items-center justify-between">
-										<Text className="text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Standard</Text>
-										<View className="size-8 rounded-full border-4 border-white bg-[#AE9FFF]"></View>
+									<View style={styles.planHeader}>
+										<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Standard</Text>
+										<View style={styles.selectedIndicator} />
 									</View>
-									<View className="mt-3">
-										<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
-											$10.00 <Text className="text-sm font-normal" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>/month</Text>
+									<View style={styles.priceContainer}>
+										<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+											$10.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
 										</Text>
 									</View>
-									<View className="mt-5 flex flex-col gap-3.5 rounded-[32px] bg-white px-4 py-[17px]">
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+									<View style={styles.featuresContainer}>
+										<View style={styles.featureItem}>
+											<View style={styles.checkmarkContainer}>
 												<CheckmarkIcon />
 											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
-												Choose any 3 Characters from Library.
-											</Text>
+											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Choose any 3 Characters from Library.</Text>
 										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+										<View style={styles.featureItem}>
+											<View style={styles.checkmarkContainer}>
 												<CheckmarkIcon />
 											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>2 Voice Selections.</Text>
+											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>2 Voice Selections.</Text>
 										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+										<View style={styles.featureItem}>
+											<View style={styles.checkmarkContainer}>
 												<CheckmarkIcon />
 											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
-												1 Summary Report Monthly.
-											</Text>
+											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Summary Report Monthly.</Text>
 										</View>
-									</View>
-									<View className="mt-3 flex flex-row justify-end web:mt-4">
-										<Button onPress={() => setSelectedSubscription(2)} className="rounded-3xl !py-0">
-											<Text className="text-sm text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Upgrade to pro</Text>
-										</Button>
 									</View>
 								</View>
 							</LinearGradient>
@@ -184,222 +135,317 @@ export const SubscriptionScreen = () => {
 					) : (
 						<Pressable
 							onPress={() => setSelectedSubscription(1)}
-							className="rounded-[32px] border border-[#D7DDE4] px-4 py-5">
-							<View className="flex flex-row items-center justify-between">
-								<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Standard</Text>
-								<View className="flex size-8 items-center justify-center rounded-full border-4 border-[#E6E6E6]">
-									<View className="size-4 rounded-full bg-[#C5C5C5]"></View>
+							style={styles.planCardInactive}>
+							<View style={styles.planHeader}>
+								<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Standard</Text>
+								<View style={styles.unselectedIndicator}>
+									<View style={styles.unselectedDot} />
 								</View>
 							</View>
-							<View className="mt-3">
-								<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
-									$10.00 <Text className="text-sm font-normal" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>/month</Text>
+							<View style={styles.priceContainer}>
+								<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+									$10.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
 								</Text>
 							</View>
-							<View className="mt-5 flex flex-col gap-3.5">
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+							<View style={styles.featuresContainer}>
+								<View style={styles.featureItem}>
+									<View style={styles.checkmarkContainer}>
 										<CheckmarkIcon />
 									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
-										Choose any 3 Characters from Library.
-									</Text>
+									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Use Custom Characters.</Text>
 								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+								<View style={styles.featureItem}>
+									<View style={styles.checkmarkContainer}>
 										<CheckmarkIcon />
 									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>2 Voice Selections.</Text>
-								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>1 Summary Report Monthly.</Text>
-								</View>
-							</View>
-							<View className="mt-1 flex flex-row justify-end">
-								<Button onPress={() => setSelectedSubscription(2)} className="rounded-3xl !py-0">
-									<Text className="text-sm text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Upgrade to pro</Text>
-								</Button>
-							</View>
-						</Pressable>
-					)}
-
-					{selectedSubscription === 2 ? (
-						<ImageBackground
-							source={require('../assets/images/subscription-background.png')}
-							resizeMode="cover"
-							className="overflow-hidden rounded-[32px]">
-							<LinearGradient
-								colors={['#AE9FFF', 'rgba(174, 159, 255, 0.40)']}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-								style={{
-									borderRadius: 32,
-									paddingHorizontal: 16,
-									paddingVertical: 20
-								}}>
-								<View>
-									<View className="flex flex-row items-center justify-between">
-										<Text className="text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Pro</Text>
-										<View className="size-8 rounded-full border-4 border-white bg-[#AE9FFF]"></View>
-									</View>
-									<View className="mt-3">
-										<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
-											$15.00 <Text className="text-sm font-normal" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>/month</Text>
-										</Text>
-									</View>
-									<View className="mt-5 flex flex-col gap-3.5 rounded-[32px] bg-white px-4 py-[17px]">
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-												<CheckmarkIcon />
-											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Use Custom Characters.</Text>
-										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-												<CheckmarkIcon />
-											</View>
-											<Text className="flex-shrink text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
-												10 Voice Selections + 2 Custom Voice Records.
-											</Text>
-										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-												<CheckmarkIcon />
-											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Daily Summary Reports.</Text>
-										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-												<CheckmarkIcon />
-											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
-												Daily Conversation History.
-											</Text>
-										</View>
-										<View className="flex flex-row items-center gap-[11px]">
-											<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-												<CheckmarkIcon />
-											</View>
-											<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Interaction Analysis.</Text>
-										</View>
-									</View>
-								</View>
-							</LinearGradient>
-						</ImageBackground>
-					) : (
-						<Pressable
-							onPress={() => setSelectedSubscription(2)}
-							className="rounded-[32px] border border-[#D7DDE4] px-4 py-5">
-							<View className="flex flex-row items-center justify-between">
-								<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_700Bold' }}>Pro</Text>
-								<View className="flex size-8 items-center justify-center rounded-full border-4 border-[#E6E6E6]">
-									<View className="size-4 rounded-full bg-[#C5C5C5]"></View>
-								</View>
-							</View>
-							<View className="mt-3">
-								<Text className="font-bold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>
-									$15.00 <Text className="text-sm font-normal" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>/month</Text>
-								</Text>
-							</View>
-							<View className="mt-5 flex flex-col gap-3.5">
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Use Custom Characters.</Text>
-								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="flex-shrink text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 										10 Voice Selections + 2 Custom Voice Records.
 									</Text>
 								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+								<View style={styles.featureItem}>
+									<View style={styles.checkmarkContainer}>
 										<CheckmarkIcon />
 									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Daily Summary Reports.</Text>
+									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Daily Summary Reports.</Text>
 								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+								<View style={styles.featureItem}>
+									<View style={styles.checkmarkContainer}>
 										<CheckmarkIcon />
 									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
+									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 										Daily Conversation History.
 									</Text>
-								</View>
-								<View className="flex flex-row items-center gap-[11px]">
-									<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
-										<CheckmarkIcon />
-									</View>
-									<Text className="text-sm font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Interaction Analysis.</Text>
 								</View>
 							</View>
 						</Pressable>
 					)}
 				</View>
 
-				<View className="mt-[17px] flex flex-row items-center justify-between">
-					<Text className="font-semibold text-muted-foreground" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Payment Method</Text>
-					<Button variant="ghost" className="!px-0">
-						<Text className="text-xs font-semibold text-[#0E2C76]" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Add Card</Text>
+				<View style={styles.paymentMethodContainer}>
+					<Text style={[styles.paymentMethodTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Payment Method</Text>
+					<Button variant="ghost" style={styles.addCardButton}>
+						<Text style={[styles.addCardText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Add Card</Text>
 					</Button>
 				</View>
-				<View className="mt-3.5 flex flex-col gap-4">
+				<View style={styles.cardsContainer}>
 					<Button
 						onPress={() => setSelectedCard('BCA ***239')}
 						variant="ghost"
-						className="flex flex-row items-center justify-between !p-0 !px-0">
-						<View className="flex flex-row items-center gap-2">
-							<View className="rounded-lg bg-[#AE9FFF29] px-4 py-2">
+						style={styles.cardButton}>
+						<View style={styles.cardContent}>
+							<View style={styles.cardIconContainer}>
 								<VisaIcon />
 							</View>
-							<View className="flex flex-col">
-								<Text className="font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>BCA ***239</Text>
-								<Text className="text-xs font-medium text-[#C5C5C5]" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>Expires 12/2027</Text>
+							<View style={styles.cardInfo}>
+								<Text style={[styles.cardNumber, { fontFamily: 'PlusJakartaSans_500Medium' }]}>BCA ***239</Text>
+								<Text style={[styles.cardExpiry, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Expires 12/2027</Text>
 							</View>
 						</View>
-						<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+						<View style={styles.cardSelector}>
 							{selectedCard === 'BCA ***239' ? (
 								<CheckmarkIcon />
 							) : (
-								<View className="size-6 shrink-0 rounded-full bg-[#E6E6E6]" />
+								<View style={styles.unselectedCard} />
 							)}
 						</View>
 					</Button>
 					<Button
 						onPress={() => setSelectedCard('TSZ ***567')}
 						variant="ghost"
-						className="flex flex-row items-center justify-between !p-0 !px-0">
-						<View className="flex flex-row items-center gap-2">
-							<View className="rounded-lg bg-[#AE9FFF29] px-4 py-2">
+						style={styles.cardButton}>
+						<View style={styles.cardContent}>
+							<View style={styles.cardIconContainer}>
 								<ApplePayIcon />
 							</View>
-							<View className="flex flex-col">
-								<Text className="font-semibold text-black" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>TSZ ***567</Text>
-								<Text className="text-xs font-medium text-[#C5C5C5]" style={{ fontFamily: 'PlusJakartaSans_400Regular' }}>Expires 12/2027</Text>
+							<View style={styles.cardInfo}>
+								<Text style={[styles.cardNumber, { fontFamily: 'PlusJakartaSans_500Medium' }]}>TSZ ***567</Text>
+								<Text style={[styles.cardExpiry, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Expires 12/2027</Text>
 							</View>
 						</View>
-						<View className="flex size-6 items-center justify-center rounded-full bg-[#0E2C76]">
+						<View style={styles.cardSelector}>
 							{selectedCard === 'TSZ ***567' ? (
 								<CheckmarkIcon />
 							) : (
-								<View className="size-6 shrink-0 rounded-full bg-[#E6E6E6]" />
+								<View style={styles.unselectedCard} />
 							)}
 						</View>
 					</Button>
 					<Button
-						style={{ boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
-						className="mx-auto mb-10 mt-8 w-10/12">
-						<Text className="text-white" style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>Checkout</Text>
+						style={[styles.checkoutButton, { boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }]}>
+						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Checkout</Text>
 					</Button>
 				</View>
 			</ScrollView>
 		</SafeAreaView>
 	)
 }
+
+const styles = StyleSheet.create({
+	scrollView: {
+		flex: 1,
+		flexDirection: 'column',
+		paddingHorizontal: 20,
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			width: '33.333333%',
+		}),
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		backgroundColor: 'white',
+		paddingVertical: 20,
+	},
+	headerTitle: {
+		textAlign: 'center',
+		color: 'black',
+		fontSize: 18,
+		letterSpacing: 0.2,
+	},
+	planTitle: {
+		marginTop: 26,
+		fontWeight: '500',
+		color: 'black',
+	},
+	plansContainer: {
+		marginTop: 16,
+		flexDirection: 'column',
+		gap: 16,
+	},
+	planCard: {
+		overflow: 'hidden',
+		borderRadius: 32,
+	},
+	planCardInactive: {
+		borderRadius: 32,
+		borderWidth: 1,
+		borderColor: '#D7DDE4',
+		padding: 16,
+	},
+	gradient: {
+		borderRadius: 32,
+		paddingHorizontal: 16,
+		paddingVertical: 20,
+	},
+	planHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	planName: {
+		color: 'black',
+	},
+	selectedIndicator: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		borderWidth: 4,
+		borderColor: 'white',
+		backgroundColor: '#AE9FFF',
+	},
+	unselectedIndicator: {
+		width: 32,
+		height: 32,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 16,
+		borderWidth: 4,
+		borderColor: '#E6E6E6',
+	},
+	unselectedDot: {
+		width: 16,
+		height: 16,
+		borderRadius: 8,
+		backgroundColor: '#C5C5C5',
+	},
+	priceContainer: {
+		marginTop: 12,
+	},
+	priceText: {
+		fontWeight: 'bold',
+		color: 'black',
+	},
+	pricePeriod: {
+		fontSize: 14,
+		fontWeight: 'normal',
+	},
+	featuresContainer: {
+		marginTop: 20,
+		flexDirection: 'column',
+		gap: 14,
+		backgroundColor: 'white',
+		borderRadius: 32,
+		padding: 16,
+	},
+	featureItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 11,
+	},
+	checkmarkContainer: {
+		width: 24,
+		height: 24,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 12,
+		backgroundColor: '#0E2C76',
+	},
+	featureText: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: 'black',
+	},
+	upgradeButtonContainer: {
+		marginTop: 12,
+		flexDirection: 'row',
+		justifyContent: 'flex-end',
+		...(Platform.OS === 'web' && {
+			marginTop: 16,
+		}),
+	},
+	upgradeButton: {
+		borderRadius: 24,
+		paddingVertical: 0,
+	},
+	upgradeButtonText: {
+		fontSize: 14,
+		color: 'white',
+	},
+	paymentMethodContainer: {
+		marginTop: 17,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	paymentMethodTitle: {
+		fontWeight: '600',
+		color: '#6B7280',
+	},
+	addCardButton: {
+		paddingHorizontal: 0,
+	},
+	addCardText: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#0E2C76',
+	},
+	cardsContainer: {
+		marginTop: 14,
+		flexDirection: 'column',
+		gap: 16,
+	},
+	cardButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		padding: 0,
+		paddingHorizontal: 0,
+	},
+	cardContent: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	cardIconContainer: {
+		borderRadius: 8,
+		backgroundColor: '#AE9FFF29',
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+	},
+	cardInfo: {
+		flexDirection: 'column',
+	},
+	cardNumber: {
+		fontWeight: '600',
+		color: 'black',
+	},
+	cardExpiry: {
+		fontSize: 12,
+		fontWeight: '500',
+		color: '#C5C5C5',
+	},
+	cardSelector: {
+		width: 24,
+		height: 24,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 12,
+		backgroundColor: '#0E2C76',
+	},
+	unselectedCard: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		backgroundColor: '#E6E6E6',
+	},
+	checkoutButton: {
+		marginHorizontal: 'auto',
+		marginBottom: 40,
+		marginTop: 32,
+		width: '83.333333%',
+	},
+	checkoutButtonText: {
+		color: 'white',
+	},
+})

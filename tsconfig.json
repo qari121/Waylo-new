@@ -5,7 +5,8 @@
     "jsx": "react-native",
     "module": "Node16",
     "moduleResolution": "node16",
-    "allowImportingTsExtensions": true, 
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     
     "paths": {
       "@components/*": ["components/*"],

@@ -1,9 +1,10 @@
 const { getDefaultConfig } = require('@expo/metro-config');
+const { wrapWithReanimatedMetroConfig } = require('react-native-reanimated/metro-config');
+
 const config = getDefaultConfig(__dirname);
 
 // Fix for Firebase/Expo Go error:
 config.resolver.unstable_enablePackageExports = false;
-
 
 // Remove 'svg' from assetExts
 config.resolver.assetExts = config.resolver.assetExts.filter(ext => ext !== 'svg');
@@ -12,4 +13,4 @@ config.resolver.sourceExts.push('svg');
 // Set the svg transformer
 config.transformer.babelTransformerPath = require.resolve('react-native-svg-transformer');
 
-module.exports = config;
+module.exports = wrapWithReanimatedMetroConfig(config);

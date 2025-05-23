@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { Image, Pressable, ScrollView, Text, View } from 'react-native'
+import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native'
 
 import { Button } from '../components/ui/button'
 import { QRCodeIcon, WiFiIcon } from './qrcode'
@@ -15,42 +15,41 @@ export const WifiPairingScreen = () => {
 			bounces={false}
 			showsVerticalScrollIndicator
 			stickyHeaderIndices={[0]}
-			className="relative flex flex-1 flex-col px-5 web:mx-auto md:web:w-1/3"
+			style={styles.scrollView}
 			showsHorizontalScrollIndicator={false}>
-			<View className="flex w-full flex-row items-center justify-between pt-6">
+			<View style={styles.header}>
 				<Pressable onPress={() => router.dismiss()}>
 					<ChevronLeftIcon />
 				</Pressable>
 			</View>
-			<Text className="mt-1.5 text-center text-2xl font-semibold text-black">Connect device</Text>
-			<View className="relative z-10 mb-20 mt-[21px] flex flex-col rounded-[16px] bg-[#EAE6FF] px-5 pb-[70px] pt-5 md:web:mx-auto md:web:w-10/12">
-				<View className="flex flex-row items-start justify-center gap-3 md:web:gap-6">
-					<View className="flex flex-col items-center gap-0.5">
-						<Button className="flex h-14 flex-row items-center gap-3 rounded-[32px] bg-white px-5 py-4">
+			<Text style={styles.title}>Connect device</Text>
+			<View style={styles.contentContainer}>
+				<View style={styles.stepsContainer}>
+					<View style={styles.stepContainer}>
+						<Button style={styles.scanButton}>
 							<QRCodeIcon color="#B0AEAE" />
-							<Text className="font-semibold text-[#B0AEAE]">Scan QR</Text>
+							<Text style={styles.scanButtonText}>Scan QR</Text>
 						</Button>
-						<Text className="text-sm font-semibold text-[#404040]">Step 1</Text>
+						<Text style={styles.stepText}>Step 1</Text>
 					</View>
 					<TripleArrowsIcon
-						style={{ transform: [{ rotate: '90deg' }] }}
-						className="mt-2 shrink-0 rotate-90"
+						style={[styles.arrowIcon, { transform: [{ rotate: '90deg' }] }]}
 					/>
-					<View className="flex flex-col items-center gap-0.5">
-						<Button className="flex h-14 flex-row items-center gap-3 rounded-[32px] bg-primary px-5 py-4">
+					<View style={styles.stepContainer}>
+						<Button style={styles.wifiButton}>
 							<WiFiIcon color="white" />
-							<Text className="font-semibold text-white">Wifi</Text>
+							<Text style={styles.wifiButtonText}>Wifi</Text>
 						</Button>
-						<Text className="text-sm font-semibold text-[#404040]">Step 2</Text>
+						<Text style={styles.stepText}>Step 2</Text>
 					</View>
 				</View>
-				<View className="my-10 flex items-center">
+				<View style={styles.imageContainer}>
 					<Image source={require('@assets/images/wifi.png')} resizeMode="contain" />
 				</View>
-				<View className="flex0col flex">
-					<Text className="text-2xl font-extrabold leading-8 text-[#404040]">Connect</Text>
-					<Text className="text-2xl font-extrabold leading-8 text-[#404040]">to Wifi</Text>
-					<Text className="mt-1.5 text-xs font-semibold text-[#515151]">
+				<View style={styles.textContainer}>
+					<Text style={styles.connectText}>Connect</Text>
+					<Text style={styles.connectText}>to Wifi</Text>
+					<Text style={styles.instructionText}>
 						Go to settings and connect to wifi network and add correct password
 					</Text>
 				</View>
@@ -58,3 +57,121 @@ export const WifiPairingScreen = () => {
 		</ScrollView>
 	)
 }
+
+const styles = StyleSheet.create({
+	scrollView: {
+		flex: 1,
+		flexDirection: 'column',
+		paddingHorizontal: 20,
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			'@media (min-width: 768px)': {
+				width: '33.333333%',
+			},
+		}),
+	},
+	header: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		width: '100%',
+		paddingTop: 24,
+	},
+	title: {
+		marginTop: 6,
+		textAlign: 'center',
+		fontSize: 24,
+		fontWeight: '600',
+		color: 'black',
+	},
+	contentContainer: {
+		position: 'relative',
+		zIndex: 10,
+		marginBottom: 80,
+		marginTop: 21,
+		flexDirection: 'column',
+		borderRadius: 16,
+		backgroundColor: '#EAE6FF',
+		paddingHorizontal: 20,
+		paddingBottom: 70,
+		paddingTop: 20,
+		...(Platform.OS === 'web' && {
+			'@media (min-width: 768px)': {
+				marginHorizontal: 'auto',
+				width: '83.333333%',
+			},
+		}),
+	},
+	stepsContainer: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		justifyContent: 'center',
+		gap: 12,
+		...(Platform.OS === 'web' && {
+			'@media (min-width: 768px)': {
+				gap: 24,
+			},
+		}),
+	},
+	stepContainer: {
+		flexDirection: 'column',
+		alignItems: 'center',
+		gap: 2,
+	},
+	scanButton: {
+		flexDirection: 'row',
+		height: 56,
+		alignItems: 'center',
+		gap: 12,
+		borderRadius: 32,
+		backgroundColor: 'white',
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+	},
+	scanButtonText: {
+		fontWeight: '600',
+		color: '#B0AEAE',
+	},
+	wifiButton: {
+		flexDirection: 'row',
+		height: 56,
+		alignItems: 'center',
+		gap: 12,
+		borderRadius: 32,
+		backgroundColor: '#0E2C76',
+		paddingHorizontal: 20,
+		paddingVertical: 16,
+	},
+	wifiButtonText: {
+		fontWeight: '600',
+		color: 'white',
+	},
+	stepText: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: '#404040',
+	},
+	arrowIcon: {
+		marginTop: 8,
+		flexShrink: 0,
+	},
+	imageContainer: {
+		marginVertical: 40,
+		alignItems: 'center',
+	},
+	textContainer: {
+		flexDirection: 'column',
+	},
+	connectText: {
+		fontSize: 24,
+		fontWeight: '800',
+		lineHeight: 32,
+		color: '#404040',
+	},
+	instructionText: {
+		marginTop: 6,
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#515151',
+	},
+})

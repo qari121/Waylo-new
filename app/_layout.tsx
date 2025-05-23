@@ -2,7 +2,6 @@
 console.log('[LAYOUT] Promise is', global.Promise?.name ?? global.Promise);
 
 import 'react-native-reanimated';
-import '../global.css';
 
 import {
   DarkTheme,
@@ -21,7 +20,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { NAV_THEME } from 'lib/constants';
-import { useColorScheme } from 'lib/useColorScheme';
+//import { useColorScheme } from 'lib/useColorScheme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import store from '../store';
 
@@ -50,7 +49,7 @@ function LoadingScreen() {
 const persistor = persistStore(store);
 
 export default function RootLayout() {
-  const { isDarkColorScheme } = useColorScheme();
+  // const { isDarkColorScheme } = useColorScheme();
 
   // Web-only tweak — no need to block first render
   React.useEffect(() => {
@@ -64,9 +63,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <BottomSheetModalProvider>
-            <ThemeProvider
-              value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}
-            >
+            <ThemeProvider value={LIGHT_THEME}>
               <Stack
                 screenOptions={{
                   headerShown: false,

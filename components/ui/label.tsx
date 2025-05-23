@@ -1,30 +1,44 @@
-import { cn } from '../../lib/utils'
 import * as LabelPrimitive from '@rn-primitives/label'
 import * as React from 'react'
+import { StyleSheet, Platform, StyleProp, TextStyle, ViewStyle } from 'react-native'
 
-interface LabelProps extends LabelPrimitive.TextProps {
-	rootClassName?: string
+const styles = StyleSheet.create({
+	root: {
+		// Remove cursor property as it's not needed for native platforms
+	},
+	text: {
+		fontSize: Platform.select({ native: 16, default: 14 }),
+		fontWeight: '500',
+		lineHeight: Platform.select({ native: 20, default: 16 }),
+		color: 'var(--foreground)',
+	},
+	disabled: {
+		opacity: 0.7,
+	},
+})
+
+interface LabelProps extends Omit<LabelPrimitive.TextProps, 'style'> {
+	style?: StyleProp<TextStyle>
+	rootStyle?: ViewStyle
 }
 
 const Label = React.forwardRef<LabelPrimitive.TextRef, LabelProps>(
-	({ className, onPress, onLongPress, onPressIn, onPressOut, rootClassName, ...props }, ref) => (
+	({ style, rootStyle, onPress, onLongPress, onPressIn, onPressOut, ...props }, ref) => (
 		<LabelPrimitive.Root
-			className={cn('web:cursor-default', rootClassName)}
+			style={rootStyle}
 			onPress={onPress}
 			onLongPress={onLongPress}
 			onPressIn={onPressIn}
 			onPressOut={onPressOut}>
 			<LabelPrimitive.Text
 				ref={ref}
-				className={cn(
-					'native:text-base text-sm font-medium leading-none text-foreground web:peer-disabled:cursor-not-allowed web:peer-disabled:opacity-70',
-					className
-				)}
+				style={[styles.text, props.disabled && styles.disabled, style]}
 				{...props}
 			/>
 		</LabelPrimitive.Root>
 	)
 )
+
 Label.displayName = LabelPrimitive.Root.displayName
 
 export { Label }

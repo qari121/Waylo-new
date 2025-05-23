@@ -1,6 +1,6 @@
 import { Link, useRouter } from 'expo-router'
 import { useForm } from 'react-hook-form'
-import { Image, ScrollView, Text, View } from 'react-native'
+import { Image, ScrollView, Text, View, StyleSheet, Platform } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import Toast from 'react-native-toast-message'
 
@@ -76,169 +76,268 @@ export const RegisterScreen = () => {
 			bounces={false}
 			showsVerticalScrollIndicator
 			showsHorizontalScrollIndicator={false}>
-			<View className="relative flex flex-col items-center pb-14">
+			<View style={styles.container}>
 				<Image
 					source={require('../assets/images/dark-blue-rectangle.png')}
-					className="absolute left-0 top-0 -z-10"
+					style={styles.darkBlueRectangle}
 				/>
 				<Image
 					source={require('../assets/images/light-blue-rectangle.png')}
-					className="absolute left-[15%] top-0 -z-20"
+					style={styles.lightBlueRectangle}
 				/>
 
-				<View className="mt-[120px] flex w-full flex-col items-center justify-center self-stretch web:mx-auto md:web:w-3/4">
-					<Text className="text-2xl font-bold text-black">Let’s Get Started!</Text>
-					<Text className="text-sm text-muted-foreground">
+				<View style={styles.contentContainer}>
+					<Text style={[styles.title, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Let's Get Started!</Text>
+					<Text style={[styles.subtitle, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 						Create an account on Wylo to get all features
 					</Text>
-					<View className="native:w-10/12 mx-auto mt-[30px] flex w-10/12 flex-col self-stretch lg:web:w-1/3">
+					<View style={styles.formContainer}>
 						<View>
-							<View className="relative flex items-center">
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="First Name"
 									control={form.control}
 									name="firstName"
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.firstName
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.firstName && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<UserIcon width={14} height={14} />
 								</View>
 							</View>
 							{form.formState.errors.firstName && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.firstName.message}
 								</Text>
 							)}
 						</View>
 
 						<View>
-							<View className="relative mt-7 flex items-center">
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="Last Name"
 									name="lastName"
 									control={form.control}
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.lastName
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.lastName && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<UserIcon width={14} height={14} />
 								</View>
 							</View>
 							{form.formState.errors.lastName && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.lastName.message}
 								</Text>
 							)}
 						</View>
 
 						<View>
-							<View className="relative mt-7 flex items-center">
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="Username"
 									name="username"
 									control={form.control}
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.username
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.username && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<UserIcon width={14} height={14} />
 								</View>
 							</View>
 							{form.formState.errors.username && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.username.message}
 								</Text>
 							)}
 						</View>
 
-						<View className="mt-7">
-							<View className="relative flex items-center">
+						<View style={styles.inputSpacing}>
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="Email"
 									name="email"
 									control={form.control}
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.email
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.email && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<MailIcon width={13} height={13} />
 								</View>
 							</View>
 							{form.formState.errors.email && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.email.message}
 								</Text>
 							)}
 						</View>
 
-						<View className="mt-7">
-							<View className="relative flex items-center">
+						<View style={styles.inputSpacing}>
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="Password"
 									name="password"
 									secureTextEntry
 									control={form.control}
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500': !!form.formState.errors.password
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.password && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<LockIcon width={13} height={13} />
 								</View>
 							</View>
 							{form.formState.errors.password && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.password.message}
 								</Text>
 							)}
 						</View>
 
-						<View className="mt-7">
-							<View className="relative flex items-center">
+						<View style={styles.inputSpacing}>
+							<View style={styles.inputWrapper}>
 								<FormInput
 									placeholder="Confirm Password"
 									name="confirmPassword"
 									secureTextEntry
 									control={form.control}
-									className={cn('pl-14', {
-										'native:!border-red-500 web:!ring-red-500':
-											!!form.formState.errors.confirmPassword
-									})}
+									style={[
+										styles.input,
+										styles.inputWithIcon,
+										form.formState.errors.confirmPassword && styles.inputError
+									]}
 								/>
-								<View className="absolute left-6 top-1/2 shrink-0 -translate-y-1/2">
+								<View style={styles.iconContainer}>
 									<LockIcon width={13} height={13} />
 								</View>
 							</View>
 							{form.formState.errors.confirmPassword && (
-								<Text className="mt-1 text-xs text-red-500">
+								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 									{form.formState.errors.confirmPassword.message}
 								</Text>
 							)}
 						</View>
 
 						<Button
-							style={{ elevation: 5, boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }}
-							onPress={form.handleSubmit(onSubmit)}
-							className="mx-auto mt-8 flex w-fit flex-row items-center gap-1 uppercase">
+							style={[styles.submitButton, { elevation: 5, shadowColor: 'rgba(0, 0, 0, 0.19)', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 1, shadowRadius: 7 }]}
+							onPress={form.handleSubmit(onSubmit)}>
 							{isLoading && <Chase size={16} color="white" />}
-							<Text className="text-white">{isLoading ? 'Please Wait...' : 'Create'}</Text>
-						</Button>
-						<View className="mt-12">
-							<Text className="text-center text-muted-foreground">
-								Already have an account?{' '}
-								<Link href="/login">
-									<Text className="font-bold text-black web:cursor-pointer">Login here</Text>
-								</Link>
+							<Text style={[styles.submitButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+								{isLoading ? 'Please Wait...' : 'Create'}
 							</Text>
-						</View>
+						</Button>
 					</View>
 				</View>
 			</View>
 		</ScrollView>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		flexDirection: 'column',
+		alignItems: 'center',
+		paddingBottom: 56,
+		position: 'relative',
+	},
+	darkBlueRectangle: {
+		position: 'absolute',
+		left: 0,
+		top: 0,
+		zIndex: -10,
+	},
+	lightBlueRectangle: {
+		position: 'absolute',
+		left: '15%',
+		top: 0,
+		zIndex: -20,
+	},
+	contentContainer: {
+		marginTop: 120,
+		width: '100%',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'center',
+		alignSelf: 'stretch',
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			width: '75%',
+		}),
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: '700',
+		color: 'black',
+	},
+	subtitle: {
+		fontSize: 14,
+		color: '#9A9A9A',
+	},
+	formContainer: {
+		marginTop: 30,
+		width: '83.333333%',
+		flexDirection: 'column',
+		alignSelf: 'stretch',
+		...(Platform.OS === 'web' && {
+			width: '33.333333%',
+		}),
+	},
+	inputWrapper: {
+		position: 'relative',
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	input: {
+		flex: 1,
+	},
+	inputWithIcon: {
+		paddingLeft: 56,
+	},
+	inputError: {
+		borderColor: 'red',
+		...(Platform.OS === 'web' && {
+			ringColor: 'red',
+		}),
+	},
+	iconContainer: {
+		position: 'absolute',
+		left: 24,
+		top: '50%',
+		transform: [{ translateY: -7 }],
+		flexShrink: 0,
+	},
+	inputSpacing: {
+		marginTop: 28,
+	},
+	errorText: {
+		marginTop: 4,
+		fontSize: 12,
+		color: 'red',
+	},
+	submitButton: {
+		marginTop: 32,
+		marginHorizontal: 'auto',
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		textTransform: 'uppercase',
+	},
+	submitButtonText: {
+		color: 'white',
+	},
+})

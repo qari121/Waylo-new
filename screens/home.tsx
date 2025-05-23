@@ -1,14 +1,14 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView } from 'react-native';
+import { useAppDispatch, useAppSelector } from '../hooks';
+import Toast from 'react-native-toast-message';
+import { Auth, getAuth } from 'firebase/auth';
 
 import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useAppDispatch, useAppSelector } from '../hooks';
-import Toast from 'react-native-toast-message';
 
 import { logout } from '../slices/auth';
 import { fetchSentimentsCount } from '../slices/sentiments';
@@ -27,18 +27,46 @@ import MicrophoneIcon from '../assets/icons/microphone.svg';
 import NoteIcon from '../assets/icons/note.svg';
 import VideoVerticalIcon from '../assets/icons/video-vertical.svg';
 import VideoIcon from '../assets/icons/video.svg';
+import { Button } from '../components/ui/button';
+import { Chase } from 'react-native-animated-spinkit';
+
+interface ActivityCardProps {
+	icon: React.ElementType;
+	title: string;
+	time: string;
+}
+
+const ActivityCard = ({ icon: Icon, title, time }: ActivityCardProps) => {
+	return (
+		<View style={styles.activityCard}>
+			<View style={styles.activityCardContent}>
+				<View style={styles.activityIconContainer}>
+					<Icon style={styles.activityIcon} />
+				</View>
+				<Text style={[styles.activityTitle, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+					{title}
+				</Text>
+			</View>
+			<View style={styles.activityTimeContainer}>
+				<ClockIcon style={styles.clockIcon} />
+				<Text style={[styles.activityTime, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+					{time}
+				</Text>
+			</View>
+		</View>
+	);
+};
 
 export const HomeScreen = () => {
 	const router = useRouter()
 	const dispatch = useAppDispatch()
 	const auth = useAppSelector((state) => state.auth)
-
-	let [fontsLoaded] = useFonts({
+	const [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
 		PlusJakartaSans_500Medium,
 		PlusJakartaSans_600SemiBold,
-		PlusJakartaSans_700Bold
-	});
+		PlusJakartaSans_700Bold,
+	})
 
 	const defaultSentiments = [
 		{ day: 'Mon', mood: 'neutral' },
@@ -53,9 +81,21 @@ export const HomeScreen = () => {
 	const [sentiments, setSentiments] = useState<{ day: string; mood: string }[]>(defaultSentiments)
 
 	const activities = [
-		{ title: 'Singing Rhymes', time: '2mins', icon: VideoVerticalIcon },
-		{ title: 'Dancing session', time: '3mins', icon: VideoVerticalIcon },
-		{ title: 'Questions asked', time: '4mins', icon: Microphone2Icon }
+		{
+			icon: MicrophoneIcon,
+			title: 'Voice Interaction',
+			time: '2 hours ago',
+		},
+		{
+			icon: VideoIcon,
+			title: 'Video Capture',
+			time: '3 hours ago',
+		},
+		{
+			icon: NoteIcon,
+			title: 'Daily Report',
+			time: '5 hours ago',
+		},
 	]
 
 	const emojiIcons = {
@@ -68,13 +108,21 @@ export const HomeScreen = () => {
 	} as { [mood: string]: React.ElementType }
 
 	useEffect(() => {
-		onAuthStateChanged(firebaseAuth, (user) => {
+		const auth = getAuth()
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (!user) {
-				Toast.show({ type: 'error', text1: 'Session Expired!', text2: 'Please login again' })
 				dispatch(logout())
+				Toast.show({
+					type: 'error',
+					text1: 'Session expired',
+					text2: 'Please login again',
+				})
+				router.replace('/login')
 			}
 		})
-	}, [])
+
+		return () => unsubscribe()
+	}, [dispatch, router])
 
 	useEffect(() => {
 		const fetchSentimentRecords = async () => {
@@ -104,93 +152,90 @@ export const HomeScreen = () => {
 	}
 
 	return (
-		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+		<SafeAreaView style={styles.safeArea}>
 			<ScrollView
 				horizontal={false}
 				bounces={false}
 				showsVerticalScrollIndicator
-				className="flex flex-1 flex-col px-5 web:mx-auto md:web:w-1/3"
+				style={styles.container}
 				showsHorizontalScrollIndicator={false}>
-				<Text style={{ fontFamily: 'PlusJakartaSans_700Bold' }} className="pb-3 pt-5 text-[32px] text-[#404040]">
+				<Text style={[styles.greeting, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 					Hello {auth.username}
 				</Text>
-				<Text style={{ fontFamily: 'PlusJakartaSans_400Regular' }} className="text-[#9A9A9A]">
+				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
 					Welcome back, check the latest activities
 				</Text>
-				<View className="mt-5 flex w-full flex-row items-stretch gap-3">
+				<View style={styles.cardsContainer}>
 					<Pressable
 						onPress={() => router.push('/toy-logs')}
-						className="relative flex min-h-[354px] shrink basis-[50%] flex-col justify-between overflow-hidden rounded-3xl bg-[#AE9FFF99] py-4">
-						<View className="ml-4 flex size-9 flex-row items-center justify-center rounded-full bg-white p-4">
-							<MicrophoneIcon className="shrink-0" />
+						style={styles.voiceCard}>
+						<View style={styles.iconContainer}>
+							<MicrophoneIcon style={styles.icon} />
 						</View>
-						<View className="relative">
+						<View style={styles.wavesContainer}>
 							<Image
 								source={require('../assets/images/waves.png')}
-								className="!w-full"
+								style={styles.wavesImage}
 								resizeMode="cover"
 							/>
-							<View className="absolute z-10 h-full w-full bg-[#AE9FFF99]" />
+							<View style={styles.wavesOverlay} />
 						</View>
 						<Image
 							source={require('../assets/images/avatar.png')}
-							style={{ width: 150, height: 150 }}
+							style={styles.avatarImage}
 							resizeMode="contain"
-							className="absolute right-0 top-4 z-10"
 						/>
-						<View className="mx-4 flex flex-row items-center justify-between">
-							<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="w-1/2 break-words leading-6 text-black">
+						<View style={styles.cardFooter}>
+							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 								Voice Interactions
 							</Text>
-							<View className="flex flex-row items-center">
+							<View style={styles.avatarGroup}>
 								<Image
 									source={require('../assets/images/home_img_1.png')}
-									className="z-30 rounded-full border border-white"
-									style={{ width: 24, height: 24 }}
+									style={styles.avatarThumbnail}
 								/>
 								<Image
 									source={require('../assets/images/home_img_2.png')}
-									className="relative z-20 -ml-1.5 rounded-full border border-white"
-									style={{ width: 24, height: 24 }}
+									style={[styles.avatarThumbnail, styles.avatarThumbnailOverlap]}
 								/>
 							</View>
 						</View>
 					</Pressable>
-					<View className="flex grow flex-col gap-3">
+					<View style={styles.rightCardsContainer}>
 						<Pressable
 							onPress={() => router.push('/video-interaction')}
-							className="relative flex min-h-[170px] flex-col justify-between overflow-hidden rounded-3xl bg-[#EFEDE0CC] p-4">
-							<View className="flex size-9 flex-row items-center justify-center rounded-full bg-white">
-								<VideoIcon className="size-6 shrink-0" />
+							style={styles.videoCard}>
+							<View style={styles.iconContainer}>
+								<VideoIcon style={styles.icon} />
 							</View>
-							<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="leading-6 text-black">
+							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 								Video Captures
 							</Text>
 						</Pressable>
-						<Link
-							href="/reports?type=daily"
-							className="min-h-[170px] overflow-hidden rounded-3xl bg-[#303030E8] p-4">
-							<View className="flex h-full flex-1 grow flex-col justify-between">
-								<View className="flex size-9 flex-row items-center justify-center rounded-full bg-white">
-									<NoteIcon className="size-6 shrink-0" />
+						<Link href="/reports?type=daily" style={styles.reportsCard}>
+							<View style={styles.reportsContent}>
+								<View style={styles.iconContainer}>
+									<NoteIcon style={styles.icon} />
 								</View>
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="leading-6 text-white">
+								<Text style={[styles.reportsTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Daily Reports
 								</Text>
 							</View>
 						</Link>
 					</View>
 				</View>
-				<View className="mt-4 flex flex-col gap-3">
-					<View className="flex flex-row items-center justify-between">
-						<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-[#404040]">
+				<View style={styles.activitiesContainer}>
+					<View style={styles.activitiesHeader}>
+						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 							Recent Activities
 						</Text>
-						<Link href="/activities" className="cursor-pointer text-[#0E2C76]">
-							<Text style={{ fontFamily: 'PlusJakartaSans_500Medium' }}>See All</Text>
+						<Link href="/activities" style={styles.seeAllLink}>
+							<Text style={[styles.seeAllText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+								See All
+							</Text>
 						</Link>
 					</View>
-					<View className="flex flex-col gap-2">
+					<View style={styles.activitiesList}>
 						{activities.map((activity) => (
 							<ActivityCard
 								key={activity.title}
@@ -201,60 +246,60 @@ export const HomeScreen = () => {
 						))}
 					</View>
 				</View>
-				<View className="mt-4 flex flex-col gap-[23px]">
-					<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-[#404040]">
+				<View style={styles.scheduleContainer}>
+					<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 						Schedule tasks
 					</Text>
-					<View className="flex flex-row items-stretch gap-2">
-						<View className="flex min-h-[113px] flex-1 flex-col justify-between rounded-lg bg-[#F6F6F6] p-2">
-							<GameIcon className="size-8 shrink-0" />
-							<View className="flex flex-col">
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+					<View style={styles.scheduleGrid}>
+						<View style={styles.scheduleCard}>
+							<GameIcon style={styles.scheduleIcon} />
+							<View style={styles.scheduleTextContainer}>
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Games
 								</Text>
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Play Time
 								</Text>
 							</View>
 						</View>
-						<View className="flex min-h-[113px] flex-1 flex-col justify-between rounded-lg bg-[#F6F6F6] p-2">
-							<BookIcon className="size-8 shrink-0" />
-							<View className="flex flex-col">
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+						<View style={styles.scheduleCard}>
+							<BookIcon style={styles.scheduleIcon} />
+							<View style={styles.scheduleTextContainer}>
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Study
 								</Text>
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Sessions
 								</Text>
 							</View>
 						</View>
-						<View className="flex min-h-[113px] flex-1 flex-col justify-between rounded-lg bg-[#F6F6F6] p-2">
-							<HealthIcon className="size-8 shrink-0" />
-							<View className="flex flex-col">
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+						<View style={styles.scheduleCard}>
+							<HealthIcon style={styles.scheduleIcon} />
+							<View style={styles.scheduleTextContainer}>
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									Behavior
 								</Text>
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs leading-6 text-black">
+								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									monitoring
 								</Text>
 							</View>
 						</View>
 					</View>
 				</View>
-				<View className="mb-28 mt-[18px] flex flex-col gap-2.5">
-					<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-[#404040]">
+				<View style={styles.moodHistoryContainer}>
+					<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 						Mood History
 					</Text>
-					<View className="flex flex-row items-center gap-6 overflow-x-auto">
+					<View style={styles.moodHistoryList}>
 						{sentiments.map((sentiment) => (
 							<View
 								key={sentiment.day}
-								className={cn('flex flex-1 flex-col items-center gap-1.5', {
-									'rounded-[16px] border-[0.5px] border-[#C5C5C5] bg-[#F4F3EC] px-2 py-1':
-										sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day
-								})}>
+								style={[
+									styles.moodHistoryItem,
+									sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
+								]}>
 								{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
-								<Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }} className="text-xs text-black">
+								<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
 									{sentiment.day}
 								</Text>
 							</View>
@@ -266,29 +311,273 @@ export const HomeScreen = () => {
 	)
 }
 
-interface ActivityCardProps {
-	icon: React.ElementType
-	title: string
-	time: string
-}
-
-const ActivityCard = ({ icon: Icon, title, time }: ActivityCardProps) => {
-	return (
-		<View className="flex w-full flex-row items-center justify-between rounded-xl bg-[#F4F3EC] py-2.5 pl-2 pr-3.5">
-			<View className="flex flex-row items-center gap-4">
-				<View className="flex size-8 items-center justify-center rounded-full bg-[#AE9FFF99]">
-					<Icon className="size-5 shrink-0" />
-				</View>
-				<Text style={{ fontFamily: 'PlusJakartaSans_400Regular' }} className="text-black">
-					{title}
-				</Text>
-			</View>
-			<View className="flex flex-row items-center gap-[5px]">
-				<ClockIcon className="size-6 shrink-0" />
-				<Text style={{ fontFamily: 'PlusJakartaSans_400Regular' }} className="text-xs text-black">
-					{time}
-				</Text>
-			</View>
-		</View>
-	)
-}
+const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+		backgroundColor: 'white',
+	},
+	container: {
+		flex: 1,
+		flexDirection: 'column',
+		paddingHorizontal: 20,
+		...(Platform.OS === 'web' && {
+			marginHorizontal: 'auto',
+			width: '33.333333%',
+		}),
+	},
+	greeting: {
+		paddingBottom: 12,
+		paddingTop: 20,
+		fontSize: 32,
+		color: '#404040',
+	},
+	welcomeText: {
+		color: '#9A9A9A',
+	},
+	cardsContainer: {
+		marginTop: 20,
+		flexDirection: 'row',
+		alignItems: 'stretch',
+		gap: 12,
+	},
+	voiceCard: {
+		position: 'relative',
+		flex: 1,
+		minHeight: 354,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		overflow: 'hidden',
+		borderRadius: 24,
+		backgroundColor: '#AE9FFF99',
+		paddingVertical: 16,
+	},
+	iconContainer: {
+		marginLeft: 16,
+		width: 36,
+		height: 36,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 18,
+		backgroundColor: 'white',
+		padding: 16,
+	},
+	icon: {
+		width: 24,
+		height: 24,
+		flexShrink: 0,
+	},
+	wavesContainer: {
+		position: 'relative',
+	},
+	wavesImage: {
+		width: '100%',
+	},
+	wavesOverlay: {
+		position: 'absolute',
+		zIndex: 10,
+		height: '100%',
+		width: '100%',
+		backgroundColor: '#AE9FFF99',
+	},
+	avatarImage: {
+		position: 'absolute',
+		right: 0,
+		top: 16,
+		zIndex: 10,
+		width: 150,
+		height: 150,
+	},
+	cardFooter: {
+		marginHorizontal: 16,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	cardTitle: {
+		width: '50%',
+		lineHeight: 24,
+		color: 'black',
+	},
+	avatarGroup: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	avatarThumbnail: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: 'white',
+		zIndex: 30,
+	},
+	avatarThumbnailOverlap: {
+		position: 'relative',
+		zIndex: 20,
+		marginLeft: -6,
+	},
+	rightCardsContainer: {
+		flex: 1,
+		flexDirection: 'column',
+		gap: 12,
+	},
+	videoCard: {
+		position: 'relative',
+		flex: 1,
+		minHeight: 170,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		overflow: 'hidden',
+		borderRadius: 24,
+		backgroundColor: '#EFEDE0CC',
+		padding: 16,
+	},
+	reportsCard: {
+		minHeight: 170,
+		overflow: 'hidden',
+		borderRadius: 24,
+		backgroundColor: '#303030E8',
+		padding: 16,
+	},
+	reportsContent: {
+		height: '100%',
+		flex: 1,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+	},
+	reportsTitle: {
+		lineHeight: 24,
+		color: 'white',
+	},
+	activitiesContainer: {
+		marginTop: 16,
+		flexDirection: 'column',
+		gap: 12,
+	},
+	activitiesHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	sectionTitle: {
+		color: '#404040',
+	},
+	seeAllLink: {
+		...(Platform.OS === 'web' && {
+			cursor: 'pointer',
+		}),
+	},
+	seeAllText: {
+		color: '#0E2C76',
+	},
+	activitiesList: {
+		flexDirection: 'column',
+		gap: 8,
+	},
+	scheduleContainer: {
+		marginTop: 16,
+		flexDirection: 'column',
+		gap: 23,
+	},
+	scheduleGrid: {
+		flexDirection: 'row',
+		alignItems: 'stretch',
+		gap: 8,
+	},
+	scheduleCard: {
+		flex: 1,
+		minHeight: 113,
+		flexDirection: 'column',
+		justifyContent: 'space-between',
+		borderRadius: 8,
+		backgroundColor: '#F6F6F6',
+		padding: 8,
+	},
+	scheduleIcon: {
+		width: 32,
+		height: 32,
+		flexShrink: 0,
+	},
+	scheduleTextContainer: {
+		flexDirection: 'column',
+	},
+	scheduleText: {
+		fontSize: 12,
+		lineHeight: 24,
+		color: 'black',
+	},
+	activityCard: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		borderRadius: 12,
+		backgroundColor: '#F4F3EC',
+		paddingVertical: 10,
+		paddingLeft: 8,
+		paddingRight: 14,
+	},
+	activityCardContent: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 16,
+	},
+	activityIconContainer: {
+		width: 32,
+		height: 32,
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 16,
+		backgroundColor: '#AE9FFF99',
+	},
+	activityIcon: {
+		width: 20,
+		height: 20,
+		flexShrink: 0,
+	},
+	activityTitle: {
+		color: 'black',
+	},
+	activityTimeContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 5,
+	},
+	clockIcon: {
+		width: 24,
+		height: 24,
+		flexShrink: 0,
+	},
+	activityTime: {
+		fontSize: 12,
+		color: 'black',
+	},
+	moodHistoryContainer: {
+		marginBottom: 112,
+		marginTop: 18,
+		flexDirection: 'column',
+		gap: 10,
+	},
+	moodHistoryList: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 24,
+	},
+	moodHistoryItem: {
+		flex: 1,
+		flexDirection: 'column',
+		alignItems: 'center',
+		gap: 6,
+	},
+	moodHistoryItemActive: {
+		borderRadius: 16,
+		borderWidth: 0.5,
+		borderColor: '#C5C5C5',
+		backgroundColor: '#F4F3EC',
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+	},
+	moodHistoryDay: {
+		fontSize: 12,
+		color: 'black',
+	},
+})

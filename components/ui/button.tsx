@@ -1,84 +1,120 @@
-import { cn } from '../../lib/utils'
-import { cva, type VariantProps } from 'class-variance-authority'
 import { TextClassContext } from 'components/ui/text'
 import * as React from 'react'
-import { Pressable } from 'react-native'
+import { Pressable, StyleSheet, ViewStyle, TextStyle, Platform, StyleProp } from 'react-native'
 
-const buttonVariants = cva(
-	'group flex items-center justify-center rounded-md web:ring-offset-background web:transition-colors web:focus-visible:outline-none web:focus-visible:ring-2 web:focus-visible:ring-ring web:focus-visible:ring-offset-2',
-	{
-		variants: {
-			variant: {
-				default: 'bg-primary web:hover:opacity-90 active:opacity-90',
-				destructive: 'bg-destructive web:hover:opacity-90 active:opacity-90',
-				outline:
-					'border border-input bg-background web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
-				secondary: 'bg-secondary web:hover:opacity-80 active:opacity-80',
-				ghost: 'web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
-				link: 'web:underline-offset-4 web:hover:underline web:focus:underline'
-			},
-			size: {
-				default: 'h-10 px-4 py-2 native:h-12 rounded-lg native:px-5 native:py-3',
-				sm: 'h-9 rounded-md px-3',
-				lg: 'h-11 rounded-md px-8 native:h-14',
-				icon: 'h-10 w-10'
-			}
-		},
-		defaultVariants: {
-			variant: 'default',
-			size: 'default'
-		}
+type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+type ButtonSize = 'default' | 'sm' | 'lg' | 'icon'
+
+const styles = StyleSheet.create({
+	baseButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderRadius: 8,
+	},
+	baseText: {
+		fontSize: Platform.select({ native: 16, default: 14 }),
+		fontWeight: '500',
+	},
+	default: {
+		backgroundColor: 'var(--primary)',
+	},
+	destructive: {
+		backgroundColor: 'var(--destructive)',
+	},
+	outline: {
+		borderWidth: 1,
+		borderColor: 'var(--input)',
+		backgroundColor: 'var(--background)',
+	},
+	secondary: {
+		backgroundColor: 'var(--secondary)',
+	},
+	ghost: {},
+	link: {},
+	defaultText: {
+		color: 'var(--primary-foreground)',
+	},
+	destructiveText: {
+		color: 'var(--destructive-foreground)',
+	},
+	outlineText: {
+		color: 'var(--foreground)',
+	},
+	secondaryText: {
+		color: 'var(--secondary-foreground)',
+	},
+	ghostText: {
+		color: 'var(--foreground)',
+	},
+	linkText: {
+		color: 'var(--primary)',
+	},
+	sizeDefault: {
+		height: Platform.select({ native: 48, default: 40 }),
+		paddingHorizontal: Platform.select({ native: 20, default: 16 }),
+		paddingVertical: Platform.select({ native: 12, default: 8 }),
+		borderRadius: 8,
+	},
+	sizeSm: {
+		height: 36,
+		paddingHorizontal: 12,
+		borderRadius: 6,
+	},
+	sizeLg: {
+		height: Platform.select({ native: 56, default: 44 }),
+		paddingHorizontal: 32,
+		borderRadius: 6,
+	},
+	sizeIcon: {
+		height: 40,
+		width: 40,
+	},
+	disabled: {
+		opacity: 0.5,
+	},
+} as const)
+
+const getButtonStyles = (variant: ButtonVariant, size: ButtonSize, disabled?: boolean) => {
+	const sizeKey = `size${size.charAt(0).toUpperCase() + size.slice(1)}` as keyof typeof styles
+	const textKey = `${variant}Text` as keyof typeof styles
+
+	return {
+		button: [
+			styles.baseButton,
+			styles[variant],
+			styles[sizeKey],
+			disabled && styles.disabled,
+		] as StyleProp<ViewStyle>,
+		textClass: `text-base text-foreground ${variant === 'default' ? 'text-primary-foreground' : ''} ${variant === 'destructive' ? 'text-destructive-foreground' : ''} ${variant === 'outline' ? 'text-foreground' : ''} ${variant === 'secondary' ? 'text-secondary-foreground' : ''} ${variant === 'ghost' ? 'text-foreground' : ''} ${variant === 'link' ? 'text-primary' : ''}`,
 	}
-)
+}
 
-const buttonTextVariants = cva(
-	'web:whitespace-nowrap text-sm native:text-base font-medium text-foreground web:transition-colors',
-	{
-		variants: {
-			variant: {
-				default: 'text-primary-foreground',
-				destructive: 'text-destructive-foreground',
-				outline: 'group-active:text-accent-foreground',
-				secondary: 'text-secondary-foreground group-active:text-secondary-foreground',
-				ghost: 'group-active:text-accent-foreground',
-				link: 'text-primary group-active:underline'
-			},
-			size: {
-				default: '',
-				sm: '',
-				lg: 'native:text-lg',
-				icon: ''
-			}
-		},
-		defaultVariants: {
-			variant: 'default',
-			size: 'default'
-		}
-	}
-)
-
-type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
-	VariantProps<typeof buttonVariants>
+type ButtonProps = Omit<React.ComponentPropsWithoutRef<typeof Pressable>, 'style'> & {
+	variant?: ButtonVariant
+	size?: ButtonSize
+	style?: StyleProp<ViewStyle>
+}
 
 const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>(
-	({ className, variant, size, ...props }, ref) => {
+	({ variant = 'default', size = 'default', disabled, style, ...props }, ref) => {
+		const { button, textClass } = getButtonStyles(variant, size, !!disabled)
+
 		return (
-			<TextClassContext.Provider
-				value={buttonTextVariants({ variant, size, className: 'web:pointer-events-none' })}>
+			<TextClassContext.Provider value={textClass}>
 				<Pressable
-					className={cn(
-						props.disabled && 'opacity-50 web:pointer-events-none',
-						buttonVariants({ variant, size, className })
-					)}
 					ref={ref}
+					style={[button, style]}
 					role="button"
+					disabled={disabled}
 					{...props}
 				/>
 			</TextClassContext.Provider>
 		)
 	}
 )
+
 Button.displayName = 'Button'
 
-export { Button, buttonTextVariants, buttonVariants }
-export type { ButtonProps }
+export { Button }
+export type { ButtonProps, ButtonVariant, ButtonSize }
