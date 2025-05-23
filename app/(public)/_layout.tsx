@@ -1,6 +1,5 @@
 import { Redirect, Stack } from 'expo-router'
 import { useAppSelector } from 'hooks'
-import { View, Text } from 'react-native'
 import React from 'react'
 
 export default function PublicLayout() {

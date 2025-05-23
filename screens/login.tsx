@@ -54,7 +54,7 @@ export const LoginScreen = () => {
 	}
 
 	return (
-		<View className="relative flex flex-col items-center">
+		<View className="relative flex flex-col items-center ">
 			<Image
 				source={require('../assets/images/dark-blue-rectangle.png')}
 				className="absolute left-0 top-0 -z-10"
