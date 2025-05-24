@@ -8,7 +8,7 @@ export default function PrivateLayout() {
 	
 	return (
 		<AuthMiddleware>
-			<View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? insets.top : 0 }}>
+			<View style={{ flex: 1, backgroundColor: 'white', paddingTop: Platform.OS === 'ios' ? insets.top : 0 }}>
 				<Stack
 					screenOptions={{
 						headerShown: false,
@@ -19,7 +19,8 @@ export default function PrivateLayout() {
 						presentation: 'card',
 						orientation: 'portrait',
 						gestureEnabled: Platform.OS === 'ios',
-						fullScreenGestureEnabled: false
+						fullScreenGestureEnabled: false,
+						contentStyle: { backgroundColor: 'white' }
 					}}>
 					<Stack.Screen name="index" />
 					<Stack.Screen name="wylo-register" />

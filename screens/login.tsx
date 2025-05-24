@@ -181,6 +181,8 @@ const styles = StyleSheet.create({
 	welcomeText: {
 		fontSize: 24, // text-2xl
 		color: '#000000',
+		fontWeight: '600',
+		
 	},
 	subtitleText: {
 		marginTop: 18,
@@ -205,7 +207,9 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	input: {
-		paddingLeft: 56, // pl-14 equivalent
+		paddingLeft: 56, 
+		borderWidth: 0,
+		backgroundColor: '#F2F2F2',
 	},
 	inputError: {
 		borderColor: '#EF4444', // red-500
@@ -235,12 +239,14 @@ const styles = StyleSheet.create({
 		textAlign: 'right',
 	},
 	loginButton: {
-		marginTop: 32, // mt-8 equivalent
+		marginTop: 32,
+		width: '50%',
 		marginHorizontal: 'auto',
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 4,
 		textTransform: 'uppercase',
+		backgroundColor: '#AE9FFF',
 		elevation: 5,
 		...(Platform.OS === 'web' && {
 			boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)',
@@ -248,10 +254,11 @@ const styles = StyleSheet.create({
 	},
 	loginButtonText: {
 		color: '#FFFFFF',
+		fontWeight: 'bold',
 	},
 	signupText: {
 		marginTop: 48, // mt-12 equivalent
-		fontSize: 14, // text-sm
+		fontSize: 14, 
 		fontWeight: '500',
 		color: '#6B7280', // text-muted-foreground
 		textAlign: 'center',

@@ -255,12 +255,13 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		backgroundColor: 'white',
-		paddingVertical: 20,
+		paddingVertical: 10,
 	},
 	headerTitle: {
 		textAlign: 'center',
 		color: 'black',
 		fontSize: 18,
+		marginTop: -20,
 		letterSpacing: 0.2,
 	},
 	planTitle: {
@@ -443,6 +444,7 @@ const styles = StyleSheet.create({
 		marginHorizontal: 'auto',
 		marginBottom: 40,
 		marginTop: 32,
+		backgroundColor: '#AE9FFF',
 		width: '83.333333%',
 	},
 	checkoutButtonText: {

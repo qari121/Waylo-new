@@ -23,7 +23,8 @@ export default function PublicLayout() {
 				animation: 'none',
 				presentation: 'card',
 				orientation: 'portrait',
-				gestureEnabled: false
+				gestureEnabled: false,
+				contentStyle: { backgroundColor: 'white' },
 			}}>
 			<Stack.Screen name="login" />
 			<Stack.Screen name="register" />

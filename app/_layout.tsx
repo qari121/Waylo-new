@@ -54,7 +54,9 @@ export default function RootLayout() {
   // Web-only tweak — no need to block first render
   React.useEffect(() => {
     if (Platform.OS === 'web') {
-      document.documentElement.classList.add('bg-white');
+      document.body.style.backgroundColor = 'white';
+      document.body.style.margin = '0';
+      document.documentElement.style.backgroundColor = 'white';
     }
   }, []);
 
@@ -67,7 +69,7 @@ export default function RootLayout() {
               <Stack
                 screenOptions={{
                   headerShown: false,
-                  contentStyle: { backgroundColor: 'transparent' },
+                  contentStyle: { backgroundColor: 'white' },
                   animation: Platform.select({
                     ios: 'default',
                     android: 'none',

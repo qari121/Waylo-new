@@ -316,7 +316,7 @@ export const ReportScreen = () => {
 														<View key={index} style={styles.moodReportItem}>
 															<View style={styles.moodLabel}>
 																<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
-																{React.createElement(emojiIcons[mood])}
+																{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
 															</View>
 															<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
 														</View>
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		paddingVertical: 20,
+		paddingVertical: 10,
 	},
 	backButton: {
 		color: '#0E2C76',
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
 	},
 	moodReportContent: {
 		flexDirection: 'column',
-		gap: 12,
+		gap: 18,
 	},
 	moodReportHeader: {
 		flexDirection: 'row',
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
 		color: '#515151',
 	},
 	moodReportScroll: {
-		height: 80,
+		maxHeight: 60,
 		flexDirection: 'column',
 		gap: 12,
 	},
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
 	},
 	moodReportDate: {
 		textAlign: 'center',
-		fontSize: 14,
+		fontSize: 12,
 		fontWeight: '700',
 	},
 	moodReportList: {
@@ -508,7 +508,8 @@ const styles = StyleSheet.create({
 		gap: 2,
 	},
 	moodText: {
-		fontSize: 14,
+		fontSize: 12,
+		marginRight: 30,
 		textTransform: 'capitalize',
 	},
 	moodCount: {
@@ -516,7 +517,9 @@ const styles = StyleSheet.create({
 	},
 	moodReportImage: {
 		width: '100%',
-		height: 'auto',
+		height: '50%',
+		marginLeft: 5,
+		marginTop: -150,
 	},
 	container: {
 		flex: 1,

@@ -1,7 +1,7 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
 import { Auth, getAuth } from 'firebase/auth';
@@ -29,33 +29,7 @@ import VideoVerticalIcon from '../assets/icons/video-vertical.svg';
 import VideoIcon from '../assets/icons/video.svg';
 import { Button } from '../components/ui/button';
 import { Chase } from 'react-native-animated-spinkit';
-
-interface ActivityCardProps {
-	icon: React.ElementType;
-	title: string;
-	time: string;
-}
-
-const ActivityCard = ({ icon: Icon, title, time }: ActivityCardProps) => {
-	return (
-		<View style={styles.activityCard}>
-			<View style={styles.activityCardContent}>
-				<View style={styles.activityIconContainer}>
-					<Icon style={styles.activityIcon} />
-				</View>
-				<Text style={[styles.activityTitle, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-					{title}
-				</Text>
-			</View>
-			<View style={styles.activityTimeContainer}>
-				<ClockIcon style={styles.clockIcon} />
-				<Text style={[styles.activityTime, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-					{time}
-				</Text>
-			</View>
-		</View>
-	);
-};
+import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 
 export const HomeScreen = () => {
 	const router = useRouter()
@@ -79,6 +53,7 @@ export const HomeScreen = () => {
 	]
 
 	const [sentiments, setSentiments] = useState<{ day: string; mood: string }[]>(defaultSentiments)
+	const [deviceModalVisible, setDeviceModalVisible] = useState(false);
 
 	const activities = [
 		{
@@ -106,6 +81,9 @@ export const HomeScreen = () => {
 		anxious: CryingEmoji,
 		sad: SadEmoji
 	} as { [mood: string]: React.ElementType }
+
+	const isOnline = true; // or useAppSelector(state => state.network.isOnline)
+	const hasPaidModule = true; // or useAppSelector(state => state.user.hasPaidModule)
 
 	useEffect(() => {
 		const auth = getAuth()
@@ -159,12 +137,43 @@ export const HomeScreen = () => {
 				showsVerticalScrollIndicator
 				style={styles.container}
 				showsHorizontalScrollIndicator={false}>
-				<Text style={[styles.greeting, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-					Hello {auth.username}
-				</Text>
-				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-					Welcome back, check the latest activities
-				</Text>
+				<Text style={[styles.greeting, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Hello {auth.username}</Text>
+				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Welcome back, check the latest activities</Text>
+
+				{/* Connected Device Box */}
+				<TouchableOpacity
+					activeOpacity={0.8}
+					onPress={() => setDeviceModalVisible(true)}
+					style={styles.connectedDeviceBox}
+				>
+					<View style={styles.connectedDeviceCircle}>
+						<ConnectedDeviceIcon width={26} height={26} />
+					</View>
+					<Image source={require('../assets/images/avatar.png')} style={styles.connectedDeviceImage} resizeMode="contain" />
+					<Text style={styles.connectedDeviceTitle}>Connected{"\n"}Device</Text>
+				</TouchableOpacity>
+
+				{/* Device Info Modal */}
+				<Modal
+					visible={deviceModalVisible}
+					transparent
+					animationType="fade"
+					onRequestClose={() => setDeviceModalVisible(false)}
+				>
+					<View style={styles.modalOverlay}>
+						<View style={styles.deviceModalContent}>
+							<Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>Connected Device Info</Text>
+							<Text>Device Name: TeddyBot</Text>
+							<Text>Status: Connected</Text>
+							<Text>Battery: 85%</Text>
+							<TouchableOpacity onPress={() => setDeviceModalVisible(false)} style={styles.closeModalButton}>
+								<Text style={{ color: '#fff', fontWeight: 'bold' }}>Close</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</Modal>
+
+				{/* Voice Interactions Card */}
 				<View style={styles.cardsContainer}>
 					<Pressable
 						onPress={() => router.push('/toy-logs')}
@@ -186,9 +195,7 @@ export const HomeScreen = () => {
 							resizeMode="contain"
 						/>
 						<View style={styles.cardFooter}>
-							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-								Voice Interactions
-							</Text>
+							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Voice Interactions</Text>
 							<View style={styles.avatarGroup}>
 								<Image
 									source={require('../assets/images/home_img_1.png')}
@@ -201,111 +208,26 @@ export const HomeScreen = () => {
 							</View>
 						</View>
 					</Pressable>
-					<View style={styles.rightCardsContainer}>
-						<Pressable
-							onPress={() => router.push('/video-interaction')}
-							style={styles.videoCard}>
-							<View style={styles.iconContainer}>
-								<VideoIcon style={styles.icon} />
-							</View>
-							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-								Video Captures
-							</Text>
-						</Pressable>
-						<Link href="/reports?type=daily" style={styles.reportsCard}>
-							<View style={styles.reportsContent}>
-								<View style={styles.iconContainer}>
-									<NoteIcon style={styles.icon} />
+				</View>
+				{isOnline && hasPaidModule && (
+					<View style={styles.moodHistoryContainer}>
+						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
+						<View style={styles.moodHistoryList}>
+							{sentiments.map((sentiment) => (
+								<View
+									key={sentiment.day}
+									style={[
+										styles.moodHistoryItem,
+										sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
+									]}
+								>
+									{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
+									<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}> {sentiment.day} </Text>
 								</View>
-								<Text style={[styles.reportsTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Daily Reports
-								</Text>
-							</View>
-						</Link>
-					</View>
-				</View>
-				<View style={styles.activitiesContainer}>
-					<View style={styles.activitiesHeader}>
-						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-							Recent Activities
-						</Text>
-						<Link href="/activities" style={styles.seeAllLink}>
-							<Text style={[styles.seeAllText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-								See All
-							</Text>
-						</Link>
-					</View>
-					<View style={styles.activitiesList}>
-						{activities.map((activity) => (
-							<ActivityCard
-								key={activity.title}
-								icon={activity.icon}
-								title={activity.title}
-								time={activity.time}
-							/>
-						))}
-					</View>
-				</View>
-				<View style={styles.scheduleContainer}>
-					<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-						Schedule tasks
-					</Text>
-					<View style={styles.scheduleGrid}>
-						<View style={styles.scheduleCard}>
-							<GameIcon style={styles.scheduleIcon} />
-							<View style={styles.scheduleTextContainer}>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Games
-								</Text>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Play Time
-								</Text>
-							</View>
-						</View>
-						<View style={styles.scheduleCard}>
-							<BookIcon style={styles.scheduleIcon} />
-							<View style={styles.scheduleTextContainer}>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Study
-								</Text>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Sessions
-								</Text>
-							</View>
-						</View>
-						<View style={styles.scheduleCard}>
-							<HealthIcon style={styles.scheduleIcon} />
-							<View style={styles.scheduleTextContainer}>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									Behavior
-								</Text>
-								<Text style={[styles.scheduleText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									monitoring
-								</Text>
-							</View>
+							))}
 						</View>
 					</View>
-				</View>
-				<View style={styles.moodHistoryContainer}>
-					<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-						Mood History
-					</Text>
-					<View style={styles.moodHistoryList}>
-						{sentiments.map((sentiment) => (
-							<View
-								key={sentiment.day}
-								style={[
-									styles.moodHistoryItem,
-									sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
-								]}>
-								{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
-								<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									{sentiment.day}
-								</Text>
-							</View>
-						))}
-					</View>
-				</View>
+				)}
 			</ScrollView>
 		</SafeAreaView>
 	)
@@ -320,10 +242,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		flexDirection: 'column',
 		paddingHorizontal: 20,
-		...(Platform.OS === 'web' && {
-			marginHorizontal: 'auto',
-			width: '33.333333%',
-		}),
+		backgroundColor: 'white',
 	},
 	greeting: {
 		paddingBottom: 12,
@@ -416,141 +335,6 @@ const styles = StyleSheet.create({
 		zIndex: 20,
 		marginLeft: -6,
 	},
-	rightCardsContainer: {
-		flex: 1,
-		flexDirection: 'column',
-		gap: 12,
-	},
-	videoCard: {
-		position: 'relative',
-		flex: 1,
-		minHeight: 170,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-		overflow: 'hidden',
-		borderRadius: 24,
-		backgroundColor: '#EFEDE0CC',
-		padding: 16,
-	},
-	reportsCard: {
-		minHeight: 170,
-		overflow: 'hidden',
-		borderRadius: 24,
-		backgroundColor: '#303030E8',
-		padding: 16,
-	},
-	reportsContent: {
-		height: '100%',
-		flex: 1,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-	},
-	reportsTitle: {
-		lineHeight: 24,
-		color: 'white',
-	},
-	activitiesContainer: {
-		marginTop: 16,
-		flexDirection: 'column',
-		gap: 12,
-	},
-	activitiesHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	sectionTitle: {
-		color: '#404040',
-	},
-	seeAllLink: {
-		...(Platform.OS === 'web' && {
-			cursor: 'pointer',
-		}),
-	},
-	seeAllText: {
-		color: '#0E2C76',
-	},
-	activitiesList: {
-		flexDirection: 'column',
-		gap: 8,
-	},
-	scheduleContainer: {
-		marginTop: 16,
-		flexDirection: 'column',
-		gap: 23,
-	},
-	scheduleGrid: {
-		flexDirection: 'row',
-		alignItems: 'stretch',
-		gap: 8,
-	},
-	scheduleCard: {
-		flex: 1,
-		minHeight: 113,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-		borderRadius: 8,
-		backgroundColor: '#F6F6F6',
-		padding: 8,
-	},
-	scheduleIcon: {
-		width: 32,
-		height: 32,
-		flexShrink: 0,
-	},
-	scheduleTextContainer: {
-		flexDirection: 'column',
-	},
-	scheduleText: {
-		fontSize: 12,
-		lineHeight: 24,
-		color: 'black',
-	},
-	activityCard: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-		borderRadius: 12,
-		backgroundColor: '#F4F3EC',
-		paddingVertical: 10,
-		paddingLeft: 8,
-		paddingRight: 14,
-	},
-	activityCardContent: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 16,
-	},
-	activityIconContainer: {
-		width: 32,
-		height: 32,
-		alignItems: 'center',
-		justifyContent: 'center',
-		borderRadius: 16,
-		backgroundColor: '#AE9FFF99',
-	},
-	activityIcon: {
-		width: 20,
-		height: 20,
-		flexShrink: 0,
-	},
-	activityTitle: {
-		color: 'black',
-	},
-	activityTimeContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 5,
-	},
-	clockIcon: {
-		width: 24,
-		height: 24,
-		flexShrink: 0,
-	},
-	activityTime: {
-		fontSize: 12,
-		color: 'black',
-	},
 	moodHistoryContainer: {
 		marginBottom: 112,
 		marginTop: 18,
@@ -579,5 +363,73 @@ const styles = StyleSheet.create({
 	moodHistoryDay: {
 		fontSize: 12,
 		color: 'black',
+	},
+	sectionTitle: {
+		color: '#404040',
+	},
+	connectedDeviceBox: {
+		width: '80%',
+		minHeight: 240,
+		borderRadius: 32,
+		backgroundColor: '#A6A6A6',
+		marginBottom: 14,
+		marginTop: 20,
+		padding: 0,
+		justifyContent: 'flex-end',
+		alignItems: 'flex-start',
+		position: 'relative',
+		overflow: 'hidden',
+	},
+	connectedDeviceCircle: {
+		position: 'absolute',
+		top: 20,
+		left: 20,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: 'white',
+		zIndex: 2,
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	connectedDeviceImage: {
+		position: 'absolute',
+		right: 0,
+		bottom: 30,
+		zIndex: 1,
+		width: 140,
+		height: 140,
+		resizeMode: 'contain',
+	},
+	connectedDeviceTitle: {
+		position: 'absolute',
+		bottom: 50,
+		left: 24,
+		fontSize: 20,
+		fontWeight: '600',
+		color: 'black',
+		zIndex: 2,
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	deviceModalContent: {
+		backgroundColor: 'white',
+		padding: 20,
+		borderRadius: 20,
+		width: '80%',
+		maxHeight: '80%',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	closeModalButton: {
+		backgroundColor: '#AE9FFF',
+		padding: 12,
+		borderRadius: 8,
+		marginTop: 12,
 	},
 })

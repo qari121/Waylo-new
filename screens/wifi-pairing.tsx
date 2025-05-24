@@ -18,7 +18,7 @@ export const WifiPairingScreen = () => {
 			style={styles.scrollView}
 			showsHorizontalScrollIndicator={false}>
 			<View style={styles.header}>
-				<Pressable onPress={() => router.dismiss()}>
+				<Pressable onPress={() => router.back()}>
 					<ChevronLeftIcon />
 				</Pressable>
 			</View>

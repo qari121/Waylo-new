@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native'
+import { SafeAreaView, StatusBar, StyleSheet } from 'react-native'
 
 import AuthMiddleware from '../../components/auth-middleware'
 import { FloatingMenu } from '../../components/floating-menu'
@@ -7,21 +7,19 @@ import { HomeScreen } from '../../screens/home'
 const Page = () => {
 	return (
 		<AuthMiddleware>
-			<View style={styles.container}>
+			<SafeAreaView style={styles.safeArea}>
+				<StatusBar barStyle="dark-content" backgroundColor="#f6f6f6" />
 				<HomeScreen />
 				<FloatingMenu />
-			</View>
+			</SafeAreaView>
 		</AuthMiddleware>
 	)
 }
 export default Page;
 
 const styles = StyleSheet.create({
-	container: {
+	safeArea: {
 		flex: 1,
-		position: 'relative',
-		gap: 20, // gap-5 (approx 20px)
-		backgroundColor: 'rgba(241,245,249,0.3)', // bg-secondary/30, adjust as needed
-		padding: 24, // p-6 (6*4=24)
+		backgroundColor: '#f6f6f6', // or whatever color you want
 	},
 });

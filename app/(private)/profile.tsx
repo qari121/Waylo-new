@@ -17,7 +17,7 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		gap: 20, // gap-5 (approx 20px)
 		backgroundColor: 'rgba(241,245,249,0.3)', // bg-secondary/30, adjust as needed
-		padding: 24, // p-6 (6*4=24)
+		padding: 1, // p-6 (6*4=24)
 	},
 
 });

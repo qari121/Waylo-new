@@ -3,6 +3,8 @@ import { useFonts } from 'expo-font'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState } from 'react'
 import { Animated, Image, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native'
+import ChevronLeftIcon from '../../assets/icons/chevron-left.svg';
+import ChevronDownIcon from '../../assets/icons/chevron_down.svg';
 
 const supportItems = [
   {
@@ -79,7 +81,7 @@ export default function Support() {
       <View style={styles.headerWrapper}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.back()} style={styles.headerBackBtn}>
-            {/* <ChevronLeftIcon /> */}
+            <ChevronLeftIcon width={24} height={24} />
           </Pressable>
           <Text
             style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}
@@ -118,7 +120,7 @@ export default function Support() {
                     }]
                   }}
                 >
-                  {/* <ChevronDownIcon width={24} height={24} /> */}
+                  <ChevronDownIcon width={24} height={24} />
                 </Animated.View>
               </View>
 
@@ -167,12 +169,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   headerRow: {
-    marginTop: 8, // mt-2
+    marginTop: -20, // mt-2
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20, // px-5
+    paddingHorizontal: 10, // px-5
     paddingVertical: 20, // py-5
   },
   headerBackBtn: {
@@ -181,6 +183,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     textAlign: 'center',
     fontSize: 20,
+    marginRight: 20,
     color: '#101828',
   },
   headerSpacer: {

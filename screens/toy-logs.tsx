@@ -141,7 +141,7 @@ export const ToyLogsScreen: React.FC = () => {
 									<ChevronLeftIcon />
 								</Pressable>
 								<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-									Voice Interactions
+									Chat Interactions
 								</Text>
 								<View style={styles.headerSpacer} />
 							</View>
