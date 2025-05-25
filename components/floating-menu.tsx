@@ -24,7 +24,7 @@ const activeIndicatorStyle: ViewStyle = Platform.OS !== 'web'
 
 const MenuItem = memo(({ href, icon: Icon, isActive, isProfile = false }: MenuItemProps) => {
 	return (
-		<Link href={href}>
+		<Link href={href} replace disabled={isActive}>
 			<View style={styles.menuItemContainer}>
 				{isProfile ? (
 					<Image
@@ -51,7 +51,7 @@ export const FloatingMenu = memo(() => {
 	const menuItems = useMemo(() => [
 		{ href: '/', icon: HomeIcon },
 		{ href: '/reports', icon: PresentationChartIcon },
-		{ href: '/notifications', icon: BellIcon },
+		// { href: '/notifications', icon: BellIcon }, // Notification tab commented out
 		{ href: '/profile', isProfile: true }
 	], [])
 

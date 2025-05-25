@@ -2,7 +2,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import { Audio } from 'expo-av'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, StyleSheet, Modal, TouchableOpacity } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
@@ -89,12 +89,17 @@ const AudioMessage: React.FC<AudioMessageProps> = ({ uri }) => {
 	);
 };
 
+const timeSpans = ['Today', 'Last 7 days', 'This Month', 'All Time'];
+
 export const ToyLogsScreen: React.FC = () => {
 	const dispatch = useAppDispatch()
 	const logs = useAppSelector((state) => state.logs.toyLogs)
 	const router = useRouter()
 	const scrollViewRef = useRef<ScrollView>(null)
 	const [isLoading, setIsLoading] = useState(true)
+	const [summaryVisible, setSummaryVisible] = useState(false);
+	const [selectedTimeSpan, setSelectedTimeSpan] = useState(timeSpans[0]);
+	const [timeSpanModalVisible, setTimeSpanModalVisible] = useState(false);
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -115,6 +120,15 @@ export const ToyLogsScreen: React.FC = () => {
 		}
 		fetchToyLogs()
 	}, [dispatch])
+
+	// Simple summary: concatenate all text logs in the selected time span
+	const getSummary = () => {
+		// For demo, just join all text logs (not audio) for now
+		return logs
+			.filter(log => !log.audioUri)
+			.map(log => log.message)
+			.join(' ');
+	};
 
 	if (!fontsLoaded) {
 		return null
@@ -140,11 +154,51 @@ export const ToyLogsScreen: React.FC = () => {
 								<Pressable onPress={() => router.dismiss()} style={styles.backButton}>
 									<ChevronLeftIcon />
 								</Pressable>
-								<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-									Chat Interactions
-								</Text>
-								<View style={styles.headerSpacer} />
+								<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+									<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Chat Interactions</Text>
+								</View>
+								<View style={{ width: 40 }} />
 							</View>
+							<View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 20 }}>
+								<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
+									<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
+								</TouchableOpacity>
+								<TouchableOpacity onPress={() => setSummaryVisible(true)} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
+									<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
+								</TouchableOpacity>
+							</View>
+
+							{/* Summary Modal */}
+							<Modal visible={summaryVisible} transparent animationType="fade">
+								<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+									<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '80%' }}>
+										<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Summary</Text>
+										<ScrollView style={{ maxHeight: 300 }}>
+											<Text style={{ color: '#444' }}>{getSummary()}</Text>
+										</ScrollView>
+										<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
+											<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+										</TouchableOpacity>
+									</View>
+								</View>
+							</Modal>
+
+							{/* Time Span Modal */}
+							<Modal visible={timeSpanModalVisible} transparent animationType="fade">
+								<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+									<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '70%' }}>
+										<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Select Time Span</Text>
+										{timeSpans.map(span => (
+											<TouchableOpacity key={span} onPress={() => { setSelectedTimeSpan(span); setTimeSpanModalVisible(false); }} style={{ paddingVertical: 10 }}>
+												<Text style={{ color: span === selectedTimeSpan ? '#7D65FC' : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
+											</TouchableOpacity>
+										))}
+										<TouchableOpacity onPress={() => setTimeSpanModalVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
+											<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+										</TouchableOpacity>
+									</View>
+								</View>
+							</Modal>
 
 							<View style={styles.content}>
 								<Text style={[styles.dateText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
@@ -233,6 +287,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		width: '100%',
 		alignItems: 'center',
+		
 		justifyContent: 'space-between',
 		backgroundColor: 'white',
 		paddingHorizontal: 20,

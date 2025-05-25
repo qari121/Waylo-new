@@ -1,14 +1,12 @@
 /* eslint-disable react-native/no-color-literals */
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions } from 'react-native'
+import { Image, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions, Modal, TouchableOpacity } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { LineChart } from 'react-native-gifted-charts'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
-import { Ionicons } from '@expo/vector-icons'
-
 import { format } from 'date-fns'
 
 import { Button } from '../components/ui/button'
@@ -24,7 +22,6 @@ import { Eye as EyeIcon } from 'lucide-react-native'
 import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '../slices/logs'
 import { fetchSentimentsByDate } from '../slices/sentiments'
 import { useAppDispatch, useAppSelector } from '../hooks'
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import ClosedBookIcon from '../assets/icons/closed-book.svg'
 import DownloadIcon from '../assets/icons/download.svg'
 import CryingEmoji from '../assets/icons/emoji-loudly-crying-face.svg'
@@ -64,6 +61,7 @@ export const ReportScreen = () => {
 	const [reportDuration, setReportDuration] = useState<Option>(
 		reportType?.type === 'daily' ? { label: 'Day', value: 'day' } : { label: 'Week', value: 'week' }
 	)
+	const [showMoodModal, setShowMoodModal] = useState(false)
 
 	const generateWeeklyChartData = () => {
 		if (!weeklyLogRanges) return []
@@ -174,11 +172,7 @@ export const ReportScreen = () => {
 						style={[styles.container, styles.scrollView]}
 						showsHorizontalScrollIndicator={false}>
 						<View style={styles.header}>
-							<Pressable onPress={() => router.dismiss()}>
-								<ChevronLeftIcon />
-							</Pressable>
-							<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Reports</Text>
-							<Text />
+							<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold', textAlign: 'center', flex: 1 }]}>Reports</Text>
 						</View>
 						<View style={styles.interactionReportContainer}>
 							<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
@@ -261,75 +255,69 @@ export const ReportScreen = () => {
 							<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
 						</View>
 						<View style={styles.statsContainer}>
-							<View style={styles.statsLeftColumn}>
-								<View style={styles.sleepCard}>
-									<Image
-										resizeMode="stretch"
-										height={104}
-										width={WINDOW_DIMENSIONS.width}
-										source={require('../assets/images/sleep-image.png')}
-										style={styles.sleepImage}
-									/>
-									<View style={styles.sleepHeader}>
-										<Text style={[styles.sleepTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Sleep</Text>
-										<EyeIcon size={16} color="#C5C5C5" />
-									</View>
-									<View style={styles.sleepContent}>
-										<Text style={[styles.sleepLabel, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Avg. time</Text>
-										<Text style={[styles.sleepValue, { fontFamily: 'PlusJakartaSans_500Medium' }]}>8hrs 20mins</Text>
-									</View>
+							<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
+								<View style={styles.moodReportContentRow}>
+									<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
+									<TouchableOpacity style={styles.moodPlusButton} onPress={() => setShowMoodModal(true)}>
+										<Text style={styles.moodPlusText}>+</Text>
+									</TouchableOpacity>
 								</View>
-								<View style={[styles.studyCard, { elevation: 5 }]}>
-									<View style={styles.studyContent}>
-										<View style={styles.studyHeader}>
-											<Text style={[styles.studyTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Study</Text>
-											<OpenBookIcon />
-										</View>
-										<ClosedBookIcon />
-										<View style={styles.studyStats}>
-											<Text style={[styles.studyStatsText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>8 lessons</Text>
-										</View>
-									</View>
-									<Image source={require('../assets/images/study-image.png')} />
-								</View>
-							</View>
-							<View style={[styles.moodReportCard, { elevation: 5 }]}>
-								<View style={styles.moodReportContent}>
-									<View style={styles.moodReportHeader}>
-										<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood Report</Text>
-										<Ionicons name="eye-outline" size={16} color="#C5C5C5" />
-									</View>
-									<ScrollView
-										horizontal={false}
-										bounces={false}
-										nestedScrollEnabled
-										showsVerticalScrollIndicator
-										showsHorizontalScrollIndicator={false}
-										style={styles.moodReportScroll}>
-										{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
-											<View key={index} style={styles.moodReportEntry}>
-												<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-													{format(new Date(date), 'dd MMM yyyy')}
-												</Text>
-												<View style={styles.moodReportList}>
-													{Object.entries(records ?? {}).map(([mood, number], index) => (
-														<View key={index} style={styles.moodReportItem}>
-															<View style={styles.moodLabel}>
-																<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
-																{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
-															</View>
-															<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
-														</View>
-													))}
+								{(() => {
+									const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]
+									const latestRecords = latestDate ? (sentimentsByDate ?? {})[latestDate] : {}
+									return (
+										<View style={styles.moodSummaryRow}>
+											{Object.entries(latestRecords ?? {}).map(([mood], idx) => (
+												<View key={idx} style={styles.moodSummaryItem}>
+													{emojiIcons[mood] ? React.createElement(emojiIcons[mood], { width: 32, height: 32 }) : null}
 												</View>
-											</View>
-										))}
-									</ScrollView>
-								</View>
-								<Image source={require('../assets/images/mood-report-image.png')} style={styles.moodReportImage} />
+											))}
+										</View>
+									)
+								})()}
+								<Image source={require('../assets/images/mood-report-image.png')} style={styles.moodReportImageNew} />
 							</View>
 						</View>
 					</ScrollView>
+					<Modal
+						visible={showMoodModal}
+						animationType="slide"
+						transparent
+						onRequestClose={() => setShowMoodModal(false)}>
+						<View style={styles.modalOverlay}>
+							<View style={styles.modalContent}>
+								<TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowMoodModal(false)}>
+									<Text style={styles.modalCloseText}>×</Text>
+								</TouchableOpacity>
+								<ScrollView
+									horizontal={false}
+									bounces={false}
+									nestedScrollEnabled
+									showsVerticalScrollIndicator
+									showsHorizontalScrollIndicator={false}
+									style={styles.moodReportScroll}>
+									{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
+										<View key={index} style={styles.moodReportEntry}>
+											<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
+												{format(new Date(date), 'dd MMM yyyy')}
+											</Text>
+											<View style={styles.moodReportList}>
+												{Object.entries(records ?? {}).map(([mood, number], index) => (
+													<View key={index} style={styles.moodReportItem}>
+														<View style={styles.moodLabel}>
+															<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
+															{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
+														</View>
+														<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
+													</View>
+												))}
+											</View>
+										</View>
+									))}
+								</ScrollView>
+							</View>
+						</View>
+					</Modal>
 				</SafeAreaView>
 			)}
 		</React.Fragment>
@@ -344,16 +332,15 @@ const styles = StyleSheet.create({
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'space-between',
+		justifyContent: 'center', // Center the title horizontally
 		paddingVertical: 10,
-	},
-	backButton: {
-		color: '#0E2C76',
 	},
 	headerTitle: {
 		fontSize: 18,
 		letterSpacing: 0.2,
 		color: 'black',
+		flex: 1,
+		textAlign: 'center'
 	},
 	content: {
 		flex: 1,
@@ -362,93 +349,9 @@ const styles = StyleSheet.create({
 		marginBottom: 112,
 		marginTop: 24,
 		flex: 1,
-		flexDirection: 'row',
+		flexDirection: 'column',
 		alignItems: 'stretch',
 		gap: 16,
-	},
-	statsLeftColumn: {
-		flex: 1,
-		flexDirection: 'column',
-		gap: 16,
-	},
-	sleepCard: {
-		position: 'relative',
-		minHeight: 104,
-		width: '100%',
-		flex: 1,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-		overflow: 'hidden',
-		borderRadius: 8,
-		padding: 12,
-	},
-	sleepImage: {
-		position: 'absolute',
-		inset: 0,
-		...(Platform.OS === 'web' && {
-			height: '100%',
-			width: '100%',
-		}),
-	},
-	sleepHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	sleepTitle: {
-		fontWeight: '500',
-		color: 'white',
-	},
-	sleepContent: {
-		flexDirection: 'column',
-	},
-	sleepLabel: {
-		fontSize: 12,
-		fontWeight: '300',
-		color: 'white',
-	},
-	sleepValue: {
-		fontWeight: '500',
-		color: 'white',
-	},
-	studyCard: {
-		minHeight: 88,
-		flex: 1,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-		borderRadius: 8,
-		borderWidth: 0.5,
-		borderColor: '#D9D9D9',
-		backgroundColor: 'white',
-		padding: 12,
-	},
-	studyContent: {
-		flexGrow: 1,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	studyHeader: {
-		flexGrow: 1,
-		flexDirection: 'column',
-		justifyContent: 'space-between',
-		gap: 12,
-	},
-	studyTitle: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
-		fontWeight: '500',
-		color: '#515151',
-	},
-	studyStats: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-	},
-	studyStatsText: {
-		fontSize: 12,
-		color: '#515151',
 	},
 	moodReportCard: {
 		flex: 1,
@@ -462,22 +365,23 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		paddingTop: 12,
 	},
-	moodReportContent: {
-		flexDirection: 'column',
-		gap: 18,
+	moodReportCardFull: {
+		width: '100%',
+		alignSelf: 'center',
+		marginTop: 24,
 	},
-	moodReportHeader: {
+	moodReportContentRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		width: '100%',
+		marginBottom: 8,
 	},
 	moodReportTitle: {
 		fontWeight: '500',
 		color: '#515151',
 	},
 	moodReportScroll: {
-		maxHeight: 60,
+		maxHeight: 400,
 		flexDirection: 'column',
 		gap: 12,
 	},
@@ -520,6 +424,12 @@ const styles = StyleSheet.create({
 		height: '50%',
 		marginLeft: 5,
 		marginTop: -150,
+	},
+	moodReportImageNew: {
+		width: '100%',
+		height: 180,
+		marginTop: 8,
+		resizeMode: 'contain',
 	},
 	container: {
 		flex: 1,
@@ -622,4 +532,59 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#666666',
 	},
+	moodSummaryRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: -2,
+		marginBottom: 8,
+	},
+	moodSummaryItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 0,
+	},
+	moodPlusButton: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#F2F2F2',
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginLeft: 8,
+	},
+	moodPlusText: {
+		fontSize: 24,
+		color: '#515151',
+		fontWeight: '700',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0,0,0,0.4)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		width: '90%',
+		minHeight: '55%',
+		backgroundColor: 'white',
+		borderRadius: 16,
+		padding: 20,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		elevation: 5,
+	},
+	modalCloseButton: {
+		position: 'absolute',
+		top: 10,
+		right: 10,
+		zIndex: 10,
+	},
+	modalCloseText: {
+		fontSize: 28,
+		color: '#515151',
+	},
 })
+
+export default ReportScreen

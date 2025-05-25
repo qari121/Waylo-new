@@ -24,6 +24,7 @@ export default function PrivateLayout() {
 					}}>
 					<Stack.Screen name="index" />
 					<Stack.Screen name="wylo-register" />
+					<Stack.Screen name="ConnectedDevice" />
 					<Stack.Screen name="toy-logs" />
 					<Stack.Screen name="subscription" />
 					<Stack.Screen name="reports" />

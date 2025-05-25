@@ -4,14 +4,15 @@ import React from 'react'
 import { Image, Platform, Pressable, SafeAreaView, ScrollView, Text, View, StyleSheet } from 'react-native'
 
 import { logout } from '../slices/auth'
-import { useAppDispatch } from '../hooks'
+import { useAppDispatch, useAppSelector } from '../hooks'
 
 import CharacterIcon from '../assets/icons/character.svg'
 import HelpCircleIcon from '../assets/icons/help-circle.svg'
 import LogoutIcon from '../assets/icons/log-out.svg'
-import ProfileIcon from '../assets/icons/profile.svg'
 import SubscriptionsIcon from '../assets/icons/subscriptions.svg'
 import WifiIcon from '../assets/icons/wifi.svg'
+
+// Remove ProfileIcon
 
 interface ProfileItem {
 	name: string
@@ -20,7 +21,6 @@ interface ProfileItem {
 }
 
 const profileItems: ProfileItem[] = [
-	{ name: 'Profile', icon: ProfileIcon, href: '/profile' },
 	{ name: 'Character Management', icon: CharacterIcon, href: '/character-management' },
 	{ name: 'Device Pairing', icon: WifiIcon, href: '/qr-code' },
 	{ name: 'Subscription', icon: SubscriptionsIcon, href: '/subscription' },
@@ -30,11 +30,16 @@ const profileItems: ProfileItem[] = [
 export const ProfileScreen = () => {
 	const router = useRouter()
 	const dispatch = useAppDispatch()
+	const auth = useAppSelector(state => state.auth) // 👈 get user data from Redux
 	const [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
 		PlusJakartaSans_500Medium,
 		PlusJakartaSans_600SemiBold,
 	})
+
+	// Fallbacks if username/email are not present
+	const username = auth?.username || 'User'
+	const email = auth?.email || 'user@email.com'
 
 	if (!fontsLoaded) {
 		return null
@@ -56,10 +61,10 @@ export const ProfileScreen = () => {
 							</View>
 							<View style={styles.userInfo}>
 								<Text style={[styles.userName, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-									James
+									{username}
 								</Text>
 								<Text style={[styles.userEmail, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-									James@untitledui.com
+									{email}
 								</Text>
 							</View>
 						</View>
@@ -212,3 +217,5 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 	},
 })
+
+export default ProfileScreen
