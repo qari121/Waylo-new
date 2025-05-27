@@ -3,12 +3,14 @@ import { format } from 'date-fns'
 import { db } from '../firebase'
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 
-export const fetchSentimentsCount = createAsyncThunk('sentiment/count', async (_, thunkAPI) => {
+// Always check for a valid MAC address before dispatching these thunks from your components/screens.
+
+export const fetchSentimentsCount = createAsyncThunk('sentiment/count', async (macAddress: string, thunkAPI) => {
 	try {
 		const sentimentLogsRef = collection(db, 'sentiment_logs')
 		const q = query(
 			sentimentLogsRef,
-			where('toy_mac_address', '==', 'C0:F5:35:ED:FD:25'),
+			where('toy_mac_address', '==', macAddress),
 			orderBy('time', 'asc')
 		)
 
@@ -41,12 +43,11 @@ export const fetchSentimentsCount = createAsyncThunk('sentiment/count', async (_
 
 export const fetchSentimentsByDate = createAsyncThunk(
 	'sentiments/fetchByDate',
-	async (_, thunkAPI) => {
+	async (macAddress: string, thunkAPI) => {
 		try {
-			const toyMacAddress = 'C0:F5:35:ED:FD:25'
 			const sentimentQuery = query(
 				collection(db, 'sentiment_logs'),
-				where('toy_mac_address', '==', toyMacAddress)
+				where('toy_mac_address', '==', macAddress)
 			)
 			const querySnapshot = await getDocs(sentimentQuery)
 

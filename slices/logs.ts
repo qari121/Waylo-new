@@ -3,12 +3,12 @@ import { differenceInCalendarWeeks, min, parseISO } from 'date-fns'
 import { db } from '../firebase'
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 
-export const toyLogs = createAsyncThunk('logs/toy', async (_, thunkAPI) => {
+export const toyLogs = createAsyncThunk('logs/toy', async (macAddress: string, thunkAPI) => {
 	try {
 		const toyLogsRef = collection(db, 'toy_logs')
 		const q = query(
 			toyLogsRef,
-			where('toy_mac_address', '==', 'C0:F5:35:ED:FD:25'),
+			where('toy_mac_address', '==', macAddress),
 			orderBy('time', 'asc')
 		)
 		const querySnapshot = await getDocs(q)
@@ -25,12 +25,11 @@ export const toyLogs = createAsyncThunk('logs/toy', async (_, thunkAPI) => {
 
 export const fetchDailyLogRanges = createAsyncThunk(
 	'logs/fetchDailyRanges',
-	async (_, thunkAPI) => {
+	async (macAddress: string, thunkAPI) => {
 		try {
-			const toyMacAddress = 'C0:F5:35:ED:FD:25'
 			const logsQuery = query(
 				collection(db, 'toy_logs'),
-				where('toy_mac_address', '==', toyMacAddress)
+				where('toy_mac_address', '==', macAddress)
 			)
 			const querySnapshot = await getDocs(logsQuery)
 
@@ -81,12 +80,11 @@ export const fetchDailyLogRanges = createAsyncThunk(
 
 export const fetchWeeklyLogRanges = createAsyncThunk(
 	'logs/fetchWeeklyRanges',
-	async (_, thunkAPI) => {
+	async (macAddress: string, thunkAPI) => {
 		try {
-			const toyMacAddress = 'C0:F5:35:ED:FD:25'
 			const logsQuery = query(
 				collection(db, 'toy_logs'),
-				where('toy_mac_address', '==', toyMacAddress)
+				where('toy_mac_address', '==', macAddress)
 			)
 			const querySnapshot = await getDocs(logsQuery)
 
@@ -139,13 +137,12 @@ export const fetchWeeklyLogRanges = createAsyncThunk(
 
 export const fetchInterestLogs = createAsyncThunk(
 	'logs/fetchInterestLogs',
-	async (interestValue: string, thunkAPI) => {
+	async ({ interestValue, macAddress }: { interestValue: string; macAddress: string }, thunkAPI) => {
 		try {
-			const toyMacAddress = 'C0:F5:35:ED:FD:25'
 			const interestQuery = query(
 				collection(db, 'interest_logs'),
 				where('interest', '==', interestValue),
-				where('toy_mac_address', '==', toyMacAddress)
+				where('toy_mac_address', '==', macAddress)
 			)
 			const querySnapshot = await getDocs(interestQuery)
 

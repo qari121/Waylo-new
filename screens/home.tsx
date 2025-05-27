@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
 import { Auth, getAuth } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
@@ -33,6 +34,8 @@ import { Chase } from 'react-native-animated-spinkit';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import BrickBackground from '../assets/icons/brick_background.svg';
 import Waves from '../assets/icons/waves.svg';
+
+const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input);
 
 export const HomeScreen = () => {
 	const router = useRouter()
@@ -115,25 +118,30 @@ export const HomeScreen = () => {
 	useEffect(() => {
 		const fetchSentimentRecords = async () => {
 			try {
-				const response = await dispatch(fetchSentimentsCount()).unwrap()
+				const macAddress = await AsyncStorage.getItem('macAddress');
+				if (!macAddress || !isValidMac(macAddress)) {
+					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address.' });
+					return;
+				}
+				const response = await dispatch(fetchSentimentsCount(macAddress)).unwrap();
 				const updatedSentiments = defaultSentiments.map((entry) => {
-					const fullDay = entry.day
-					if (!fullDay || !response[fullDay]) return entry
+					const fullDay = entry.day;
+					if (!fullDay || !response[fullDay]) return entry;
 
 					const mostFrequentSentiment = Object.entries(response[fullDay]).reduce((a, b) =>
 						a[1] > b[1] ? a : b
-					)[0]
+					)[0];
 
-					return { ...entry, mood: mostFrequentSentiment }
-				})
+					return { ...entry, mood: mostFrequentSentiment };
+				});
 
-				setSentiments(updatedSentiments)
+				setSentiments(updatedSentiments);
 			} catch (err: any) {
-				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' })
+				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
 			}
-		}
-		fetchSentimentRecords()
-	}, [])
+		};
+		fetchSentimentRecords();
+	}, []);
 
 	if (!fontsLoaded) {
 		return null; // Or a loading component

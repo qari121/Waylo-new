@@ -2,6 +2,9 @@ import React, { useState } from 'react'
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
+import { auth, db } from '../firebase'; // adjust path as needed
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, setDoc } from 'firebase/firestore';
 
 // Helper to check MAC format: XX:XX:XX:XX:XX:XX, only hex and colons
 const isValidMac = (input: string) => {
@@ -25,14 +28,28 @@ export const QRCodeScreen = () => {
     setError('');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValidMac(macAddress)) {
       setError('Invalid MAC address. Format: XX:XX:XX:XX:XX:XX');
       return;
     }
-    Alert.alert('Saved', 'MAC address saved!');
-    setMacAddress('');
-    setError('');
+    try {
+      // Save MAC address to the authenticated user's profile
+      const user = auth.currentUser;
+      if (!user) {
+        setError('You must be logged in to save your MAC address.');
+        return;
+      }
+      await setDoc(doc(db, 'users', user.uid), { mac_address: macAddress }, { merge: true });
+      await AsyncStorage.setItem('macAddress', macAddress);
+      Alert.alert('Saved', 'MAC address saved!');
+      setMacAddress('');
+      setError('');
+    } catch (e) {
+      setError('Failed to save MAC address. Please check your internet connection and app permissions.');
+      // Optionally log error for debugging
+      console.error(e);
+    }
   };
 
   return (

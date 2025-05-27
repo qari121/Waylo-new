@@ -4,6 +4,8 @@ import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { auth, db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -66,12 +68,55 @@ const ConnectedDeviceScreen = () => {
   // Modal state
   const [pickerType, setPickerType] = useState<'start' | 'end' | null>(null);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSavedWindow({ start: startTime, end: endTime });
+    setShowScheduling(true);
+    const user = auth.currentUser;
+    if (!user) return;
+    // Split time into hour and minute
+    const [startHour, startMinute] = startTime.split(':');
+    const [endHour, endMinute] = endTime.split(':');
+    await setDoc(
+      doc(db, 'users', user.uid),
+      {
+        parentalControls: {
+          enabled: true,
+          DND: false,
+          playRestriction: {
+            startHour,
+            startMinute,
+            endHour,
+            endMinute
+          }
+        }
+      },
+      { merge: true }
+    );
     Alert.alert('Saved', `Restriction will be active from ${startTime} to ${endTime}`);
   };
 
-
+  const handleDoNotDisturb = async () => {
+    setShowScheduling(false);
+    const user = auth.currentUser;
+    if (!user) return;
+    await setDoc(
+      doc(db, 'users', user.uid),
+      {
+        parentalControls: {
+          enabled: false,
+          DND: true,
+          playRestriction: {
+            startHour: '',
+            startMinute: '',
+            endHour: '',
+            endMinute: ''
+          }
+        }
+      },
+      { merge: true }
+    );
+    Alert.alert('Do Not Disturb enabled');
+  };
 
   return (
 <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -110,7 +155,7 @@ const ConnectedDeviceScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.parentalButton}
-              onPress={() => setShowScheduling(false)}
+              onPress={handleDoNotDisturb}
             >
               <Text style={styles.parentalButtonText}>Do Not Disturb</Text>
             </TouchableOpacity>

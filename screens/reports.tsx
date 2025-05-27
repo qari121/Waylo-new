@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 import { format } from 'date-fns'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { Button } from '../components/ui/button'
 import {
@@ -41,6 +42,8 @@ const emojiIcons = {
 	anxious: CryingEmoji,
 	sad: SadEmoji
 } as { [mood: string]: React.ElementType }
+
+const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input)
 
 export const ReportScreen = () => {
 	const router = useRouter()
@@ -175,19 +178,27 @@ export const ReportScreen = () => {
 	}
 
 	useEffect(() => {
-		const fetchSentiments = async () => {
+		const fetchData = async () => {
 			try {
-				await dispatch(fetchSentimentsByDate()).unwrap()
+				const macAddress = await AsyncStorage.getItem('macAddress')
+				if (!macAddress || !isValidMac(macAddress)) {
+					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing reports.' })
+					setIsLoading(false)
+					return
+				}
+				if (reportDuration?.value === 'day') {
+					await dispatch(fetchDailyLogRanges(macAddress)).unwrap()
+				} else {
+					await dispatch(fetchWeeklyLogRanges(macAddress)).unwrap()
+				}
+				await dispatch(fetchSentimentsByDate(macAddress)).unwrap()
+				setIsLoading(false)
 			} catch (err: any) {
-				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' })
+				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch report data' })
+				setIsLoading(false)
 			}
 		}
-		if (reportDuration?.value === 'day') {
-			fetchDailyLogs()
-		} else {
-			fetchWeeklyLogs()
-		}
-		fetchSentiments()
+		fetchData()
 	}, [reportDuration])
 
 	useEffect(() => {

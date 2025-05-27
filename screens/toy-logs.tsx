@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, Styl
 import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { toyLogs } from '../slices/logs'
 import { format } from 'date-fns'
@@ -91,6 +92,8 @@ const AudioMessage: React.FC<AudioMessageProps> = ({ uri }) => {
 
 const timeSpans = ['Today', 'Last 7 days', 'This Month', 'All Time'];
 
+const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input);
+
 export const ToyLogsScreen: React.FC = () => {
 	const dispatch = useAppDispatch()
 	const logs = useAppSelector((state) => state.logs.toyLogs)
@@ -115,15 +118,21 @@ export const ToyLogsScreen: React.FC = () => {
 	useEffect(() => {
 		const fetchToyLogs = async () => {
 			try {
-				await dispatch(toyLogs()).unwrap()
-				setIsLoading(false)
+				const macAddress = await AsyncStorage.getItem('macAddress');
+				if (!macAddress || !isValidMac(macAddress)) {
+					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing logs.' });
+					setIsLoading(false);
+					return;
+				}
+				await dispatch(toyLogs(macAddress)).unwrap();
+				setIsLoading(false);
 			} catch (err: any) {
-				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch toy logs' })
-				setIsLoading(false)
+				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch toy logs' });
+				setIsLoading(false);
 			}
-		}
-		fetchToyLogs()
-	}, [dispatch])
+		};
+		fetchToyLogs();
+	}, [dispatch]);
 
 	// Helper: filter logs for the selected time span
 	const getLogsForSelectedTimeSpan = () => {
