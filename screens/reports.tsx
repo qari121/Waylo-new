@@ -50,6 +50,7 @@ export const ReportScreen = () => {
 	const sentimentsByDate = useAppSelector((state) => state.sentiments.sentimentsByDate)
 	const weeklyLogRanges = useAppSelector((state) => state.logs.weeklyLogs)
 	const dailyLogRanges = useAppSelector((state) => state.logs.dailyLogs)
+	const toyLogs = useAppSelector((state) => state.logs.toyLogs)
 	const [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
 		PlusJakartaSans_500Medium,
@@ -62,6 +63,8 @@ export const ReportScreen = () => {
 		reportType?.type === 'daily' ? { label: 'Day', value: 'day' } : { label: 'Week', value: 'week' }
 	)
 	const [showMoodModal, setShowMoodModal] = useState(false)
+	const [summary, setSummary] = useState<string | null>(null)
+	const [isSummarizing, setIsSummarizing] = useState(false)
 
 	const generateWeeklyChartData = () => {
 		if (!weeklyLogRanges) return []
@@ -136,6 +139,41 @@ export const ReportScreen = () => {
 		}
 	}, [])
 
+	const getLogsForSelectedTimeframe = () => {
+		if (!toyLogs || toyLogs.length === 0) return []
+		if (reportDuration?.value === 'day') {
+			const latestDay = dailyLogRanges?.[0]?.date
+			return toyLogs.filter(log => {
+				const logDate = new Date(log.time).toISOString().split('T')[0]
+				return logDate === latestDay
+			})
+		} else {
+			const latestWeek = Object.keys(weeklyLogRanges ?? {}).sort().reverse()[0]
+			const weekDates = (weeklyLogRanges?.[latestWeek] ?? []).map(l => l.date)
+			return toyLogs.filter(log => {
+				const logDate = new Date(log.time).toISOString().split('T')[0]
+				return weekDates.includes(logDate)
+			})
+		}
+	}
+
+	const fetchSummary = async (text: string) => {
+		setIsSummarizing(true)
+		try {
+			const response = await fetch('https://summarize-k3jpln37bq-uc.a.run.app', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text }),
+			})
+			const data = await response.json()
+			setSummary(data.summary)
+		} catch (err: any) {
+			Toast.show({ type: 'error', text1: err.message || 'Failed to summarize' })
+		} finally {
+			setIsSummarizing(false)
+		}
+	}
+
 	useEffect(() => {
 		const fetchSentiments = async () => {
 			try {
@@ -151,6 +189,16 @@ export const ReportScreen = () => {
 		}
 		fetchSentiments()
 	}, [reportDuration])
+
+	useEffect(() => {
+		const logs = getLogsForSelectedTimeframe()
+		const textToSummarize = logs.map(log => log.message).join(' ')
+		if (textToSummarize) {
+			fetchSummary(textToSummarize)
+		} else {
+			setSummary(null)
+		}
+	}, [reportDuration, toyLogs, dailyLogRanges, weeklyLogRanges])
 
 	if (!fontsLoaded) {
 		return null
@@ -277,6 +325,13 @@ export const ReportScreen = () => {
 								})()}
 								<Image source={require('../assets/images/mood-report-image.png')} style={styles.moodReportImageNew} />
 							</View>
+						</View>
+						<View style={{ marginVertical: 16 }}>
+							{isSummarizing ? (
+								<Text>Summarizing...</Text>
+							) : summary ? (
+								<Text style={{ fontStyle: 'italic', color: '#333' }}>{summary}</Text>
+							) : null}
 						</View>
 					</ScrollView>
 					<Modal

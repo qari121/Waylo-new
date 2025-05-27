@@ -1,7 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View, Platform, StyleSheet } from 'react-native'
+import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View, Platform, StyleSheet, ActivityIndicator } from 'react-native'
+import { useStripe } from '@stripe/stripe-react-native'
 
 import { Button } from '../components/ui/button'
 
@@ -21,9 +22,10 @@ import { useFonts } from 'expo-font'
 
 export const SubscriptionScreen = () => {
 	const router = useRouter()
-
+	const { initPaymentSheet, presentPaymentSheet } = useStripe()
 	const [selectedSubscription, setSelectedSubscription] = useState(0)
 	const [selectedCard, setSelectedCard] = useState('')
+	const [loading, setLoading] = useState(false)
 
 	// Load Plus Jakarta Sans fonts
 	let [fontsLoaded] = useFonts({
@@ -33,6 +35,56 @@ export const SubscriptionScreen = () => {
 		PlusJakartaSans_700Bold
 	})
 	if (!fontsLoaded) return null;
+
+	// Replace with your backend endpoint
+	const fetchPaymentSheetParams = async () => {
+		const response = await fetch(
+			'https://us-central1-waylo-251e0.cloudfunctions.net/createPaymentIntent',
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					// Optionally pass user/plan info here
+				}),
+			}
+		);
+		const { paymentIntent, ephemeralKey, customer } = await response.json();
+		return {
+			paymentIntent,
+			ephemeralKey,
+			customer,
+		};
+	};
+
+	const openPaymentSheet = async () => {
+		setLoading(true);
+		try {
+			const { paymentIntent, ephemeralKey, customer } = await fetchPaymentSheetParams();
+
+			const { error: initError } = await initPaymentSheet({
+				customerId: customer,
+				customerEphemeralKeySecret: ephemeralKey,
+				paymentIntentClientSecret: paymentIntent,
+				merchantDisplayName: 'Waylo',
+			});
+
+			if (initError) {
+				alert(`Error: ${initError.message}`);
+				setLoading(false);
+				return;
+			}
+
+			const { error: presentError } = await presentPaymentSheet();
+			if (presentError) {
+				alert(`Error: ${presentError.message}`);
+			} else {
+				alert('Success! Your payment is confirmed.');
+			}
+		} catch (err) {
+			alert('Failed to start payment flow.');
+		}
+		setLoading(false);
+	};
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
@@ -231,10 +283,13 @@ export const SubscriptionScreen = () => {
 						</View>
 					</Button>
 					<Button
-						style={[styles.checkoutButton, { boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }]}>
-						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Checkout</Text>
+						style={[styles.checkoutButton, { boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }]}
+						onPress={openPaymentSheet}
+						disabled={loading}>
+						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Subscribe</Text>
 					</Button>
 				</View>
+				{loading && <ActivityIndicator style={{ marginTop: 20 }} />}
 			</ScrollView>
 		</SafeAreaView>
 	)

@@ -101,6 +101,10 @@ export const ToyLogsScreen: React.FC = () => {
 	const [selectedTimeSpan, setSelectedTimeSpan] = useState(timeSpans[0]);
 	const [timeSpanModalVisible, setTimeSpanModalVisible] = useState(false);
 
+	// NEW: State for OpenAI summary
+	const [summary, setSummary] = useState<string | null>(null)
+	const [isSummarizing, setIsSummarizing] = useState(false)
+
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
 		PlusJakartaSans_500Medium,
@@ -121,14 +125,68 @@ export const ToyLogsScreen: React.FC = () => {
 		fetchToyLogs()
 	}, [dispatch])
 
-	// Simple summary: concatenate all text logs in the selected time span
-	const getSummary = () => {
-		// For demo, just join all text logs (not audio) for now
-		return logs
+	// Helper: filter logs for the selected time span
+	const getLogsForSelectedTimeSpan = () => {
+		const now = new Date();
+		if (selectedTimeSpan === 'Today') {
+			const today = now.toISOString().split('T')[0];
+			return logs.filter(log => {
+				const logDate = new Date(log.time).toISOString().split('T')[0];
+				return logDate === today;
+			});
+		}
+		if (selectedTimeSpan === 'Last 7 days') {
+			const weekAgo = new Date(now);
+			weekAgo.setDate(now.getDate() - 6);
+			return logs.filter(log => {
+				const logDate = new Date(log.time);
+				return logDate >= weekAgo && logDate <= now;
+			});
+		}
+		if (selectedTimeSpan === 'This Month') {
+			const month = now.getMonth();
+			const year = now.getFullYear();
+			return logs.filter(log => {
+				const logDate = new Date(log.time);
+				return logDate.getMonth() === month && logDate.getFullYear() === year;
+			});
+		}
+		return logs;
+	}
+
+	// NEW: Fetch summary from OpenAI via Firebase Function
+	const fetchSummary = async () => {
+		const logsToSummarize = getLogsForSelectedTimeSpan()
+		const textToSummarize = logsToSummarize
 			.filter(log => !log.audioUri)
 			.map(log => log.message)
-			.join(' ');
-	};
+			.join(' ')
+		if (!textToSummarize) {
+			setSummary('No text logs to summarize.')
+			return
+		}
+		setIsSummarizing(true)
+		try {
+			const response = await fetch('https://summarize-k3jpln37bq-uc.a.run.app', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text: textToSummarize }),
+			})
+			const data = await response.json()
+			setSummary(data.summary)
+		} catch (err: any) {
+			setSummary('Failed to fetch summary.')
+			Toast.show({ type: 'error', text1: err.message || 'Failed to summarize' })
+		} finally {
+			setIsSummarizing(false)
+		}
+	}
+
+	// When summary modal opens, fetch the summary
+	const handleOpenSummary = () => {
+		setSummaryVisible(true)
+		fetchSummary()
+	}
 
 	if (!fontsLoaded) {
 		return null
@@ -163,7 +221,7 @@ export const ToyLogsScreen: React.FC = () => {
 								<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
 									<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
 								</TouchableOpacity>
-								<TouchableOpacity onPress={() => setSummaryVisible(true)} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
+								<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
 									<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
 								</TouchableOpacity>
 							</View>
@@ -173,8 +231,17 @@ export const ToyLogsScreen: React.FC = () => {
 								<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
 									<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '80%' }}>
 										<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Summary</Text>
-										<ScrollView style={{ maxHeight: 300 }}>
-											<Text style={{ color: '#444' }}>{getSummary()}</Text>
+										<ScrollView
+											style={{ maxHeight: 400 }}
+											contentContainerStyle={{ paddingBottom: 24 }}
+											showsVerticalScrollIndicator={true}
+											bounces={true}
+										>
+											{isSummarizing ? (
+												<Text style={{ color: '#444' }}>Summarizing...</Text>
+											) : (
+												<Text style={{ color: '#444' }}>{summary}</Text>
+											)}
 										</ScrollView>
 										<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
 											<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
