@@ -103,6 +103,7 @@ export const ToyLogsScreen: React.FC = () => {
 	const [summaryVisible, setSummaryVisible] = useState(false);
 	const [selectedTimeSpan, setSelectedTimeSpan] = useState(timeSpans[0]);
 	const [timeSpanModalVisible, setTimeSpanModalVisible] = useState(false);
+	const auth = useAppSelector(state => state.auth)
 
 	// NEW: State for OpenAI summary
 	const [summary, setSummary] = useState<string | null>(null)
@@ -114,6 +115,28 @@ export const ToyLogsScreen: React.FC = () => {
 		PlusJakartaSans_600SemiBold,
 		PlusJakartaSans_700Bold
 	})
+
+	let allowedTimeSpans: string[] = [];
+	switch (auth.plan) {
+		case "standard":
+			allowedTimeSpans = ['This Month'];
+			break;
+		case "pro":
+			allowedTimeSpans = ['Today', 'Last 7 days', 'This Month', 'All Time'];
+			break;
+		default:
+			allowedTimeSpans = ['Today'];
+	}
+
+	
+	// 	return (
+	// 		<SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+	// 			<Text style={{ fontSize: 16, color: '#7D65FC', textAlign: 'center', padding: 24 }}>
+	// 				Upgrade to Pro to access chat interactions.
+	// 			</Text>
+	// 		if (auth.plan !== "pro") {</SafeAreaView>
+	// 	);
+	// }
 
 	useEffect(() => {
 		const fetchToyLogs = async () => {
@@ -171,7 +194,7 @@ export const ToyLogsScreen: React.FC = () => {
 			.map(log => log.message)
 			.join(' ')
 		if (!textToSummarize) {
-			setSummary('No text logs to summarize.')
+			setSummary('No chat interactions to summarize.')
 			return
 		}
 		setIsSummarizing(true)
@@ -196,6 +219,15 @@ export const ToyLogsScreen: React.FC = () => {
 		setSummaryVisible(true)
 		fetchSummary()
 	}
+
+	const logsToDisplay = auth.plan === 'pro'
+		? getLogsForSelectedTimeSpan()
+		: logs.filter(log => {
+			const now = new Date();
+			const today = now.toISOString().split('T')[0];
+			const logDate = new Date(log.time).toISOString().split('T')[0];
+			return logDate === today;
+		});
 
 	if (!fontsLoaded) {
 		return null
@@ -226,110 +258,126 @@ export const ToyLogsScreen: React.FC = () => {
 								</View>
 								<View style={{ width: 40 }} />
 							</View>
-							<View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 20 }}>
-								<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
-									<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
-								</TouchableOpacity>
-								<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
-									<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
-								</TouchableOpacity>
-							</View>
-
-							{/* Summary Modal */}
-							<Modal visible={summaryVisible} transparent animationType="fade">
-								<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-									<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '80%' }}>
-										<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Summary</Text>
-										<ScrollView
-											style={{ maxHeight: 400 }}
-											contentContainerStyle={{ paddingBottom: 24 }}
-											showsVerticalScrollIndicator={true}
-											bounces={true}
-										>
-											{isSummarizing ? (
-												<Text style={{ color: '#444' }}>Summarizing...</Text>
-											) : (
-												<Text style={{ color: '#444' }}>{summary}</Text>
-											)}
-										</ScrollView>
-										<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
-											<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+							{auth.plan === 'freemium' ? (
+								<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+									<Text style={{ fontSize: 16, color: '#7D65FC', textAlign: 'center' }}>
+										Upgrade your plan to access chat logs and summaries.
+									</Text>
+								</View>
+							) : (
+								<>
+									<View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 20 }}>
+										<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
+											<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
+										</TouchableOpacity>
+										<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
+											<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
 										</TouchableOpacity>
 									</View>
-								</View>
-							</Modal>
 
-							{/* Time Span Modal */}
-							<Modal visible={timeSpanModalVisible} transparent animationType="fade">
-								<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-									<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '70%' }}>
-										<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Select Time Span</Text>
-										{timeSpans.map(span => (
-											<TouchableOpacity key={span} onPress={() => { setSelectedTimeSpan(span); setTimeSpanModalVisible(false); }} style={{ paddingVertical: 10 }}>
-												<Text style={{ color: span === selectedTimeSpan ? '#7D65FC' : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
-											</TouchableOpacity>
-										))}
-										<TouchableOpacity onPress={() => setTimeSpanModalVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
-											<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
-										</TouchableOpacity>
-									</View>
-								</View>
-							</Modal>
-
-							<View style={styles.content}>
-								<Text style={[styles.dateText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									{format(new Date(), 'EEE h:mm a')}
-								</Text>
-
-								<ScrollView
-									ref={scrollViewRef}
-									style={styles.scrollView}
-									showsVerticalScrollIndicator={false}
-									onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
-									<View style={styles.logsContainer}>
-										{logs.map((log) => (
-											<View
-												style={[
-													styles.logRow,
-													log.type === "user_request" && styles.logRowUser
-												]}
-												key={log.id}>
-												{log.type !== "user_request" && (
-													<View style={styles.avatarContainer}>
-														<WyloIcon width={20} height={20} />
-													</View>
-												)}
-
-												<View style={[
-													styles.messageContainer,
-													log.type === "user_request" && styles.messageContainerUser
-												]}>
-													<View style={[
-														styles.messageBubble,
-														log.type === "user_request" ? styles.messageBubbleUser : styles.messageBubbleWylo
-													]}>
-														{log.audioUri ? (
-															<AudioMessage uri={log.audioUri} />
-														) : (
-															<Text
-																style={[
-																	styles.messageText,
-																	{ fontFamily: 'PlusJakartaSans_400Regular' },
-																	log.type === "user_request" ? styles.messageTextUser : styles.messageTextWylo
-																]}>
-																{log.message}
-															</Text>
-														)}
-													</View>
-													<Text style={[styles.timeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-														{format(new Date(log.time), 'h:mm a')}
-													</Text>
-												</View>
+									{/* Summary Modal */}
+									<Modal visible={summaryVisible} transparent animationType="fade">
+										<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+											<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '80%' }}>
+												<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Summary</Text>
+												<ScrollView
+													style={{ maxHeight: 400 }}
+													contentContainerStyle={{ paddingBottom: 24 }}
+													showsVerticalScrollIndicator={true}
+													bounces={true}
+												>
+													{isSummarizing ? (
+														<Text style={{ color: '#444' }}>Summarizing...</Text>
+													) : (
+														<Text style={{ color: '#444' }}>{summary}</Text>
+													)}
+												</ScrollView>
+												<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
+													<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+												</TouchableOpacity>
 											</View>
-										))}
+										</View>
+									</Modal>
+
+									{/* Time Span Modal */}
+									<Modal visible={timeSpanModalVisible} transparent animationType="fade">
+										<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+											<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '70%' }}>
+												<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Select Time Span</Text>
+												{allowedTimeSpans.map(span => (
+													<TouchableOpacity key={span} onPress={() => { setSelectedTimeSpan(span); setTimeSpanModalVisible(false); }} style={{ paddingVertical: 10 }}>
+														<Text style={{ color: span === selectedTimeSpan ? '#7D65FC' : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
+													</TouchableOpacity>
+												))}
+												<TouchableOpacity onPress={() => setTimeSpanModalVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
+													<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+												</TouchableOpacity>
+											</View>
+										</View>
+									</Modal>
+
+									<View style={styles.content}>
+										<Text style={[styles.dateText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+											{format(new Date(), 'EEE h:mm a')}
+										</Text>
+
+										<ScrollView
+											ref={scrollViewRef}
+											style={styles.scrollView}
+											showsVerticalScrollIndicator={false}
+											onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
+											<View style={styles.logsContainer}>
+												{logsToDisplay.length === 0 ? (
+													<Text style={{ color: '#9B9B9B', textAlign: 'center', marginTop: 32 }}>
+														No chat logs available for this period.
+													</Text>
+												) : (
+													logsToDisplay.map((log) => (
+														<View
+															style={[
+																styles.logRow,
+																log.type === "user_request" && styles.logRowUser
+															]}
+															key={log.id}>
+															{log.type !== "user_request" && (
+																<View style={styles.avatarContainer}>
+																	<WyloIcon width={20} height={20} />
+																</View>
+															)}
+
+															<View style={[
+																styles.messageContainer,
+																log.type === "user_request" && styles.messageContainerUser
+															]}>
+																<View style={[
+																	styles.messageBubble,
+																	log.type === "user_request" ? styles.messageBubbleUser : styles.messageBubbleWylo
+																]}>
+																	{log.audioUri ? (
+																		<AudioMessage uri={log.audioUri} />
+																	) : (
+																		<Text
+																			style={[
+																				styles.messageText,
+																				{ fontFamily: 'PlusJakartaSans_400Regular' },
+																				log.type === "user_request" ? styles.messageTextUser : styles.messageTextWylo
+																			]}>
+																			{log.message}
+																		</Text>
+																	)}
+																</View>
+																<Text style={[styles.timeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+																	{format(new Date(log.time), 'h:mm a')}
+																</Text>
+															</View>
+														</View>
+													))
+												)}
+											</View>
+										</ScrollView>
 									</View>
-								</ScrollView>
-							</View>
+								</>
+							)}
 						</>
 					)}
 				</View>

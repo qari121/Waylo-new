@@ -32,7 +32,8 @@ export const register = createAsyncThunk('auth/register', async (data: SignupFor
 			firstName: data.firstName,
 			lastName: data.lastName,
 			username: data.username,
-			createdAt: new Date().toISOString()
+			createdAt: new Date().toISOString(),
+			plan: "freemium"
 		})
 		return thunkAPI.fulfillWithValue({ ...data, id: user.uid })
 	} catch (error: any) {
@@ -46,7 +47,8 @@ const initialState: AuthState = {
 	email: '',
 	firstName: '',
 	lastName: '',
-	createdAt: ''
+	createdAt: '',
+	plan: 'freemium'
 }
 
 const authSlice = createSlice({
@@ -55,6 +57,9 @@ const authSlice = createSlice({
 	reducers: {
 		logout() {
 			return initialState
+		},
+		setUser(_, action: PayloadAction<AuthState>) {
+			return action.payload
 		}
 	},
 	extraReducers: (builder) => {
@@ -69,6 +74,6 @@ const authSlice = createSlice({
 
 const { reducer } = authSlice
 
-export const { logout } = authSlice.actions
+export const { logout, setUser } = authSlice.actions
 
 export default reducer

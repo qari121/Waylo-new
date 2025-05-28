@@ -3,6 +3,9 @@ import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View, Platform, StyleSheet, ActivityIndicator } from 'react-native'
 import { useStripe } from '@stripe/stripe-react-native'
+import { db } from '../firebase'
+import { doc, updateDoc } from 'firebase/firestore'
+import { useAppSelector } from '../hooks'
 
 import { Button } from '../components/ui/button'
 
@@ -26,6 +29,7 @@ export const SubscriptionScreen = () => {
 	const [selectedSubscription, setSelectedSubscription] = useState(0)
 	const [selectedCard, setSelectedCard] = useState('')
 	const [loading, setLoading] = useState(false)
+	const auth = useAppSelector(state => state.auth)
 
 	// Load Plus Jakarta Sans fonts
 	let [fontsLoaded] = useFonts({
@@ -78,7 +82,20 @@ export const SubscriptionScreen = () => {
 			if (presentError) {
 				alert(`Error: ${presentError.message}`);
 			} else {
-				alert('Success! Your payment is confirmed.');
+				// Payment succeeded, update Firestore plan field
+				let newPlan = "standard"; // default
+				if (selectedSubscription === 0) newPlan = "freemium";
+				if (selectedSubscription === 1) newPlan = "standard";
+				if (selectedSubscription === 2) newPlan = "pro";
+				try {
+					await updateDoc(doc(db, "users", auth.uid), {
+						plan: newPlan
+					});
+					const planDisplayName = newPlan.charAt(0).toUpperCase() + newPlan.slice(1); // "freemium" -> "Freemium"
+					alert(`Success! Your payment is confirmed. You are now on the ${planDisplayName} plan.`);
+				} catch (err) {
+					alert('Payment succeeded, but failed to update your plan. Please contact support.');
+				}
 			}
 		} catch (err) {
 			alert('Failed to start payment flow.');
@@ -189,14 +206,14 @@ export const SubscriptionScreen = () => {
 							onPress={() => setSelectedSubscription(1)}
 							style={styles.planCardInactive}>
 							<View style={styles.planHeader}>
-								<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Standard</Text>
+								<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Pro</Text>
 								<View style={styles.unselectedIndicator}>
 									<View style={styles.unselectedDot} />
 								</View>
 							</View>
 							<View style={styles.priceContainer}>
 								<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									$10.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
+									$15.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
 								</Text>
 							</View>
 							<View style={styles.featuresContainer}>
@@ -211,7 +228,7 @@ export const SubscriptionScreen = () => {
 										<CheckmarkIcon />
 									</View>
 									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-										10 Voice Selections + 2 Custom Voice Records.
+										10 Voice Selections.
 									</Text>
 								</View>
 								<View style={styles.featureItem}>

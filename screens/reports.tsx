@@ -54,6 +54,7 @@ export const ReportScreen = () => {
 	const weeklyLogRanges = useAppSelector((state) => state.logs.weeklyLogs)
 	const dailyLogRanges = useAppSelector((state) => state.logs.dailyLogs)
 	const toyLogs = useAppSelector((state) => state.logs.toyLogs)
+	const auth = useAppSelector(state => state.auth)
 	const [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
 		PlusJakartaSans_500Medium,
@@ -68,6 +69,10 @@ export const ReportScreen = () => {
 	const [showMoodModal, setShowMoodModal] = useState(false)
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
+
+	const allowedDurations = auth.plan === "pro"
+		? [{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }]
+		: [{ label: 'Week', value: 'week' }]
 
 	const generateWeeklyChartData = () => {
 		if (!weeklyLogRanges) return []
@@ -124,58 +129,6 @@ export const ReportScreen = () => {
 		)
 	}
 
-	const fetchWeeklyLogs = useCallback(async () => {
-		try {
-			await dispatch(fetchWeeklyLogRanges()).unwrap()
-			setIsLoading(false)
-		} catch (err: any) {
-			Toast.show({ type: 'error', text1: err ?? 'Failed to fetch weekly logs' })
-		}
-	}, [])
-
-	const fetchDailyLogs = useCallback(async () => {
-		try {
-			await dispatch(fetchDailyLogRanges()).unwrap()
-			setIsLoading(false)
-		} catch (err: any) {
-			Toast.show({ type: 'error', text1: err ?? 'Failed to fetch daily logs' })
-		}
-	}, [])
-
-	const getLogsForSelectedTimeframe = () => {
-		if (!toyLogs || toyLogs.length === 0) return []
-		if (reportDuration?.value === 'day') {
-			const latestDay = dailyLogRanges?.[0]?.date
-			return toyLogs.filter(log => {
-				const logDate = new Date(log.time).toISOString().split('T')[0]
-				return logDate === latestDay
-			})
-		} else {
-			const latestWeek = Object.keys(weeklyLogRanges ?? {}).sort().reverse()[0]
-			const weekDates = (weeklyLogRanges?.[latestWeek] ?? []).map(l => l.date)
-			return toyLogs.filter(log => {
-				const logDate = new Date(log.time).toISOString().split('T')[0]
-				return weekDates.includes(logDate)
-			})
-		}
-	}
-
-	const fetchSummary = async (text: string) => {
-		setIsSummarizing(true)
-		try {
-			const response = await fetch('https://summarize-k3jpln37bq-uc.a.run.app', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ text }),
-			})
-			const data = await response.json()
-			setSummary(data.summary)
-		} catch (err: any) {
-			Toast.show({ type: 'error', text1: err.message || 'Failed to summarize' })
-		} finally {
-			setIsSummarizing(false)
-		}
-	}
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -201,192 +154,169 @@ export const ReportScreen = () => {
 		fetchData()
 	}, [reportDuration])
 
-	useEffect(() => {
-		const logs = getLogsForSelectedTimeframe()
-		const textToSummarize = logs.map(log => log.message).join(' ')
-		if (textToSummarize) {
-			fetchSummary(textToSummarize)
-		} else {
-			setSummary(null)
-		}
-	}, [reportDuration, toyLogs, dailyLogRanges, weeklyLogRanges])
 
 	if (!fontsLoaded) {
 		return null
 	}
 
 	return (
-		<React.Fragment>
-			{isLoading ? (
-				<View style={styles.loadingContainer}>
-					<Chase size={24} color="#CBC0FE" />
-					<Text style={[styles.loadingText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Loading Reports...</Text>
+		<SafeAreaView style={styles.safeArea}>
+			<ScrollView
+				horizontal={false}
+				bounces={false}
+				showsVerticalScrollIndicator
+				style={[styles.container, styles.scrollView]}
+				showsHorizontalScrollIndicator={false}>
+				<View style={styles.header}>
+					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold', textAlign: 'center', flex: 1 }]}>Reports</Text>
 				</View>
-			) : (
-				<SafeAreaView style={styles.safeArea}>
-					<ScrollView
-						horizontal={false}
-						bounces={false}
-						showsVerticalScrollIndicator
-						style={[styles.container, styles.scrollView]}
-						showsHorizontalScrollIndicator={false}>
-						<View style={styles.header}>
-							<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold', textAlign: 'center', flex: 1 }]}>Reports</Text>
-						</View>
-						<View style={styles.interactionReportContainer}>
-							<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
-							<View style={styles.interactionReportControls}>
-								<Select
-									value={reportDuration}
-									onValueChange={(option) => {
-										setIsLoading(true)
-										setReportDuration(option)
-									}}>
-									<SelectTrigger style={styles.selectTrigger}>
-										<SelectValue
-											style={styles.selectValue}
-											placeholder="Duration"
-										/>
-									</SelectTrigger>
-									<SelectContent insets={contentInsets} style={styles.selectContent}>
-										<SelectItem label="Day" value="day">
-											Day
-										</SelectItem>
-										<SelectItem label="Week" value="week">
-											Week
-										</SelectItem>
-									</SelectContent>
-								</Select>
-								<Button
-									style={[styles.downloadButton, { elevation: 5 }]}>
-									<DownloadIcon />
-								</Button>
-							</View>
-						</View>
-						<View style={styles.chartContainer}>
-							<LineChart
-								areaChart
-								thickness={5}
-								color="#AE9FFF"
-								yAxisTextNumberOfLines={2}
-								curved
-								data={data}
-								endSpacing={0}
-								height={350}
-								noOfSections={5}
-								yAxisThickness={0}
-								width={CHART_WIDTH}
-								xAxisThickness={0}
-								startOpacity={1}
-								endOpacity={0.1}
-								isAnimated
-								yAxisTextStyle={{ color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}
-								rulesColor="#D9E7FF"
-								rulesType="solid"
-								stepValue={2}
-								yAxisLabelSuffix="hr"
-								yAxisColor="#666666"
-								pointerConfig={{
-									pointerStripColor: '#D9E7FF',
-									pointerStripWidth: 1,
-									pointerStripUptoDataPoint: true,
-									width: 8,
-									height: 8,
-									pointerLabelWidth: 60,
-									pointerColor: '#0E2C76',
-									activatePointersOnLongPress: true,
-									pointerLabelComponent: (items: any) => (
-										<View
-											style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
-											<Text style={styles.pointerLabelText}>
-												${items[0].value}
-											</Text>
-										</View>
-									)
-								}}
-								xAxisColor="#666666"
-								startFillColor={'#AE9FFF'}
-								endFillColor={'#AE9FFF1A'}
-							/>
-						</View>
-						<View style={styles.chartLegend}>
-							<View style={styles.legendIndicator} />
-							<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
-						</View>
-						<View style={styles.statsContainer}>
-							<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
-								<View style={styles.moodReportContentRow}>
-									<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
-									<TouchableOpacity style={styles.moodPlusButton} onPress={() => setShowMoodModal(true)}>
-										<Text style={styles.moodPlusText}>+</Text>
-									</TouchableOpacity>
+				<View style={styles.interactionReportContainer}>
+					<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
+					<View style={styles.interactionReportControls}>
+						<Select
+							value={reportDuration}
+							onValueChange={(option) => {
+								setIsLoading(true)
+								setReportDuration(option)
+							}}>
+							<SelectTrigger style={styles.selectTrigger}>
+								<SelectValue
+									style={styles.selectValue}
+									placeholder="Duration"
+								/>
+							</SelectTrigger>
+							<SelectContent insets={contentInsets} style={styles.selectContent}>
+								{allowedDurations.map(opt => (
+									<SelectItem key={opt.value} label={opt.label} value={opt.value}>
+										{opt.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						
+					</View>
+				</View>
+				<View style={styles.chartContainer}>
+					<LineChart
+						areaChart
+						thickness={5}
+						color="#AE9FFF"
+						yAxisTextNumberOfLines={2}
+						curved
+						data={data}
+						endSpacing={0}
+						height={350}
+						noOfSections={5}
+						yAxisThickness={0}
+						width={CHART_WIDTH}
+						xAxisThickness={0}
+						startOpacity={1}
+						endOpacity={0.1}
+						isAnimated
+						yAxisTextStyle={{ color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}
+						rulesColor="#D9E7FF"
+						rulesType="solid"
+						stepValue={2}
+						yAxisLabelSuffix="hr"
+						yAxisColor="#666666"
+						pointerConfig={{
+							pointerStripColor: '#D9E7FF',
+							pointerStripWidth: 1,
+							pointerStripUptoDataPoint: true,
+							width: 8,
+							height: 8,
+							pointerLabelWidth: 60,
+							pointerColor: '#0E2C76',
+							activatePointersOnLongPress: true,
+							pointerLabelComponent: (items: any) => (
+								<View
+									style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
+									<Text style={styles.pointerLabelText}>
+										${items[0].value}
+									</Text>
 								</View>
-								{(() => {
-									const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]
-									const latestRecords = latestDate ? (sentimentsByDate ?? {})[latestDate] : {}
-									return (
-										<View style={styles.moodSummaryRow}>
-											{Object.entries(latestRecords ?? {}).map(([mood], idx) => (
-												<View key={idx} style={styles.moodSummaryItem}>
-													{emojiIcons[mood] ? React.createElement(emojiIcons[mood], { width: 32, height: 32 }) : null}
-												</View>
-											))}
-										</View>
-									)
-								})()}
-								<Image source={require('../assets/images/mood-report-image.png')} style={styles.moodReportImageNew} />
-							</View>
+							)
+						}}
+						xAxisColor="#666666"
+						startFillColor={'#AE9FFF'}
+						endFillColor={'#AE9FFF1A'}
+					/>
+				</View>
+				<View style={styles.chartLegend}>
+					<View style={styles.legendIndicator} />
+					<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
+				</View>
+				<View style={styles.statsContainer}>
+					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
+						<View style={styles.moodReportContentRow}>
+							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
+							<TouchableOpacity style={styles.moodPlusButton} onPress={() => setShowMoodModal(true)}>
+								<Text style={styles.moodPlusText}>+</Text>
+							</TouchableOpacity>
 						</View>
-						<View style={{ marginVertical: 16 }}>
-							{isSummarizing ? (
-								<Text>Summarizing...</Text>
-							) : summary ? (
-								<Text style={{ fontStyle: 'italic', color: '#333' }}>{summary}</Text>
-							) : null}
-						</View>
-					</ScrollView>
-					<Modal
-						visible={showMoodModal}
-						animationType="slide"
-						transparent
-						onRequestClose={() => setShowMoodModal(false)}>
-						<View style={styles.modalOverlay}>
-							<View style={styles.modalContent}>
-								<TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowMoodModal(false)}>
-									<Text style={styles.modalCloseText}>×</Text>
-								</TouchableOpacity>
-								<ScrollView
-									horizontal={false}
-									bounces={false}
-									nestedScrollEnabled
-									showsVerticalScrollIndicator
-									showsHorizontalScrollIndicator={false}
-									style={styles.moodReportScroll}>
-									{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
-										<View key={index} style={styles.moodReportEntry}>
-											<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-												{format(new Date(date), 'dd MMM yyyy')}
-											</Text>
-											<View style={styles.moodReportList}>
-												{Object.entries(records ?? {}).map(([mood, number], index) => (
-													<View key={index} style={styles.moodReportItem}>
-														<View style={styles.moodLabel}>
-															<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
-															{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
-														</View>
-														<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
-													</View>
-												))}
-											</View>
+						{(() => {
+							const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]
+							const latestRecords = latestDate ? (sentimentsByDate ?? {})[latestDate] : {}
+							return (
+								<View style={styles.moodSummaryRow}>
+									{Object.entries(latestRecords ?? {}).map(([mood], idx) => (
+										<View key={idx} style={styles.moodSummaryItem}>
+											{emojiIcons[mood] ? React.createElement(emojiIcons[mood], { width: 32, height: 32 }) : null}
 										</View>
 									))}
-								</ScrollView>
-							</View>
-						</View>
-					</Modal>
-				</SafeAreaView>
-			)}
-		</React.Fragment>
+								</View>
+							)
+						})()}
+					</View>
+				</View>
+				<View style={{ marginVertical: 16 }}>
+					{isSummarizing ? (
+						<Text>Summarizing...</Text>
+					) : summary ? (
+						<Text style={{ fontStyle: 'italic', color: '#333' }}>{summary}</Text>
+					) : null}
+				</View>
+			</ScrollView>
+			<Modal
+				visible={showMoodModal}
+				animationType="slide"
+				transparent
+				onRequestClose={() => setShowMoodModal(false)}>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowMoodModal(false)}>
+							<Text style={styles.modalCloseText}>×</Text>
+						</TouchableOpacity>
+						<ScrollView
+							horizontal={false}
+							bounces={false}
+							nestedScrollEnabled
+							showsVerticalScrollIndicator
+							showsHorizontalScrollIndicator={false}
+							style={styles.moodReportScroll}>
+							{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
+								<View key={index} style={styles.moodReportEntry}>
+									<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
+										{format(new Date(date), 'dd MMM yyyy')}
+									</Text>
+									<View style={styles.moodReportList}>
+										{Object.entries(records ?? {}).map(([mood, number], index) => (
+											<View key={index} style={styles.moodReportItem}>
+												<View style={styles.moodLabel}>
+													<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
+													{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
+												</View>
+												<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
+											</View>
+										))}
+									</View>
+								</View>
+							))}
+						</ScrollView>
+					</View>
+				</View>
+			</Modal>
+		</SafeAreaView>
 	)
 }
 
