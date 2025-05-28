@@ -47,8 +47,8 @@ export const CharacterManagementScreen = () => {
 	const [activeIndex, setActiveIndex] = useState(1)
 	const [characters, setCharacters] = useState<CarouselItem[]>([
 		{ id: 'Bear', image: require('../assets/images/avatar.png'), label: 'Bear', type: 'default' },
-		{ id: 'Robot', image: require('../assets/images/pro1.png'), label: 'Robot', type: 'default' },
-		{ id: 'Fluffy', image: require('../assets/images/pro2.png'), label: 'Fluffy', type: 'default' }
+		{ id: 'Fluffy', image: require('../assets/images/pro1.png'), label: 'Fluffy', type: 'default' },
+		{ id: 'Robot', image: require('../assets/images/pro2.png'), label: 'Robot', type: 'default' }
 	])
 
 	const canAddCharacter = characters.length < maxCharacters
