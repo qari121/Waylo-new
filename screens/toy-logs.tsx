@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { toyLogs } from '../slices/logs'
 import { format } from 'date-fns'
 import { useAppDispatch, useAppSelector } from '../hooks'
+import { ensureMacAddress } from '../utils/ensureMacAddress'
 
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import PlayIcon from '../assets/icons/play.svg'
@@ -140,8 +141,9 @@ export const ToyLogsScreen: React.FC = () => {
 
 	useEffect(() => {
 		const fetchToyLogs = async () => {
+			const macAddress = await AsyncStorage.getItem('macAddress');
+			if (!ensureMacAddress(macAddress)) return;
 			try {
-				const macAddress = await AsyncStorage.getItem('macAddress');
 				if (!macAddress || !isValidMac(macAddress)) {
 					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing logs.' });
 					setIsLoading(false);

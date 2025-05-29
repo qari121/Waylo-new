@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ensureMacAddress } from '../utils/ensureMacAddress';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -68,7 +70,18 @@ const ConnectedDeviceScreen = () => {
   // Modal state
   const [pickerType, setPickerType] = useState<'start' | 'end' | null>(null);
 
+  const [macAddress, setMacAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMac = async () => {
+      const mac = await AsyncStorage.getItem('macAddress');
+      setMacAddress(mac);
+    };
+    fetchMac();
+  }, []);
+
   const handleSave = async () => {
+    if (!ensureMacAddress(macAddress)) return;
     setSavedWindow({ start: startTime, end: endTime });
     setShowScheduling(true);
     const user = auth.currentUser;
@@ -77,45 +90,34 @@ const ConnectedDeviceScreen = () => {
     const [startHour, startMinute] = startTime.split(':');
     const [endHour, endMinute] = endTime.split(':');
     await setDoc(
-      doc(db, 'users', user.uid),
-      {
-        parentalControls: {
-          enabled: true,
-          DND: false,
-          playRestriction: {
-            startHour,
-            startMinute,
-            endHour,
-            endMinute
-          }
-        }
-      },
+      doc(db, 'parental_controls', macAddress),
+      { mac_address: macAddress, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
       { merge: true }
     );
     Alert.alert('Saved', `Restriction will be active from ${startTime} to ${endTime}`);
   };
 
   const handleDoNotDisturb = async () => {
+    if (!ensureMacAddress(macAddress)) return;
     setShowScheduling(false);
     const user = auth.currentUser;
     if (!user) return;
     await setDoc(
-      doc(db, 'users', user.uid),
-      {
-        parentalControls: {
-          enabled: false,
-          DND: true,
-          playRestriction: {
-            startHour: '',
-            startMinute: '',
-            endHour: '',
-            endMinute: ''
-          }
-        }
-      },
+      doc(db, 'parental_controls', macAddress),
+      { mac_address: macAddress, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: true },
       { merge: true }
     );
     Alert.alert('Do Not Disturb enabled');
+  };
+
+  const getControls = async () => {
+    if (!ensureMacAddress(macAddress)) return;
+    const docRef = doc(db, 'parental_controls', macAddress);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const controls = docSnap.data();
+      // use controls.playRestriction, controls.DND, etc.
+    }
   };
 
   return (

@@ -9,6 +9,7 @@ import Toast from 'react-native-toast-message'
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 import { format } from 'date-fns'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { ensureMacAddress } from '../utils/ensureMacAddress'
 
 import { Button } from '../components/ui/button'
 import {
@@ -69,6 +70,7 @@ export const ReportScreen = () => {
 	const [showMoodModal, setShowMoodModal] = useState(false)
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
+	const [macAddress, setMacAddress] = useState<string | null>(null)
 
 	const allowedDurations = auth.plan === "pro"
 		? [{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }]
@@ -129,9 +131,10 @@ export const ReportScreen = () => {
 		)
 	}
 
-
 	useEffect(() => {
 		const fetchData = async () => {
+			const macAddress = await AsyncStorage.getItem('macAddress');
+			if (!ensureMacAddress(macAddress)) return;
 			try {
 				const macAddress = await AsyncStorage.getItem('macAddress')
 				if (!macAddress || !isValidMac(macAddress)) {
@@ -154,6 +157,9 @@ export const ReportScreen = () => {
 		fetchData()
 	}, [reportDuration])
 
+	useEffect(() => {
+		AsyncStorage.getItem('macAddress').then(setMacAddress);
+	}, []);
 
 	if (!fontsLoaded) {
 		return null
@@ -197,50 +203,58 @@ export const ReportScreen = () => {
 					</View>
 				</View>
 				<View style={styles.chartContainer}>
-					<LineChart
-						areaChart
-						thickness={5}
-						color="#AE9FFF"
-						yAxisTextNumberOfLines={2}
-						curved
-						data={data}
-						endSpacing={0}
-						height={350}
-						noOfSections={5}
-						yAxisThickness={0}
-						width={CHART_WIDTH}
-						xAxisThickness={0}
-						startOpacity={1}
-						endOpacity={0.1}
-						isAnimated
-						yAxisTextStyle={{ color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}
-						rulesColor="#D9E7FF"
-						rulesType="solid"
-						stepValue={2}
-						yAxisLabelSuffix="hr"
-						yAxisColor="#666666"
-						pointerConfig={{
-							pointerStripColor: '#D9E7FF',
-							pointerStripWidth: 1,
-							pointerStripUptoDataPoint: true,
-							width: 8,
-							height: 8,
-							pointerLabelWidth: 60,
-							pointerColor: '#0E2C76',
-							activatePointersOnLongPress: true,
-							pointerLabelComponent: (items: any) => (
-								<View
-									style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
-									<Text style={styles.pointerLabelText}>
-										${items[0].value}
-									</Text>
-								</View>
-							)
-						}}
-						xAxisColor="#666666"
-						startFillColor={'#AE9FFF'}
-						endFillColor={'#AE9FFF1A'}
-					/>
+					{!ensureMacAddress(macAddress) ? (
+						<View style={{ padding: 24, alignItems: 'center' }}>
+							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+								Please pair your device and enter a MAC address to view interaction reports.
+							</Text>
+						</View>
+					) : (
+						<LineChart
+							areaChart
+							thickness={5}
+							color="#AE9FFF"
+							yAxisTextNumberOfLines={2}
+							curved
+							data={data}
+							endSpacing={0}
+							height={350}
+							noOfSections={5}
+							yAxisThickness={0}
+							width={CHART_WIDTH}
+							xAxisThickness={0}
+							startOpacity={1}
+							endOpacity={0.1}
+							isAnimated
+							yAxisTextStyle={{ color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}
+							rulesColor="#D9E7FF"
+							rulesType="solid"
+							stepValue={2}
+							yAxisLabelSuffix="hr"
+							yAxisColor="#666666"
+							pointerConfig={{
+								pointerStripColor: '#D9E7FF',
+								pointerStripWidth: 1,
+								pointerStripUptoDataPoint: true,
+								width: 8,
+								height: 8,
+								pointerLabelWidth: 60,
+								pointerColor: '#0E2C76',
+								activatePointersOnLongPress: true,
+								pointerLabelComponent: (items: any) => (
+									<View
+										style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
+										<Text style={styles.pointerLabelText}>
+											${items[0].value}
+										</Text>
+									</View>
+								)
+							}}
+							xAxisColor="#666666"
+							startFillColor={'#AE9FFF'}
+							endFillColor={'#AE9FFF1A'}
+						/>
+					)}
 				</View>
 				<View style={styles.chartLegend}>
 					<View style={styles.legendIndicator} />
@@ -250,9 +264,14 @@ export const ReportScreen = () => {
 					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
 						<View style={styles.moodReportContentRow}>
 							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
-							<TouchableOpacity style={styles.moodPlusButton} onPress={() => setShowMoodModal(true)}>
-								<Text style={styles.moodPlusText}>+</Text>
-							</TouchableOpacity>
+							{ensureMacAddress(macAddress) && (
+								<TouchableOpacity
+									style={styles.moodPlusButton}
+									onPress={() => setShowMoodModal(true)}
+								>
+									<Text style={styles.moodPlusText}>+</Text>
+								</TouchableOpacity>
+							)}
 						</View>
 						{(() => {
 							const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]

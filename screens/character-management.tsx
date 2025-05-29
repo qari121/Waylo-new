@@ -10,6 +10,7 @@ import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } fro
 import { db } from '../firebase';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ensureMacAddress } from '../utils/ensureMacAddress';
 
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import GalleryExportIcon from '../assets/icons/gallery-export.svg'
@@ -56,6 +57,7 @@ export const CharacterManagementScreen = () => {
 	const [loading, setLoading] = useState(false);
 
 	const handleSelectCharacter = async () => {
+		if (!ensureMacAddress(toyId)) return;
 		setLoading(true);
 		try {
 			if (!toyId) return;
@@ -63,7 +65,11 @@ export const CharacterManagementScreen = () => {
 			const toyQuery = query(collection(db, 'toy'), where('mac_address', '==', toyId));
 			const querySnapshot = await getDocs(toyQuery);
 			if (querySnapshot.empty) {
-				Toast.show({ type: 'error', text1: 'No toy found for this MAC address.' });
+				Toast.show({
+					type: 'error',
+					text1: 'No toy found for this MAC address.',
+					text2: 'Make sure your Waylo is ON and connected to the internet.'
+				});
 				setLoading(false);
 				return;
 			}
