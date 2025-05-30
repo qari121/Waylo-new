@@ -205,9 +205,17 @@ export const HomeScreen = () => {
 					</Pressable>
 				</View>
 				{isOnline && hasPaidModule && (
-					macAddress && isValidMac(macAddress) ? (
-						<View style={styles.moodHistoryContainer}>
-							<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
+					<View style={styles.moodHistoryContainer}>
+						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
+						{!macAddress || !isValidMac(macAddress) ? (
+							<View style={styles.macPromptBox}>
+								<Text style={styles.macPromptText}>Please pair your device and enter a MAC address to view mood history</Text>
+							</View>
+						) : sentiments.every(entry => entry.mood === 'neutral') ? (
+							<View style={styles.macPromptBox}>
+								<Text style={styles.macPromptText}>No mood data available for this device yet</Text>
+							</View>
+						) : (
 							<View style={styles.moodHistoryList}>
 								{sentiments.map((sentiment) => (
 									<View
@@ -222,12 +230,8 @@ export const HomeScreen = () => {
 									</View>
 								))}
 							</View>
-						</View>
-					) : (
-						<View style={styles.macPromptBox}>
-							<Text style={styles.macPromptText}>Enter MAC Address to View Mood History</Text>
-						</View>
-					)
+						)}
+					</View>
 				)}
 			</ScrollView>
 		</SafeAreaView>
@@ -498,8 +502,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'flex-start',
 	},
 	macPromptBox: {
-		marginTop: 18,
-		marginBottom: 112,
+		marginTop: 12,
 		width: '100%',
 		backgroundColor: '#AE9FFF',
 		borderRadius: 16,
