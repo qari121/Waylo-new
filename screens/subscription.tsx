@@ -1,11 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ImageBackground, Pressable, SafeAreaView, ScrollView, Text, View, Platform, StyleSheet, ActivityIndicator } from 'react-native'
 import { useStripe } from '@stripe/stripe-react-native'
 import { db } from '../firebase'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, getDoc } from 'firebase/firestore'
 import { useAppSelector } from '../hooks'
+import Toast from 'react-native-toast-message'
 
 import { Button } from '../components/ui/button'
 
@@ -23,6 +24,47 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans'
 import { useFonts } from 'expo-font'
 
+const firestorePlanToIndex: Record<string, number> = {
+	Freemium: 0,
+	Standard: 1,
+	Premium: 2,
+};
+const indexToFirestorePlan = ['Freemium', 'Standard', 'Premium'];
+
+const plans = [
+	{
+		name: 'Freemium',
+		firestoreValue: 'Freemium',
+		price: null,
+		features: [
+			'1 Preloaded Character',
+			'1 Pre-installed voice'
+		]
+	},
+	{
+		name: 'Standard',
+		firestoreValue: 'Standard',
+		price: '$10.00/month',
+		features: [
+			'Choose any 3 Characters from Library.',
+			'2 Voice Selections.',
+			'1 Summary Report Monthly.'
+		]
+	},
+	{
+		name: 'Pro',
+		firestoreValue: 'Premium',
+		price: '$15.00/month',
+		features: [
+			'Use Custom Characters.',
+			'10 Voice Selections + 2 Custom Voice Records.',
+			'Daily Summary Reports.',
+			'Daily Conversation History.',
+			'Interaction Analysis.'
+		]
+	}
+];
+
 export const SubscriptionScreen = () => {
 	const router = useRouter()
 	const { initPaymentSheet, presentPaymentSheet } = useStripe()
@@ -30,6 +72,7 @@ export const SubscriptionScreen = () => {
 	const [selectedCard, setSelectedCard] = useState('')
 	const [loading, setLoading] = useState(false)
 	const auth = useAppSelector(state => state.auth)
+	const [currentPlanIndex, setCurrentPlanIndex] = useState<number | null>(null);
 
 	// Load Plus Jakarta Sans fonts
 	let [fontsLoaded] = useFonts({
@@ -61,6 +104,25 @@ export const SubscriptionScreen = () => {
 	};
 
 	const openPaymentSheet = async () => {
+		if (selectedSubscription === 0) {
+			// Freemium: no payment, just update Firestore
+			try {
+				await updateDoc(doc(db, "users", auth.uid), {
+					plan: 'Freemium'
+				});
+				setCurrentPlanIndex(0);
+				Toast.show({
+					type: 'success',
+					text1: 'You are now on the Freemium plan.'
+				});
+			} catch (err) {
+				Toast.show({
+					type: 'error',
+					text1: 'Failed to update your plan. Please contact support.'
+				});
+			}
+			return;
+		}
 		setLoading(true);
 		try {
 			const { paymentIntent, ephemeralKey, customer } = await fetchPaymentSheetParams();
@@ -73,35 +135,53 @@ export const SubscriptionScreen = () => {
 			});
 
 			if (initError) {
-				alert(`Error: ${initError.message}`);
+				Toast.show({ type: 'error', text1: initError.message });
 				setLoading(false);
 				return;
 			}
 
 			const { error: presentError } = await presentPaymentSheet();
 			if (presentError) {
-				alert(`Error: ${presentError.message}`);
+				Toast.show({ type: 'error', text1: presentError.message });
 			} else {
 				// Payment succeeded, update Firestore plan field
-				let newPlan = "standard"; // default
-				if (selectedSubscription === 0) newPlan = "freemium";
-				if (selectedSubscription === 1) newPlan = "standard";
-				if (selectedSubscription === 2) newPlan = "pro";
+				const newPlan = indexToFirestorePlan[selectedSubscription];
 				try {
 					await updateDoc(doc(db, "users", auth.uid), {
 						plan: newPlan
 					});
-					const planDisplayName = newPlan.charAt(0).toUpperCase() + newPlan.slice(1); // "freemium" -> "Freemium"
-					alert(`Success! Your payment is confirmed. You are now on the ${planDisplayName} plan.`);
+					setCurrentPlanIndex(selectedSubscription);
+					const planDisplayName = newPlan.charAt(0).toUpperCase() + newPlan.slice(1);
+					Toast.show({ type: 'success', text1: `You are now on the ${planDisplayName} plan.` });
 				} catch (err) {
-					alert('Payment succeeded, but failed to update your plan. Please contact support.');
+					Toast.show({ type: 'error', text1: 'Payment succeeded, but failed to update your plan. Please contact support.' });
 				}
 			}
 		} catch (err) {
-			alert('Failed to start payment flow.');
+			Toast.show({ type: 'error', text1: 'Failed to start payment flow.' });
 		}
 		setLoading(false);
 	};
+
+	useEffect(() => {
+		// Fetch user's current plan from Firestore and set selectedSubscription
+		const fetchUserPlan = async () => {
+			try {
+				const userDocRef = doc(db, 'users', auth.uid);
+				const userDoc = await getDoc(userDocRef);
+				if (userDoc.exists()) {
+					const userData = userDoc.data();
+					if (userData && userData.plan && firestorePlanToIndex[userData.plan] !== undefined) {
+						setSelectedSubscription(firestorePlanToIndex[userData.plan]);
+						setCurrentPlanIndex(firestorePlanToIndex[userData.plan]);
+					}
+				}
+			} catch (err) {
+				// Optionally handle error
+			}
+		};
+		if (auth.uid) fetchUserPlan();
+	}, [auth.uid]);
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
@@ -113,7 +193,7 @@ export const SubscriptionScreen = () => {
 				style={styles.scrollView}
 				showsHorizontalScrollIndicator={false}>
 				<View style={styles.header}>
-					<Pressable onPress={() => router.dismiss()}>
+					<Pressable onPress={() => router.back()} hitSlop={10} style={styles.backButton}>
 						<ChevronLeftIcon />
 					</Pressable>
 					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Subscription Management</Text>
@@ -121,133 +201,45 @@ export const SubscriptionScreen = () => {
 				</View>
 				<Text style={[styles.planTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Choose your plan</Text>
 				<View style={styles.plansContainer}>
-					{selectedSubscription === 0 ? (
-						<ImageBackground
-							source={require('../assets/images/subscription-background.png')}
-							resizeMode="cover"
-							style={styles.planCard}>
-							<LinearGradient
-								colors={['#AE9FFF', 'rgba(174, 159, 255, 0.40)']}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-								style={styles.gradient}>
-								<View>
-									<View style={styles.planHeader}>
-										<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Freemium</Text>
-										<View style={styles.selectedIndicator} />
-									</View>
-									<View style={styles.featuresContainer}>
-										<View style={styles.featureItem}>
-											<View style={styles.checkmarkContainer}>
-												<CheckmarkIcon />
+					{plans.map((plan, idx) => {
+						const isSelected = selectedSubscription === idx;
+						return (
+							<Pressable
+								key={plan.name}
+								onPress={() => setSelectedSubscription(idx)}
+								style={[
+									styles.planCard,
+									isSelected ? styles.selectedPlanCard : styles.unselectedPlanCard,
+								]}
+							>
+								<View style={styles.planCardContent}>
+									<View style={{ flex: 1 }}>
+										<View style={styles.planHeader}>
+											<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>{plan.name}</Text>
+											<View style={isSelected ? styles.radioSelected : styles.radioUnselected}>
+												{isSelected && <View style={styles.radioDot} />}
 											</View>
-											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Preloaded Character</Text>
 										</View>
-										<View style={styles.featureItem}>
-											<View style={styles.checkmarkContainer}>
-												<CheckmarkIcon />
+										{plan.price && (
+											<View style={styles.priceContainer}>
+												<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>{plan.price}</Text>
 											</View>
-											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Pre-installed voice</Text>
-										</View>
-									</View>
-									<View style={styles.upgradeButtonContainer}>
-										<Button onPress={() => setSelectedSubscription(2)} style={styles.upgradeButton}>
-											<Text style={[styles.upgradeButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Upgrade to pro</Text>
-										</Button>
-									</View>
-								</View>
-							</LinearGradient>
-						</ImageBackground>
-					) : selectedSubscription === 1 ? (
-						<ImageBackground
-							source={require('../assets/images/subscription-background.png')}
-							resizeMode="cover"
-							style={styles.planCard}>
-							<LinearGradient
-								colors={['#AE9FFF', 'rgba(174, 159, 255, 0.40)']}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-								style={styles.gradient}>
-								<View>
-									<View style={styles.planHeader}>
-										<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Standard</Text>
-										<View style={styles.selectedIndicator} />
-									</View>
-									<View style={styles.priceContainer}>
-										<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-											$10.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
-										</Text>
-									</View>
-									<View style={styles.featuresContainer}>
-										<View style={styles.featureItem}>
-											<View style={styles.checkmarkContainer}>
-												<CheckmarkIcon />
-											</View>
-											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Choose any 3 Characters from Library.</Text>
-										</View>
-										<View style={styles.featureItem}>
-											<View style={styles.checkmarkContainer}>
-												<CheckmarkIcon />
-											</View>
-											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>2 Voice Selections.</Text>
-										</View>
-										<View style={styles.featureItem}>
-											<View style={styles.checkmarkContainer}>
-												<CheckmarkIcon />
-											</View>
-											<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>1 Summary Report Monthly.</Text>
+										)}
+										<View style={styles.featuresContainer}>
+											{plan.features.map((feature, featureIdx) => (
+												<View key={featureIdx} style={styles.featureItem}>
+													<View style={styles.checkmarkContainer}>
+														<CheckmarkIcon />
+													</View>
+													<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>{feature}</Text>
+												</View>
+											))}
 										</View>
 									</View>
 								</View>
-							</LinearGradient>
-						</ImageBackground>
-					) : (
-						<Pressable
-							onPress={() => setSelectedSubscription(1)}
-							style={styles.planCardInactive}>
-							<View style={styles.planHeader}>
-								<Text style={[styles.planName, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Pro</Text>
-								<View style={styles.unselectedIndicator}>
-									<View style={styles.unselectedDot} />
-								</View>
-							</View>
-							<View style={styles.priceContainer}>
-								<Text style={[styles.priceText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									$15.00 <Text style={[styles.pricePeriod, { fontFamily: 'PlusJakartaSans_400Regular' }]}>/month</Text>
-								</Text>
-							</View>
-							<View style={styles.featuresContainer}>
-								<View style={styles.featureItem}>
-									<View style={styles.checkmarkContainer}>
-										<CheckmarkIcon />
-									</View>
-									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Use Custom Characters.</Text>
-								</View>
-								<View style={styles.featureItem}>
-									<View style={styles.checkmarkContainer}>
-										<CheckmarkIcon />
-									</View>
-									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-										10 Voice Selections.
-									</Text>
-								</View>
-								<View style={styles.featureItem}>
-									<View style={styles.checkmarkContainer}>
-										<CheckmarkIcon />
-									</View>
-									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Daily Summary Reports.</Text>
-								</View>
-								<View style={styles.featureItem}>
-									<View style={styles.checkmarkContainer}>
-										<CheckmarkIcon />
-									</View>
-									<Text style={[styles.featureText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-										Daily Conversation History.
-									</Text>
-								</View>
-							</View>
-						</Pressable>
-					)}
+							</Pressable>
+						);
+					})}
 				</View>
 
 				<View style={styles.paymentMethodContainer}>
@@ -258,52 +250,13 @@ export const SubscriptionScreen = () => {
 				</View>
 				<View style={styles.cardsContainer}>
 					<Button
-						onPress={() => setSelectedCard('BCA ***239')}
-						variant="ghost"
-						style={styles.cardButton}>
-						<View style={styles.cardContent}>
-							<View style={styles.cardIconContainer}>
-								<VisaIcon />
-							</View>
-							<View style={styles.cardInfo}>
-								<Text style={[styles.cardNumber, { fontFamily: 'PlusJakartaSans_500Medium' }]}>BCA ***239</Text>
-								<Text style={[styles.cardExpiry, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Expires 12/2027</Text>
-							</View>
-						</View>
-						<View style={styles.cardSelector}>
-							{selectedCard === 'BCA ***239' ? (
-								<CheckmarkIcon />
-							) : (
-								<View style={styles.unselectedCard} />
-							)}
-						</View>
-					</Button>
-					<Button
-						onPress={() => setSelectedCard('TSZ ***567')}
-						variant="ghost"
-						style={styles.cardButton}>
-						<View style={styles.cardContent}>
-							<View style={styles.cardIconContainer}>
-								<ApplePayIcon />
-							</View>
-							<View style={styles.cardInfo}>
-								<Text style={[styles.cardNumber, { fontFamily: 'PlusJakartaSans_500Medium' }]}>TSZ ***567</Text>
-								<Text style={[styles.cardExpiry, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Expires 12/2027</Text>
-							</View>
-						</View>
-						<View style={styles.cardSelector}>
-							{selectedCard === 'TSZ ***567' ? (
-								<CheckmarkIcon />
-							) : (
-								<View style={styles.unselectedCard} />
-							)}
-						</View>
-					</Button>
-					<Button
 						style={[styles.checkoutButton, { boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)' }]}
 						onPress={openPaymentSheet}
-						disabled={loading}>
-						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Subscribe</Text>
+						disabled={loading || currentPlanIndex === selectedSubscription}
+					>
+						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}> 
+							{currentPlanIndex === selectedSubscription ? 'Subscribed' : 'Subscribe'}
+						</Text>
 					</Button>
 				</View>
 				{loading && <ActivityIndicator style={{ marginTop: 20 }} />}
@@ -347,19 +300,31 @@ const styles = StyleSheet.create({
 		gap: 16,
 	},
 	planCard: {
+		borderRadius: 24,
+		marginBottom: 18,
+		padding: 0,
 		overflow: 'hidden',
-		borderRadius: 32,
 	},
-	planCardInactive: {
-		borderRadius: 32,
+	selectedPlanCard: {
+		backgroundColor: 'white',
+		borderWidth: 2,
+		borderColor: '#AE9FFF',
+		shadowColor: '#AE9FFF',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+		elevation: 4,
+	},
+	unselectedPlanCard: {
+		backgroundColor: 'white',
 		borderWidth: 1,
-		borderColor: '#D7DDE4',
-		padding: 16,
+		borderColor: '#E6E6E6',
 	},
-	gradient: {
-		borderRadius: 32,
-		paddingHorizontal: 16,
-		paddingVertical: 20,
+	planCardContent: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		padding: 24,
+		paddingRight: 16,
 	},
 	planHeader: {
 		flexDirection: 'row',
@@ -368,29 +333,33 @@ const styles = StyleSheet.create({
 	},
 	planName: {
 		color: 'black',
+		fontSize: 18,
 	},
-	selectedIndicator: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
-		borderWidth: 4,
-		borderColor: 'white',
-		backgroundColor: '#AE9FFF',
-	},
-	unselectedIndicator: {
-		width: 32,
-		height: 32,
+	radioSelected: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		borderWidth: 3,
+		borderColor: '#AE9FFF',
 		alignItems: 'center',
 		justifyContent: 'center',
-		borderRadius: 16,
-		borderWidth: 4,
-		borderColor: '#E6E6E6',
+		backgroundColor: 'white',
 	},
-	unselectedDot: {
-		width: 16,
-		height: 16,
-		borderRadius: 8,
-		backgroundColor: '#C5C5C5',
+	radioUnselected: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		borderWidth: 2,
+		borderColor: '#E6E6E6',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: 'white',
+	},
+	radioDot: {
+		width: 12,
+		height: 12,
+		borderRadius: 6,
+		backgroundColor: '#AE9FFF',
 	},
 	priceContainer: {
 		marginTop: 12,
@@ -398,10 +367,6 @@ const styles = StyleSheet.create({
 	priceText: {
 		fontWeight: 'bold',
 		color: 'black',
-	},
-	pricePeriod: {
-		fontSize: 14,
-		fontWeight: 'normal',
 	},
 	featuresContainer: {
 		marginTop: 20,
@@ -429,22 +394,6 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: 'black',
 	},
-	upgradeButtonContainer: {
-		marginTop: 12,
-		flexDirection: 'row',
-		justifyContent: 'flex-end',
-		...(Platform.OS === 'web' && {
-			marginTop: 16,
-		}),
-	},
-	upgradeButton: {
-		borderRadius: 24,
-		paddingVertical: 0,
-	},
-	upgradeButtonText: {
-		fontSize: 14,
-		color: 'white',
-	},
 	paymentMethodContainer: {
 		marginTop: 17,
 		flexDirection: 'row',
@@ -468,50 +417,6 @@ const styles = StyleSheet.create({
 		flexDirection: 'column',
 		gap: 16,
 	},
-	cardButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-		padding: 0,
-		paddingHorizontal: 0,
-	},
-	cardContent: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
-	},
-	cardIconContainer: {
-		borderRadius: 8,
-		backgroundColor: '#AE9FFF29',
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-	},
-	cardInfo: {
-		flexDirection: 'column',
-	},
-	cardNumber: {
-		fontWeight: '600',
-		color: 'black',
-	},
-	cardExpiry: {
-		fontSize: 12,
-		fontWeight: '500',
-		color: '#C5C5C5',
-	},
-	cardSelector: {
-		width: 24,
-		height: 24,
-		alignItems: 'center',
-		justifyContent: 'center',
-		borderRadius: 12,
-		backgroundColor: '#0E2C76',
-	},
-	unselectedCard: {
-		width: 24,
-		height: 24,
-		borderRadius: 12,
-		backgroundColor: '#E6E6E6',
-	},
 	checkoutButton: {
 		marginHorizontal: 'auto',
 		marginBottom: 40,
@@ -521,5 +426,8 @@ const styles = StyleSheet.create({
 	},
 	checkoutButtonText: {
 		color: 'white',
+	},
+	backButton: {
+		padding: 10,
 	},
 })

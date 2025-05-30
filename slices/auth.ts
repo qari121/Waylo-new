@@ -26,16 +26,18 @@ export const register = createAsyncThunk('auth/register', async (data: SignupFor
 		const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
 		const user = userCredential.user
 
-		await setDoc(doc(db, 'users', user.uid), {
+		const userData = {
 			uid: user.uid,
 			email: data.email,
 			firstName: data.firstName,
 			lastName: data.lastName,
 			username: data.username,
 			createdAt: new Date().toISOString(),
-			plan: "freemium"
-		})
-		return thunkAPI.fulfillWithValue({ ...data, id: user.uid })
+			plan: "freemium" as "freemium"
+		}
+
+		await setDoc(doc(db, 'users', user.uid), userData)
+		return thunkAPI.fulfillWithValue(userData)
 	} catch (error: any) {
 		return thunkAPI.rejectWithValue(error?.message)
 	}
@@ -63,10 +65,17 @@ const authSlice = createSlice({
 		}
 	},
 	extraReducers: (builder) => {
-		builder.addCase(login.fulfilled, (_, action: PayloadAction<AuthState>) => {
-			return action.payload
-		}),
-			builder.addCase(login.rejected, () => {
+		builder
+			.addCase(login.fulfilled, (_, action: PayloadAction<AuthState>) => {
+				return action.payload
+			})
+			.addCase(login.rejected, () => {
+				return initialState
+			})
+			.addCase(register.fulfilled, (_, action: PayloadAction<AuthState>) => {
+				return action.payload
+			})
+			.addCase(register.rejected, () => {
 				return initialState
 			})
 	}

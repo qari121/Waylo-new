@@ -118,11 +118,12 @@ export const ToyLogsScreen: React.FC = () => {
 	})
 
 	let allowedTimeSpans: string[] = [];
-	switch (auth.plan) {
+	switch (auth.plan?.toLowerCase()) {
 		case "standard":
 			allowedTimeSpans = ['This Month'];
 			break;
 		case "pro":
+		case "premium":
 			allowedTimeSpans = ['Today', 'Last 7 days', 'This Month', 'All Time'];
 			break;
 		default:

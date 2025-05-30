@@ -10,7 +10,7 @@ import {
   ThemeProvider,
 } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
-import { Stack } from 'expo-router';
+import { Stack, useGlobalSearchParams } from 'expo-router';
 import * as React from 'react';
 import { Platform, ActivityIndicator, View } from 'react-native';
 import { enableScreens } from 'react-native-screens';
@@ -51,6 +51,8 @@ const persistor = persistStore(store);
 export default function RootLayout() {
   // const { isDarkColorScheme } = useColorScheme();
 
+  const { direction } = useGlobalSearchParams();
+
   // Web-only tweak — no need to block first render
   React.useEffect(() => {
     if (Platform.OS === 'web') {
@@ -70,10 +72,14 @@ export default function RootLayout() {
                 screenOptions={{
                   headerShown: false,
                   contentStyle: { backgroundColor: 'white' },
-                  animation: Platform.select({
-                    ios: 'default',
-                    android: 'none',
-                  }),
+                  animation: direction === 'right'
+                    ? 'slide_from_left'
+                    : direction === 'left'
+                    ? 'slide_from_right'
+                    : Platform.select({
+                        ios: 'default',
+                        android: 'none',
+                      }),
                   presentation: 'card',
                   orientation: 'portrait',
                   gestureEnabled: Platform.OS === 'ios',

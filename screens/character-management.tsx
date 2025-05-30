@@ -16,10 +16,11 @@ import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import GalleryExportIcon from '../assets/icons/gallery-export.svg'
 import TierLockIcon from '../assets/icons/tier-lock.svg'
 import TripleArrowsIcon from '../assets/icons/triple-arrows.svg'
+import LockIcon from '../assets/icons/lock.svg'
 
 const { width: screenWidth } = Dimensions.get('window')
-const ITEM_WIDTH = screenWidth * 0.4
-const ITEM_HORIZONTAL_PADDING = 14
+const ITEM_WIDTH = screenWidth * 0.5
+const ITEM_HORIZONTAL_PADDING = 10
 const SLIDER_WIDTH = screenWidth
 
 interface CarouselItem {
@@ -55,6 +56,7 @@ export const CharacterManagementScreen = () => {
 	const canAddCharacter = characters.length < maxCharacters
 
 	const [loading, setLoading] = useState(false);
+	const [selectedCharacterIndex, setSelectedCharacterIndex] = useState<number>(0);
 
 	const handleSelectCharacter = async () => {
 		if (!ensureMacAddress(toyId)) return;
@@ -87,6 +89,11 @@ export const CharacterManagementScreen = () => {
 			if (alreadySelected) {
 				Toast.show({ type: 'info', text1: 'Character already selected.' });
 			}
+			// Save selected character to AsyncStorage for profile/floating menu
+			await AsyncStorage.setItem('selectedCharacter', characters[activeIndex].id);
+			setSelectedCharacterIndex(activeIndex);
+			// Optionally, update redux/global state here
+			// dispatch(setProfileCharacter(characters[activeIndex].id));
 		} catch (e) {
 			Toast.show({ type: 'error', text1: 'Failed to update character.' });
 			console.error(e);
@@ -119,6 +126,17 @@ export const CharacterManagementScreen = () => {
 		fetchMac();
 	}, []);
 
+	useEffect(() => {
+		const loadSelectedCharacter = async () => {
+			const saved = await AsyncStorage.getItem('selectedCharacter');
+			if (saved) {
+				const idx = characters.findIndex(c => c.id === saved);
+				if (idx !== -1) setSelectedCharacterIndex(idx);
+			}
+		};
+		loadSelectedCharacter();
+	}, [characters]);
+
 	if (!toyId) {
 		return <Text>Please pair your device and enter a MAC address first.</Text>;
 	}
@@ -130,15 +148,14 @@ export const CharacterManagementScreen = () => {
 		// For standard and pro, all unlocked (no lock overlays)
 
 		return (
-			<View style={styles.carouselItemContainer}>
+			<View style={styles.characterCard}>
 				<Image
 					source={item.image}
-					style={styles.carouselItemImage}
-					resizeMode="contain"
+					style={[styles.characterImage, isLocked && styles.lockedImage]}
 				/>
 				{isLocked && (
 					<View style={styles.lockOverlay}>
-						<TierLockIcon />
+						<LockIcon width={32} height={32} style={styles.lockIcon} />
 					</View>
 				)}
 			</View>
@@ -205,63 +222,29 @@ export const CharacterManagementScreen = () => {
 							/>
 						</View>
 
-						<View style={styles.tierContainer}>
-							<View style={styles.tierItem}>
-								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
-									<Image
-										source={require('../assets/images/free-tier-icon.png')}
-										resizeMode="contain"
-										style={styles.tierIcon}
-									/>
-								</View>
-								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									Bear
-								</Text>
-							</View>
-
-							<View style={styles.tierItem}>
-								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
-									<Image
-										source={require('../assets/images/pro-tier-icon-1.png')}
-										resizeMode="contain"
-										style={styles.tierIcon}
-									/>
-									{auth.plan === 'freemium' && <TierLockIcon style={styles.tierLockIcon} />}
-								</View>
-								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									Fluffy
-								</Text>
-							</View>
-
-							<View style={styles.tierItem}>
-								<View style={[styles.tierIconContainer, { elevation: 5 }]}>
-									<Image
-										source={require('../assets/images/pro-tier-icon-2.png')}
-										resizeMode="contain"
-										style={styles.tierIcon}
-									/>
-									{auth.plan === 'freemium' && <TierLockIcon style={styles.tierLockIcon} />}
-								</View>
-								<Text style={[styles.tierText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-									Robot
-								</Text>
-							</View>
-						</View>
-
 						<View style={{ alignItems: 'center', marginTop: 24 }}>
 							<Pressable
 								onPress={handleSelectCharacter}
-								disabled={loading || !toyId}
-								style={{
-									backgroundColor: '#7D65FC',
-									borderRadius: 24,
-									paddingVertical: 12,
-									paddingHorizontal: 32,
-									opacity: loading || !toyId ? 0.6 : 1,
-								}}
+								disabled={loading || !toyId || (selectedCharacterIndex === activeIndex)}
+								style={[
+									{
+										borderRadius: 24,
+										paddingVertical: 12,
+										paddingHorizontal: 32,
+										marginBottom: 0,
+									},
+									(selectedCharacterIndex === activeIndex)
+										? { backgroundColor: '#F1EDFF', borderWidth: 1, borderColor: '#7D65FC' }
+										: { backgroundColor: '#7D65FC' }
+								]}
 							>
-								<Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>
-									Select
+								<Text style={[
+									{ fontWeight: '700', fontSize: 16 },
+									(selectedCharacterIndex === activeIndex)
+										? { color: '#7D65FC' }
+										: { color: 'white' }
+								]}>
+									{selectedCharacterIndex === activeIndex ? 'Selected' : 'Select'}
 								</Text>
 							</Pressable>
 						</View>
@@ -398,19 +381,38 @@ const styles = StyleSheet.create({
 		color: 'white',
 		fontSize: 16,
 	},
-	carouselItemContainer: {
+	characterCard: {
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	carouselItemImage: {
+	characterImage: {
 		width: ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -4),
 		height: (ITEM_WIDTH - (ITEM_HORIZONTAL_PADDING * -6)) * 1.2,
 		borderRadius: 12,
 	},
+	lockedImage: {
+		opacity: 0.5,
+	},
+	lockOverlay: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		borderRadius: 12,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	lockIcon: {
+		shadowColor: '#AE9FFF',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.7,
+		shadowRadius: 6,
+	},
 	upgradePromptContainer: {
 		marginHorizontal: 20,
 		marginBottom: 20,
-		marginTop: 24,
+		marginTop: 14,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
@@ -436,16 +438,5 @@ const styles = StyleSheet.create({
 	},
 	upgradePromptIcon: {
 		flexShrink: 0,
-	},
-	lockOverlay: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-		backgroundColor: 'rgba(0, 0, 0, 0.5)',
-		borderRadius: 12,
-		justifyContent: 'center',
-		alignItems: 'center',
 	},
 })

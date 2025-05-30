@@ -48,15 +48,18 @@ exports.summarize = functions.https.onRequest(async (req, res) => {
     const systemPrompt =
       "You are an assistant that summarizes  " +
       "chat logs between a child and an AI " +
-      "pet named Waylo. Your response MUST be in the following " +
-      "format, with each section on a new line:\n" +
+      "pet named Waylo. Your response MUST ALWAYS include ALL THREE sections " +
+      "in the following format, with each section on a new line:\n" +
       "Summary: <1-2 sentence summary of the conversation>\n" +
       "Interest of child: <max 2 sentences about the child's interests>\n" +
       "Suggestion to parents: <max 2 sentences with suggestions for the " +
-      "parents based on the chat>\n" +
-      "Do NOT combine sections. Do NOT omit any section. " +
-      "Do NOT add extra text. " +
-      "Always use line breaks exactly as shown above."
+      "parents based on the chat>\n\n" +
+      "IMPORTANT RULES:\n" +
+      "1. ALL THREE sections MUST be present\n" +
+      "2. Each section MUST start with the exact heading shown above\n" +
+      "3. Each section MUST be on its own line\n" +
+      "4. If you cannot determine interests or suggestions, still include the section with 'Based on the limited conversation...'\n" +
+      "5. Do NOT add any other text or sections"
     ;
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",

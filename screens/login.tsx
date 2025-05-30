@@ -1,7 +1,7 @@
 import { Link, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Image, Text, View, StyleSheet, Platform, ScrollView, SafeAreaView, StatusBar } from 'react-native'
+import { Image, Text, View, StyleSheet, Platform, ScrollView, SafeAreaView, StatusBar, KeyboardAvoidingView } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import Toast from 'react-native-toast-message'
 
@@ -54,95 +54,101 @@ export const LoginScreen = () => {
 	}
 
 	return (
-		<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-			<StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-			<View style={styles.container}>
-				<Image
-					source={require('../assets/images/dark-blue-rectangle.png')}
-					style={styles.darkBlueRectangle}
-				/>
-				<Image
-					source={require('../assets/images/light-blue-rectangle.png')}
-					style={styles.lightBlueRectangle}
-				/>
-				<Image
-					source={require('../assets/images/logo-2.png')}
-					style={styles.logo}
-				/>
-				<View style={styles.contentContainer}>
-					<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Welcome back!</Text>
-					<Text style={[styles.subtitleText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-						Log in to existing Wylo account
-					</Text>
-					<View style={styles.formContainer}>
-						<View>
-							<View style={styles.inputWrapper}>
-								<FormInput
-									placeholder="Email"
-									control={form.control}
-									name="email"
-									style={[
-										styles.input,
-										form.formState.errors.email && styles.inputError
-									]}
-								/>
-								<View style={styles.iconContainer}>
-									<MailIcon width={14} height={14} />
-								</View>
-							</View>
-							{form.formState.errors.email && (
-								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-									{form.formState.errors.email.message}
-								</Text>
-							)}
-						</View>
-
-						<View style={styles.passwordContainer}>
-							<View style={styles.inputWrapper}>
-								<FormInput
-									placeholder="Password"
-									control={form.control}
-									secureTextEntry
-									name="password"
-									style={[
-										styles.input,
-										form.formState.errors.password && styles.inputError
-									]}
-								/>
-								<View style={styles.iconContainer}>
-									<LockIcon width={13} height={13} />
-								</View>
-							</View>
-							{form.formState.errors.password && (
-								<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-									{form.formState.errors.password.message}
-								</Text>
-							)}
-						</View>
-
-						<Text style={[styles.forgotPassword, { fontFamily: 'PlusJakartaSans_500Medium' }]}
-							onPress={() => router.push('/ForgotPassword')}
-						>
-							Forgot Password?
+		<KeyboardAvoidingView
+			style={{ flex: 1 }}
+			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+			keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+		>
+			<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+				<StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+				<View style={styles.container}>
+					<Image
+						source={require('../assets/images/dark-blue-rectangle.png')}
+						style={styles.darkBlueRectangle}
+					/>
+					<Image
+						source={require('../assets/images/light-blue-rectangle.png')}
+						style={styles.lightBlueRectangle}
+					/>
+					<Image
+						source={require('../assets/images/logo-2.png')}
+						style={styles.logo}
+					/>
+					<View style={styles.contentContainer}>
+						<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Welcome back!</Text>
+						<Text style={[styles.subtitleText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+							Log in to existing Wylo account
 						</Text>
-						<Button
-							onPress={form.handleSubmit(onSubmit)}
-							style={styles.loginButton}>
-							{isLoading && <Chase size={16} color="white" />}
-							<Text style={[styles.loginButtonText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-								{isLoading ? 'Please Wait...' : 'Log In'}
+						<View style={styles.formContainer}>
+							<View>
+								<View style={styles.inputWrapper}>
+									<FormInput
+										placeholder="Email"
+										control={form.control}
+										name="email"
+										style={[
+											styles.input,
+											form.formState.errors.email && styles.inputError
+										]}
+									/>
+									<View style={styles.iconContainer}>
+										<MailIcon width={14} height={14} />
+									</View>
+								</View>
+								{form.formState.errors.email && (
+									<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+										{form.formState.errors.email.message}
+									</Text>
+								)}
+							</View>
+
+							<View style={styles.passwordContainer}>
+								<View style={styles.inputWrapper}>
+									<FormInput
+										placeholder="Password"
+										control={form.control}
+										secureTextEntry
+										name="password"
+										style={[
+											styles.input,
+											form.formState.errors.password && styles.inputError
+										]}
+									/>
+									<View style={styles.iconContainer}>
+										<LockIcon width={13} height={13} />
+									</View>
+								</View>
+								{form.formState.errors.password && (
+									<Text style={[styles.errorText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+										{form.formState.errors.password.message}
+									</Text>
+								)}
+							</View>
+
+							<Text style={[styles.forgotPassword, { fontFamily: 'PlusJakartaSans_500Medium' }]}
+								onPress={() => router.push('/ForgotPassword')}
+							>
+								Forgot Password?
 							</Text>
-						</Button>
-						<Text style={[styles.signupText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-							Don&apos;t have an account?{' '}
-							<Link href="/register" style={[styles.signupLink, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-								Sign up
-							</Link>
-						</Text>
+							<Button
+								onPress={form.handleSubmit(onSubmit)}
+								style={styles.loginButton}>
+								{isLoading && <Chase size={16} color="white" />}
+								<Text style={[styles.loginButtonText, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
+									{isLoading ? 'Please Wait...' : 'Log In'}
+								</Text>
+							</Button>
+							<Text style={[styles.signupText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+								Don&apos;t have an account?{' '}
+								<Link href="/register" style={[styles.signupLink, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
+									Sign up
+								</Link>
+							</Text>
+						</View>
 					</View>
 				</View>
-			</View>
-		</ScrollView>
+			</ScrollView>
+		</KeyboardAvoidingView>
 	)
 }
 
@@ -185,7 +191,7 @@ const styles = StyleSheet.create({
 		}),
 	},
 	welcomeText: {
-		fontSize: 24, // text-2xl
+		fontSize: 23, // text-2xl
 		color: '#000000',
 		fontWeight: '600',
 		

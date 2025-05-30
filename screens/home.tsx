@@ -59,6 +59,7 @@ export const HomeScreen = () => {
 		{ day: 'Sun', mood: 'neutral' }
 	]
 
+	const [macAddress, setMacAddress] = useState<string | null>(null);
 	const [sentiments, setSentiments] = useState<{ day: string; mood: string }[]>(defaultSentiments)
 	const [deviceModalVisible, setDeviceModalVisible] = useState(false);
 	const [showScheduling, setShowScheduling] = useState(false);
@@ -118,23 +119,21 @@ export const HomeScreen = () => {
 	useEffect(() => {
 		const fetchSentimentRecords = async () => {
 			try {
-				const macAddress = await AsyncStorage.getItem('macAddress');
-				if (!macAddress || !isValidMac(macAddress)) {
-					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address.' });
+				const mac = await AsyncStorage.getItem('macAddress');
+				setMacAddress(mac ? mac : null);
+				if (!mac || !isValidMac(mac)) {
+					// No Toast, just set state
 					return;
 				}
-				const response = await dispatch(fetchSentimentsCount(macAddress)).unwrap();
+				const response = await dispatch(fetchSentimentsCount(mac)).unwrap();
 				const updatedSentiments = defaultSentiments.map((entry) => {
 					const fullDay = entry.day;
 					if (!fullDay || !response[fullDay]) return entry;
-
 					const mostFrequentSentiment = Object.entries(response[fullDay]).reduce((a, b) =>
 						a[1] > b[1] ? a : b
 					)[0];
-
 					return { ...entry, mood: mostFrequentSentiment };
 				});
-
 				setSentiments(updatedSentiments);
 			} catch (err: any) {
 				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
@@ -206,23 +205,29 @@ export const HomeScreen = () => {
 					</Pressable>
 				</View>
 				{isOnline && hasPaidModule && (
-					<View style={styles.moodHistoryContainer}>
-						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
-						<View style={styles.moodHistoryList}>
-							{sentiments.map((sentiment) => (
-								<View
-									key={sentiment.day}
-									style={[
-										styles.moodHistoryItem,
-										sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
-									]}
-								>
-									{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
-									<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}> {sentiment.day} </Text>
-								</View>
-							))}
+					macAddress && isValidMac(macAddress) ? (
+						<View style={styles.moodHistoryContainer}>
+							<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
+							<View style={styles.moodHistoryList}>
+								{sentiments.map((sentiment) => (
+									<View
+										key={sentiment.day}
+										style={[
+											styles.moodHistoryItem,
+											sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
+										]}
+									>
+										{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
+										<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}> {sentiment.day} </Text>
+									</View>
+								))}
+							</View>
 						</View>
-					</View>
+					) : (
+						<View style={styles.macPromptBox}>
+							<Text style={styles.macPromptText}>Enter MAC Address to View Mood History</Text>
+						</View>
+					)
 				)}
 			</ScrollView>
 		</SafeAreaView>
@@ -491,5 +496,21 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 20,
 		flexGrow: 1,
 		justifyContent: 'flex-start',
+	},
+	macPromptBox: {
+		marginTop: 18,
+		marginBottom: 112,
+		width: '100%',
+		backgroundColor: '#AE9FFF',
+		borderRadius: 16,
+		padding: 24,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	macPromptText: {
+		color: 'white',
+		fontSize: 16,
+		fontWeight: '600',
+		textAlign: 'center',
 	},
 })

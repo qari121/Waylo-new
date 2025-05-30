@@ -209,6 +209,12 @@ export const ReportScreen = () => {
 								Please pair your device and enter a MAC address to view interaction reports.
 							</Text>
 						</View>
+					) : data.length === 0 ? (
+						<View style={{ padding: 24, alignItems: 'center' }}>
+							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+								No interaction data available for this device yet.
+							</Text>
+						</View>
 					) : (
 						<LineChart
 							areaChart
@@ -264,7 +270,7 @@ export const ReportScreen = () => {
 					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
 						<View style={styles.moodReportContentRow}>
 							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
-							{ensureMacAddress(macAddress) && (
+							{ensureMacAddress(macAddress) && Object.keys(sentimentsByDate ?? {}).length > 0 && (
 								<TouchableOpacity
 									style={styles.moodPlusButton}
 									onPress={() => setShowMoodModal(true)}
@@ -274,6 +280,24 @@ export const ReportScreen = () => {
 							)}
 						</View>
 						{(() => {
+							if (!ensureMacAddress(macAddress)) {
+								return (
+									<View style={{ padding: 12, alignItems: 'center' }}>
+										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
+											Please pair your device to view mood reports.
+										</Text>
+									</View>
+								);
+							}
+							if (Object.keys(sentimentsByDate ?? {}).length === 0) {
+								return (
+									<View style={{ padding: 12, alignItems: 'center' }}>
+										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
+											No mood data available for this device yet.
+										</Text>
+									</View>
+								);
+							}
 							const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]
 							const latestRecords = latestDate ? (sentimentsByDate ?? {})[latestDate] : {}
 							return (

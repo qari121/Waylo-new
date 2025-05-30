@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
@@ -14,7 +14,10 @@ const isValidMac = (input: string) => {
 export const QRCodeScreen = () => {
   const [macAddress, setMacAddress] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
+  const isValidInput = useMemo(() => isValidMac(macAddress), [macAddress]);
 
   // Format MAC as user types: force uppercase, add colons, max 17 chars
   const handleInput = (val: string) => {
@@ -33,6 +36,8 @@ export const QRCodeScreen = () => {
       setError('Invalid MAC address. Format: XX:XX:XX:XX:XX:XX');
       return;
     }
+
+    setIsSubmitting(true);
     try {
       // Save MAC address to the authenticated user's profile
       const user = auth.currentUser;
@@ -42,13 +47,17 @@ export const QRCodeScreen = () => {
       }
       await setDoc(doc(db, 'users', user.uid), { mac_address: macAddress }, { merge: true });
       await AsyncStorage.setItem('macAddress', macAddress);
-      Alert.alert('Saved', 'MAC address saved!');
+      await AsyncStorage.setItem('macAddressEntered', 'true'); // set flag
+      Alert.alert('Success', 'MAC address saved successfully!');
       setMacAddress('');
       setError('');
+      // Redirect to home
+      router.replace('/(private)');
     } catch (e) {
       setError('Failed to save MAC address. Please check your internet connection and app permissions.');
-      // Optionally log error for debugging
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -66,7 +75,10 @@ export const QRCodeScreen = () => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Enter your MAC Address</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            !!error && styles.inputError
+          ]}
           value={macAddress}
           onChangeText={handleInput}
           placeholder="e.g. A1:B2:C3:D4:E5:F6"
@@ -74,12 +86,25 @@ export const QRCodeScreen = () => {
           autoCorrect={false}
           keyboardType="default"
           maxLength={17}
+          editable={!isSubmitting}
         />
         {!!error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save</Text>
+        <Pressable 
+          style={[
+            styles.saveButton,
+            !isValidInput && styles.saveButtonDisabled,
+            isSubmitting && styles.saveButtonSubmitting
+          ]} 
+          onPress={handleSave}
+          disabled={!isValidInput || isSubmitting}>
+          <Text style={[
+            styles.saveButtonText,
+            !isValidInput && styles.saveButtonTextDisabled
+          ]}>
+            {isSubmitting ? 'Saving...' : 'Save'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -147,6 +172,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#222',
   },
+  inputError: {
+    borderColor: '#FF3B3B',
+  },
   errorText: {
     color: '#FF3B3B',
     fontSize: 14,
@@ -165,10 +193,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+  saveButtonDisabled: {
+    backgroundColor: '#7F67FF80', // 50% opacity
+  },
+  saveButtonSubmitting: {
+    backgroundColor: '#6752CC', // darker shade
+  },
   saveButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  saveButtonTextDisabled: {
+    color: '#FFFFFF80', // 50% opacity
   },
 });
 

@@ -1,7 +1,8 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 import { Link, useRouter } from 'expo-router'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Image, Platform, Pressable, SafeAreaView, ScrollView, Text, View, StyleSheet } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { logout } from '../slices/auth'
 import { useAppDispatch, useAppSelector } from '../hooks'
@@ -27,6 +28,12 @@ const profileItems: ProfileItem[] = [
 	{ name: 'Support', icon: HelpCircleIcon, href: '/support' }
 ]
 
+const characterImages: Record<string, any> = {
+	Bear: require('../assets/images/avatar.png'),
+	Fluffy: require('../assets/images/pro1.png'),
+	Robot: require('../assets/images/pro2.png'),
+};
+
 export const ProfileScreen = () => {
 	const router = useRouter()
 	const dispatch = useAppDispatch()
@@ -36,6 +43,15 @@ export const ProfileScreen = () => {
 		PlusJakartaSans_500Medium,
 		PlusJakartaSans_600SemiBold,
 	})
+	const [selectedCharacter, setSelectedCharacter] = useState('Bear');
+
+	useEffect(() => {
+		const loadSelectedCharacter = async () => {
+			const saved = await AsyncStorage.getItem('selectedCharacter');
+			if (saved && characterImages[saved]) setSelectedCharacter(saved);
+		};
+		loadSelectedCharacter();
+	}, []);
 
 	// Fallbacks if username/email are not present
 	const username = auth?.username || 'User'
@@ -53,7 +69,7 @@ export const ProfileScreen = () => {
 						<View style={styles.profileInfo}>
 							<View style={styles.avatarContainer}>
 								<Image
-									source={require('../assets/images/avatar.png')}
+									source={characterImages[selectedCharacter]}
 									style={styles.avatar}
 									resizeMode="cover"
 								/>
