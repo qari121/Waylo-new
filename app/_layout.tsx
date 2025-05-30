@@ -72,14 +72,7 @@ export default function RootLayout() {
                 screenOptions={{
                   headerShown: false,
                   contentStyle: { backgroundColor: 'white' },
-                  animation: direction === 'right'
-                    ? 'slide_from_left'
-                    : direction === 'left'
-                    ? 'slide_from_right'
-                    : Platform.select({
-                        ios: 'default',
-                        android: 'none',
-                      }),
+                  animation: 'none',
                   presentation: 'card',
                   orientation: 'portrait',
                   gestureEnabled: Platform.OS === 'ios',
@@ -92,26 +85,42 @@ export default function RootLayout() {
                   name="index"
                   options={{
                     headerShown: false,
+                    animation: 'none',
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="reports"
+                  options={{
+                    headerShown: false,
+                    animation: 'slide_from_right',
+                    gestureEnabled: true,
+                    gestureDirection: 'horizontal',
+                    presentation: 'card',
+                  }}
+                />
+                <Stack.Screen
+                  name="profile"
+                  options={{
+                    headerShown: false,
+                    animation: 'slide_from_right',
+                    gestureEnabled: true,
+                    gestureDirection: 'horizontal',
+                    presentation: 'card',
                   }}
                 />
                 <Stack.Screen
                   name="(private)"
                   options={{
                     headerShown: false,
-                    animation: Platform.select({
-                      ios: 'default',
-                      android: 'none',
-                    }),
+                    animation: 'none',
                   }}
                 />
                 <Stack.Screen
                   name="(public)"
                   options={{
                     headerShown: false,
-                    animation: Platform.select({
-                      ios: 'default',
-                      android: 'none',
-                    }),
+                    animation: 'none',
                   }}
                 />
               </Stack>

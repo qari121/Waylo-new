@@ -81,13 +81,25 @@ export const FloatingMenu = memo(() => {
   }, [pathname, menuItems])
 
   const handleTabPress = (newIndex: number, href: string) => {
-    let direction: 'left' | 'right' = 'left'
-    if (newIndex < currentTab) {
-      direction = 'right'
-    } else if (newIndex > currentTab) {
-      direction = 'left'
+    if (currentTab === newIndex) return;
+
+    // If we're going to home, use pop behavior
+    if (href === '/') {
+      setCurrentTab(0);
+      router.back();
+      return;
     }
-    router.replace(`${href}?direction=${direction}`)
+
+    // For tab-to-tab navigation (reports <-> profile), use replace
+    if (currentTab !== 0 && newIndex !== 0) {
+      setCurrentTab(newIndex);
+      router.replace(href);
+      return;
+    }
+
+    // For home to tab navigation, use push
+    setCurrentTab(newIndex);
+    router.push(href);
   }
 
   return (
@@ -104,7 +116,7 @@ export const FloatingMenu = memo(() => {
         <MenuItem
           key={item.href}
           icon={item.icon}
-          isActive={pathname === item.href}
+          isActive={currentTab === index}
           isProfile={item.isProfile}
           profileImage={item.profileImage}
           onPress={() => handleTabPress(index, item.href)}
