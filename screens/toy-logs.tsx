@@ -7,6 +7,8 @@ import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
+import { db } from '../firebase'
 
 import { toyLogs } from '../slices/logs'
 import { format } from 'date-fns'
@@ -231,6 +233,25 @@ export const ToyLogsScreen: React.FC = () => {
 			const logDate = new Date(log.time).toISOString().split('T')[0];
 			return logDate === today;
 		});
+
+	// Fetch last 10 messages (adjust collection path as needed)
+	const fetchLast10Messages = async () => {
+		const q = query(
+			collection(db, 'messages'), // replace 'messages' with your collection name
+			orderBy('createdAt', 'desc'),
+			limit(10)
+		);
+		const querySnapshot = await getDocs(q);
+		const docIds: string[] = [];
+		querySnapshot.forEach(doc => {
+			docIds.push(doc.id);
+		});
+		console.log('Last 10 message document IDs:', docIds);
+	};
+
+	useEffect(() => {
+		fetchLast10Messages();
+	}, []);
 
 	if (!fontsLoaded) {
 		return null

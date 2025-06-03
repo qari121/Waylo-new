@@ -38,7 +38,8 @@ const plans = [
 		price: null,
 		features: [
 			'1 Preloaded Character',
-			'1 Pre-installed voice'
+			'1 Pre-installed voice',
+			'Online Mode Only'
 		]
 	},
 	{
@@ -48,7 +49,8 @@ const plans = [
 		features: [
 			'Choose any 3 Characters from Library.',
 			'2 Voice Selections.',
-			'1 Summary Report Monthly.'
+			'1 Summary Report Monthly.',
+			'Online Mode Only'
 		]
 	},
 	{
@@ -60,10 +62,14 @@ const plans = [
 			'10 Voice Selections + 2 Custom Voice Records.',
 			'Daily Summary Reports.',
 			'Daily Conversation History.',
-			'Interaction Analysis.'
+			'Interaction Analysis.',
+			'Online & Offline Modes'
 		]
 	}
 ];
+
+// Helper to check MAC format: XX:XX:XX:XX:XX:XX, only hex and colons
+const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input);
 
 export const SubscriptionScreen = () => {
 	const router = useRouter()
@@ -73,6 +79,10 @@ export const SubscriptionScreen = () => {
 	const [loading, setLoading] = useState(false)
 	const auth = useAppSelector(state => state.auth)
 	const [currentPlanIndex, setCurrentPlanIndex] = useState<number | null>(null);
+	const [hasScanned, setHasScanned] = useState(false);
+	const [scannerVisible, setScannerVisible] = useState(false);
+	const [error, setError] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	// Load Plus Jakarta Sans fonts
 	let [fontsLoaded] = useFonts({
@@ -182,6 +192,29 @@ export const SubscriptionScreen = () => {
 		};
 		if (auth.uid) fetchUserPlan();
 	}, [auth.uid]);
+
+	const handleBarCodeScanned = async ({ data }: { data: string }) => {
+		if (hasScanned) return; // Prevent multiple triggers
+		let mac = data.trim().toUpperCase();
+		if (/^[0-9A-F]{12}$/.test(mac)) {
+			mac = mac.match(/.{1,2}/g)?.join(':') || mac;
+		}
+		if (isValidMac(mac)) {
+			setHasScanned(true); // Set flag to prevent further scans
+			setScannerVisible(false);
+			setError('');
+			setIsSubmitting(true);
+			// ...save and alert...
+		} else {
+			setError('Scanned code is not a valid MAC address.');
+		}
+	};
+
+	// When opening the scanner, reset the flag:
+	const openScanner = () => {
+		setHasScanned(false);
+		setScannerVisible(true);
+	};
 
 	return (
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>

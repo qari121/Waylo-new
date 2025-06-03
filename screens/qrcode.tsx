@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react'
-import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Platform } from 'react-native'
+import React, { useState, useRef } from 'react'
+import { Pressable, SafeAreaView, StyleSheet, Text, View, Platform, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import { auth, db } from '../firebase'; // adjust path as needed
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc } from 'firebase/firestore';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 
 // Helper to check MAC format: XX:XX:XX:XX:XX:XX, only hex and colons
 const isValidMac = (input: string) => {
@@ -12,53 +13,51 @@ const isValidMac = (input: string) => {
 };
 
 export const QRCodeScreen = () => {
-  const [macAddress, setMacAddress] = useState('');
-  const [error, setError] = useState('');
+  const [scannerVisible, setScannerVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [hasScanned, setHasScanned] = useState(false);
   const router = useRouter();
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
 
-  const isValidInput = useMemo(() => isValidMac(macAddress), [macAddress]);
-
-  // Format MAC as user types: force uppercase, add colons, max 17 chars
-  const handleInput = (val: string) => {
-    let cleaned = val.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
-    let formatted = '';
-    for (let i = 0; i < cleaned.length && i < 12; i += 2) {
-      if (i > 0) formatted += ':';
-      formatted += cleaned.substr(i, 2);
+  const handleBarCodeScanned = async ({ data }: { data: string }) => {
+    if (hasScanned) return; // Prevent multiple triggers
+    let mac = data.trim().toUpperCase();
+    if (/^[0-9A-F]{12}$/.test(mac)) {
+      mac = mac.match(/.{1,2}/g)?.join(':') || mac;
     }
-    setMacAddress(formatted);
-    setError('');
+    if (isValidMac(mac)) {
+      setHasScanned(true); // Set flag to prevent further scans
+      setScannerVisible(false);
+      setError('');
+      setIsSubmitting(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setError('You must be logged in to save your MAC address.');
+          setIsSubmitting(false);
+          return;
+        }
+        await setDoc(doc(db, 'users', user.uid), { mac_address: mac }, { merge: true });
+        await AsyncStorage.setItem('macAddress', mac);
+        await AsyncStorage.setItem('macAddressEntered', 'true');
+        router.replace('/(private)');
+      } catch (e) {
+        setError('Failed to save MAC address. Please check your internet connection and app permissions.');
+        console.error(e);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      setError('Scanned code is not a valid MAC address.');
+    }
   };
 
-  const handleSave = async () => {
-    if (!isValidMac(macAddress)) {
-      setError('Invalid MAC address. Format: XX:XX:XX:XX:XX:XX');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Save MAC address to the authenticated user's profile
-      const user = auth.currentUser;
-      if (!user) {
-        setError('You must be logged in to save your MAC address.');
-        return;
-      }
-      await setDoc(doc(db, 'users', user.uid), { mac_address: macAddress }, { merge: true });
-      await AsyncStorage.setItem('macAddress', macAddress);
-      await AsyncStorage.setItem('macAddressEntered', 'true'); // set flag
-      Alert.alert('Success', 'MAC address saved successfully!');
-      setMacAddress('');
-      setError('');
-      // Redirect to home
-      router.replace('/(private)');
-    } catch (e) {
-      setError('Failed to save MAC address. Please check your internet connection and app permissions.');
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Reset hasScanned when opening the scanner
+  const openScanner = () => {
+    setHasScanned(false);
+    setScannerVisible(true);
   };
 
   return (
@@ -73,40 +72,46 @@ export const QRCodeScreen = () => {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Enter your MAC Address</Text>
-        <TextInput
-          style={[
-            styles.input,
-            !!error && styles.inputError
-          ]}
-          value={macAddress}
-          onChangeText={handleInput}
-          placeholder="e.g. A1:B2:C3:D4:E5:F6"
-          autoCapitalize="characters"
-          autoCorrect={false}
-          keyboardType="default"
-          maxLength={17}
-          editable={!isSubmitting}
-        />
+        <Text style={styles.cardTitle}>Scan your device's MAC Address</Text>
+        <Pressable
+          style={styles.scanButton}
+          onPress={openScanner}
+          disabled={isSubmitting || scannerVisible}
+        >
+          <Text style={styles.scanButtonText}>{scannerVisible ? 'Scanning...' : 'Start Scan'}</Text>
+        </Pressable>
         {!!error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
-        <Pressable 
-          style={[
-            styles.saveButton,
-            !isValidInput && styles.saveButtonDisabled,
-            isSubmitting && styles.saveButtonSubmitting
-          ]} 
-          onPress={handleSave}
-          disabled={!isValidInput || isSubmitting}>
-          <Text style={[
-            styles.saveButtonText,
-            !isValidInput && styles.saveButtonTextDisabled
-          ]}>
-            {isSubmitting ? 'Saving...' : 'Save'}
-          </Text>
-        </Pressable>
+        {isSubmitting && <ActivityIndicator style={{ marginTop: 12 }} color="#7F67FF" />}
       </View>
+
+      {/* Barcode Scanner Overlay */}
+      {scannerVisible && permission?.granted && (
+        <View style={styles.scannerOverlay}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing={'back'}
+            onBarcodeScanned={handleBarCodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['qr', 'code128', 'code39', 'code93', 'ean13', 'ean8', 'itf14', 'upc_a', 'upc_e'] }}
+          />
+          <Pressable style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
+            <Text style={{ color: '#fff', fontSize: 18 }}>Cancel</Text>
+          </Pressable>
+        </View>
+      )}
+      {scannerVisible && permission && !permission.granted && (
+        <View style={styles.scannerOverlay}>
+          <Text style={{ color: '#fff', fontSize: 18, marginBottom: 20 }}>No access to camera</Text>
+          <Pressable style={styles.closeScannerBtn} onPress={requestPermission}>
+            <Text style={{ color: '#fff', fontSize: 18 }}>Grant Permission</Text>
+          </Pressable>
+          <Pressable style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
+            <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -158,30 +163,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     textAlign: 'center',
   },
-  input: {
-    width: '100%',
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#F7F6FF',
-    borderWidth: 1,
-    borderColor: '#E5E1FF',
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 10,
-    letterSpacing: 2,
-    textAlign: 'center',
-    color: '#222',
-  },
-  inputError: {
-    borderColor: '#FF3B3B',
-  },
-  errorText: {
-    color: '#FF3B3B',
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  saveButton: {
+  scanButton: {
     backgroundColor: '#7F67FF',
     borderRadius: 12,
     paddingVertical: 12,
@@ -192,20 +174,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 2,
+    marginBottom: 10,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#7F67FF80', // 50% opacity
-  },
-  saveButtonSubmitting: {
-    backgroundColor: '#6752CC', // darker shade
-  },
-  saveButtonText: {
+  scanButtonText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
   },
-  saveButtonTextDisabled: {
-    color: '#FFFFFF80', // 50% opacity
+  errorText: {
+    color: '#FF3B3B',
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  camera: {
+    width: '90%',
+    height: '60%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  closeScannerBtn: {
+    marginTop: 20,
+    backgroundColor: '#7F67FF',
+    padding: 12,
+    borderRadius: 8,
   },
 });
 
