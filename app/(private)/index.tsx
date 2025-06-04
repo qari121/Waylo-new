@@ -1,7 +1,6 @@
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native'
 
 import AuthMiddleware from '../../components/auth-middleware'
-import { FloatingMenu } from '../../components/floating-menu'
 import { HomeScreen } from '../../screens/home'
 
 const Page = () => {
@@ -10,7 +9,6 @@ const Page = () => {
 			<SafeAreaView style={styles.safeArea}>
 				<StatusBar barStyle="dark-content" backgroundColor="#f6f6f6" />
 				<HomeScreen />
-				<FloatingMenu />
 			</SafeAreaView>
 		</AuthMiddleware>
 	)

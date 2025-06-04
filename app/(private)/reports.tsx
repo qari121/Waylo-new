@@ -1,13 +1,11 @@
 import { View, StyleSheet } from 'react-native'
 
-import { FloatingMenu } from '../../components/floating-menu'
 import { ReportScreen } from '../../screens/reports'
 
 export default function Page() {
 	return (
 		<View style={styles.container}>
 			<ReportScreen />
-			<FloatingMenu />
 		</View>
 	)
 }

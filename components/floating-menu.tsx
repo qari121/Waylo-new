@@ -1,239 +1,235 @@
-import { usePathname, useRouter } from 'expo-router'
-import React, { memo, useMemo, useEffect, useRef, useState } from 'react'
-import { Image, Platform, View, ViewStyle, StyleSheet, TouchableOpacity } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import Svg, { G, Path } from 'react-native-svg'
-import ActiveIndicatorIcon from '../assets/icons/active-indicator.svg'
+/* ──────────────────────────────────────────────────────────── */
+/*  Floating bottom menu with working active-bar indicator      */
+/*  Expo + React Native                                         */
+/* ──────────────────────────────────────────────────────────── */
 
+import { usePathname, useRouter } from 'expo-router';
+import React, { memo, useEffect, useMemo, useState } from 'react';
+import {
+  Image,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ViewStyle,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { G, Path } from 'react-native-svg';
+
+/* ────── SVG icons ────── */
 interface IconProps {
-  width?: number
-  height?: number
-  color?: string
+  width?: number;
+  height?: number;
+  color?: string;
 }
 
-interface MenuItemProps {
-  icon?: React.ComponentType<IconProps>
-  isActive: boolean
-  isProfile?: boolean
-  profileImage?: any
-  onPress: () => void
-}
+const SvgPart = ({
+  width = 24,
+  height = 24,
+  color = 'currentColor',
+  d,
+}: IconProps & { d: string[] }) => (
+  <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+    <G stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {d.map((p, i) => (
+        <Path key={i} d={p} />
+      ))}
+    </G>
+  </Svg>
+);
 
-const activeIndicatorStyle: ViewStyle = Platform.OS !== 'web'
-  ? { bottom: -13, position: 'absolute', transform: [{ translateX: 2 }] }
-  : {}
+const HomeIcon = (p: IconProps) => (
+  <SvgPart
+    {...p}
+    d={[
+      'M9.02 2.84 3.63 7.04C2.73 7.74 2 9.23 2 10.36v7.41C2 20.09 3.89 22 6.21 22h11.58C20.11 22 22 20.09 22 17.78V10.5c0-1.21-.81-2.76-1.8-3.45L14.02 2.72c-1.4-.98-3.65-.93-5 .12Z',
+      'M12 18v-3',
+    ]}
+  />
+);
 
+const ChartIcon = (p: IconProps) => (
+  <SvgPart
+    {...p}
+    d={[
+      'M6.15 17h12.19C20.24 17 21.24 16 21.24 14.1V2H3.24v12.1C3.25 16 4.25 17 6.15 17Z',
+      'M2.25 2h20',
+      'M8.25 22 12.25 20v-3',
+      'm16.25 22-4-2',
+      'm7.75 11 3.15-2.63c.25-.21.58-.15.75.13l1.2 2c.17.28.5.33.75.13L16.75 8',
+    ]}
+  />
+);
+
+const ProfileIcon = (p: IconProps) => (
+  <SvgPart
+    {...p}
+    d={[
+      'M12 12c2.76 0 5-2.24 5-5S14.76 2 12 2 7 4.24 7 7s2.24 5 5 5Z',
+      'M3 22c0-3.87 3.13-7 7-7h4c3.87 0 7 3.13 7 7',
+    ]}
+  />
+);
+
+/* ────── Character avatars ────── */
 const characterImages: Record<string, any> = {
   Bear: require('../assets/images/avatar.png'),
   Fluffy: require('../assets/images/pro1.png'),
   Robot: require('../assets/images/pro2.png'),
+};
+
+/* ────── Helper: strip `(group)` segments from a pathname ────── */
+const stripRouteGroups = (path: string) => path.replace(/\([^)]*\)/g, '');
+
+/* ────── Single menu item ────── */
+interface MenuItemProps {
+  icon?: React.ComponentType<IconProps>;
+  isActive: boolean;
+  isProfile?: boolean;
+  profileImage?: any;
+  onPress: () => void;
 }
 
 const MenuItem = memo(
-  ({ icon: Icon, isActive, isProfile = false, profileImage, onPress }: MenuItemProps) => (
-    <TouchableOpacity onPress={onPress} disabled={isActive} activeOpacity={0.7}>
-      <View style={styles.menuItemContainer}>
+  ({ icon: Icon, isActive, isProfile, profileImage, onPress }: MenuItemProps) => (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.menuItem}>
+        {/* main icon / avatar */}
         {isProfile ? (
-          <Image
-            source={profileImage || characterImages.Bear}
-            style={styles.profileImage}
-            resizeMode="cover"
-          />
-        ) : Icon && (
-          <Icon width={30} height={30} color={isActive ? '#416EC8' : '#C5C5C5'} />
+          <Image source={profileImage} style={styles.profilePic} resizeMode="cover" />
+        ) : (
+          Icon && (
+            <Icon
+              width={30}
+              height={30}
+              color={isActive ? '#AE9FFF' : '#C5C5C5'}
+            />
+          )
         )}
-        {isActive && (
-          <ActiveIndicatorIcon
-            style={[activeIndicatorStyle, styles.activeIndicatorIcon]}
-          />
-        )}
+        {/* active indicator */}
+        {isActive && <View style={styles.activeBar} />}
       </View>
     </TouchableOpacity>
-  )
-)
+  ),
+);
 
+/* ────── Main floating menu ────── */
 export const FloatingMenu = memo(() => {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [selectedCharacter, setSelectedCharacter] = useState('Bear')
-  const [currentTab, setCurrentTab] = useState(0)
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  const menuItems = useMemo(
+  /* resolve current path (w/out query + group segments) */
+  const rawPathname = usePathname().split('?')[0];
+  const pathname = stripRouteGroups(rawPathname);
+
+  /* user-selected avatar */
+  const [avatar, setAvatar] = useState<'Bear' | 'Fluffy' | 'Robot'>('Bear');
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem('selectedCharacter');
+      if (stored && characterImages[stored]) {
+        setAvatar(stored as any);
+      }
+    })();
+  }, []);
+
+  /* tab definitions */
+  const tabs = useMemo(
     () => [
-      { href: '/', icon: HomeIcon },
-      { href: '/reports', icon: PresentationChartIcon },
-      { href: '/profile', isProfile: true, profileImage: characterImages[selectedCharacter] }
+      {
+        href: '/',
+        isActive: (p: string) => p === '/' || p === '/index',
+        icon: HomeIcon,
+      },
+      {
+        href: '/reports',
+        isActive: (p: string) => p.startsWith('/reports'),
+        icon: ChartIcon,
+      },
+      {
+        href: '/profile',
+        isActive: (p: string) => p.startsWith('/profile'),
+        isProfile: true,
+        profileImage: characterImages[avatar],
+      },
     ],
-    [selectedCharacter]
-  )
+    [avatar],
+  );
 
-  useEffect(() => {
-    const loadSelectedCharacter = async () => {
-      const saved = await AsyncStorage.getItem('selectedCharacter')
-      if (saved && characterImages[saved]) setSelectedCharacter(saved)
-    }
-    loadSelectedCharacter()
-  }, [])
+  /* which tab is active? */
+  const activeIdx = tabs.findIndex((t) => t.isActive(pathname));
 
-  useEffect(() => {
-    const idx = menuItems.findIndex(item => item.href === pathname)
-    if (idx !== -1) setCurrentTab(idx)
-  }, [pathname, menuItems])
-
-  const handleTabPress = (newIndex: number, href: string) => {
-    if (currentTab === newIndex) return;
-
-    // If we're going to home, use pop behavior
-    if (href === '/') {
-      setCurrentTab(0);
-      router.back();
-      return;
-    }
-
-    // For tab-to-tab navigation (reports <-> profile), use replace
-    if (currentTab !== 0 && newIndex !== 0) {
-      setCurrentTab(newIndex);
+  /* navigation handler */
+  const handlePress = (href: string) => {
+    if (pathname !== href) {
       router.replace(href);
-      return;
     }
+  };
 
-    // For home to tab navigation, use push
-    setCurrentTab(newIndex);
-    router.push(href);
-  }
-
+  /* render */
   return (
-    <View
-      style={[
-        {
-          elevation: 5,
-          boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)',
-        },
-        styles.floatingMenu
-      ]}
-    >
-      {menuItems.map((item, index) => (
+    <View style={[styles.bar, { paddingBottom: insets.bottom }]}>
+      {tabs.map((t, i) => (
         <MenuItem
-          key={item.href}
-          icon={item.icon}
-          isActive={currentTab === index}
-          isProfile={item.isProfile}
-          profileImage={item.profileImage}
-          onPress={() => handleTabPress(index, item.href)}
+          key={t.href}
+          {...t}
+          isActive={i === activeIdx}
+          onPress={() => handlePress(t.href)}
         />
       ))}
     </View>
-  )
-})
+  );
+});
 
-const HomeIcon = memo(({ width = 24, height = 24, color = 'currentColor' }: IconProps) => (
-  <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
-    <G>
-      <Path
-        d="M9.02 2.84004L3.63 7.04004C2.73 7.74004 2 9.23004 2 10.36V17.77C2 20.09 3.89 21.99 6.21 21.99H17.79C20.11 21.99 22 20.09 22 17.78V10.5C22 9.29004 21.19 7.74004 20.2 7.05004L14.02 2.72004C12.62 1.74004 10.37 1.79004 9.02 2.84004Z"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M12 17.99V14.99"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </G>
-  </Svg>
-))
-
-const PresentationChartIcon = memo(({ width = 24, height = 24, color = 'currentColor' }: IconProps) => (
-  <Svg width={width} height={height} viewBox="0 0 25 24" fill="none">
-    <G>
-      <Path
-        d="M6.15024 17H18.3402C20.2402 17 21.2402 16 21.2402 14.1V2H3.24023V14.1C3.25023 16 4.25024 17 6.15024 17Z"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeMiterlimit="10"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M2.25 2H22.25"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeMiterlimit="10"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8.25 22L12.25 20V17"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeMiterlimit="10"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M16.25 22L12.25 20"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeMiterlimit="10"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M7.75 11L10.9 8.37C11.15 8.16 11.48 8.22 11.65 8.5L12.85 10.5C13.02 10.78 13.35 10.83 13.6 10.63L16.75 8"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeMiterlimit="10"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </G>
-  </Svg>
-))
-
+/* ────── Styles ────── */
 const styles = StyleSheet.create({
-  floatingMenu: {
+  bar: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    width: '100%',
+    bottom: 0,
     height: 70,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    overflow: 'hidden',
-    borderRadius: 0,
-    backgroundColor: 'white',
     paddingHorizontal: 32,
-    paddingVertical: 12,
-    paddingTop: 6,
-    zIndex: 100,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E6E6E6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 12,
+    zIndex: 999,
   },
-  menuItemContainer: {
-    position: 'relative',
-    flexDirection: 'column',
+
+  /* each icon wrapper */
+  menuItem: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
-    marginTop: 0,
+    justifyContent: 'center',
+    /* allow the indicator to poke outside on Android */
+    overflow: 'visible',
   },
-  profileImage: {
+
+  profilePic: {
     width: 30,
     height: 30,
     borderRadius: 15,
   },
-  activeIndicatorIcon: {
-    zIndex: 10,
-  },
-})
 
-export default FloatingMenu
+  /* blue pill at the bottom of active icon */
+  activeBar: {
+    position: 'absolute',
+    bottom: -10,          // sits just outside the main bar
+    left: 0,
+    right: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#AE9FFF',
+  },
+});
+
+export default FloatingMenu;
