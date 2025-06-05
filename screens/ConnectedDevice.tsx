@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList, Switch } from 'react-native';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,6 +71,7 @@ const ConnectedDeviceScreen = () => {
   const [pickerType, setPickerType] = useState<'start' | 'end' | null>(null);
 
   const [macAddress, setMacAddress] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false); // Track DND/Lock state
 
   useEffect(() => {
     const fetchMac = async () => {
@@ -79,6 +80,20 @@ const ConnectedDeviceScreen = () => {
     };
     fetchMac();
   }, []);
+
+  // Optionally, fetch DND state from Firestore on mount
+  useEffect(() => {
+    const fetchDND = async () => {
+      if (!macAddress) return;
+      const docRef = doc(db, 'parental_controls', macAddress);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const controls = docSnap.data();
+        setIsLocked(!!controls.DND);
+      }
+    };
+    fetchDND();
+  }, [macAddress]);
 
   const handleSave = async () => {
     if (!ensureMacAddress(macAddress)) return;
@@ -94,20 +109,25 @@ const ConnectedDeviceScreen = () => {
       { mac_address: macAddress, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
       { merge: true }
     );
-    Alert.alert('Saved', `Restriction will be active from ${startTime} to ${endTime}`);
+    // Optionally show a message
+    // Alert.alert('Saved', `Restriction will be active from ${startTime} to ${endTime}`);
   };
 
-  const handleDoNotDisturb = async () => {
+  // Toggle Lock/Unlock (DND)
+  const handleToggleLock = async () => {
     if (!ensureMacAddress(macAddress)) return;
     setShowScheduling(false);
     const user = auth.currentUser;
     if (!user) return;
+    const newLockState = !isLocked;
+    setIsLocked(newLockState);
     await setDoc(
       doc(db, 'parental_controls', macAddress),
-      { mac_address: macAddress, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: true },
+      { mac_address: macAddress, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
       { merge: true }
     );
-    Alert.alert('Do Not Disturb enabled');
+    // Optionally show a message
+    // Alert.alert(newLockState ? 'Device Locked' : 'Device Unlocked');
   };
 
   const getControls = async () => {
@@ -155,12 +175,15 @@ const ConnectedDeviceScreen = () => {
             >
               <Text style={styles.parentalButtonText}>Scheduling</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.parentalButton}
-              onPress={handleDoNotDisturb}
-            >
-              <Text style={styles.parentalButtonText}>Do Not Disturb</Text>
-            </TouchableOpacity>
+          </View>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Lock Device</Text>
+            <Switch
+              value={isLocked}
+              onValueChange={handleToggleLock}
+              trackColor={{ false: '#E5E1FF', true: '#7F67FF' }}
+              thumbColor={isLocked ? '#fff' : '#7F67FF'}
+            />
           </View>
           {showScheduling && (
             <View style={styles.schedulingSection}>
@@ -412,6 +435,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#3C2FCB',
     fontWeight: 'bold',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    marginTop: 12,
+  },
+  toggleLabel: {
+    color: '#7F67FF',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginRight: 8,
   },
 });
 
