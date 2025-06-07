@@ -64,6 +64,7 @@ export const ReportScreen = () => {
 	})
 
 	const [isLoading, setIsLoading] = useState(true)
+	const [isInitialized, setIsInitialized] = useState(false)
 	const [reportDuration, setReportDuration] = useState<Option>(
 		reportType?.type === 'daily' ? { label: 'Day', value: 'day' } : { label: 'Week', value: 'week' }
 	)
@@ -131,35 +132,77 @@ export const ReportScreen = () => {
 		)
 	}
 
+	// Initialize MAC address and data
+	useEffect(() => {
+		const initializeData = async () => {
+			try {
+				const storedMac = await AsyncStorage.getItem('macAddress')
+				if (storedMac && isValidMac(storedMac)) {
+					setMacAddress(storedMac)
+					setIsLoading(true)
+					
+					// Fetch initial data
+					if (reportDuration?.value === 'day') {
+						await dispatch(fetchDailyLogRanges(storedMac)).unwrap()
+					} else {
+						await dispatch(fetchWeeklyLogRanges(storedMac)).unwrap()
+					}
+					await dispatch(fetchSentimentsByDate(storedMac)).unwrap()
+				}
+			} catch (err: any) {
+				console.error('Error initializing data:', err)
+				Toast.show({ type: 'error', text1: err?.message ?? 'Failed to initialize data' })
+			} finally {
+				setIsLoading(false)
+				setIsInitialized(true)
+			}
+		}
+
+		if (!isInitialized) {
+			initializeData()
+		}
+	}, [isInitialized])
+
+	// Handle report duration changes
 	useEffect(() => {
 		const fetchData = async () => {
-			const macAddress = await AsyncStorage.getItem('macAddress');
-			if (!ensureMacAddress(macAddress)) return;
+			if (!macAddress || !isValidMac(macAddress)) {
+				Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing reports.' })
+				return
+			}
+
 			try {
-				const macAddress = await AsyncStorage.getItem('macAddress')
-				if (!macAddress || !isValidMac(macAddress)) {
-					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing reports.' })
-					setIsLoading(false)
-					return
-				}
+				setIsLoading(true)
 				if (reportDuration?.value === 'day') {
 					await dispatch(fetchDailyLogRanges(macAddress)).unwrap()
 				} else {
 					await dispatch(fetchWeeklyLogRanges(macAddress)).unwrap()
 				}
 				await dispatch(fetchSentimentsByDate(macAddress)).unwrap()
-				setIsLoading(false)
 			} catch (err: any) {
-				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch report data' })
+				console.error('Error fetching report data:', err)
+				Toast.show({ type: 'error', text1: err?.message ?? 'Failed to fetch report data' })
+			} finally {
 				setIsLoading(false)
 			}
 		}
-		fetchData()
-	}, [reportDuration])
 
+		if (isInitialized) {
+			fetchData()
+		}
+	}, [reportDuration, macAddress, isInitialized])
+
+	// Handle MAC address changes
 	useEffect(() => {
-		AsyncStorage.getItem('macAddress').then(setMacAddress);
-	}, []);
+		const checkMacAddress = async () => {
+			const storedMac = await AsyncStorage.getItem('macAddress')
+			if (storedMac !== macAddress) {
+				setMacAddress(storedMac)
+				setIsInitialized(false) // Reset initialization to trigger data reload
+			}
+		}
+		checkMacAddress()
+	}, [])
 
 	if (!fontsLoaded) {
 		return null

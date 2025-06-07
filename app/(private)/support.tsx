@@ -2,7 +2,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import { useFonts } from 'expo-font'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState } from 'react'
-import { Animated, Image, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native'
+import { Animated, Image, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native'
 import ChevronLeftIcon from '../../assets/icons/chevron-left.svg';
 import ChevronDownIcon from '../../assets/icons/chevron_down.svg';
 
@@ -167,9 +167,9 @@ const styles = StyleSheet.create({
   headerWrapper: {
     width: '100%',
     backgroundColor: 'white',
+    paddingTop: Platform.OS === 'ios' ? 35 : 0,
   },
   headerRow: {
-    marginTop: -20, // mt-2
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',

@@ -258,7 +258,7 @@ export const ToyLogsScreen: React.FC = () => {
 	}
 
 	return (
-		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }} edges={['top']}>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={styles.keyboardAvoidingView}
@@ -417,6 +417,7 @@ const styles = StyleSheet.create({
 	},
 	container: {
 		flex: 1,
+		paddingTop: Platform.OS === 'ios' ? 60 : 0,
 	},
 	loadingContainer: {
 		flex: 1,

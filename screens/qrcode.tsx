@@ -42,7 +42,7 @@ export const QRCodeScreen = () => {
         await setDoc(doc(db, 'users', user.uid), { mac_address: mac }, { merge: true });
         await AsyncStorage.setItem('macAddress', mac);
         await AsyncStorage.setItem('macAddressEntered', 'true');
-        router.replace('/(private)');
+        router.replace('/(private)/');
       } catch (e) {
         setError('Failed to save MAC address. Please check your internet connection and app permissions.');
         console.error(e);

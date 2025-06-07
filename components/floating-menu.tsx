@@ -148,7 +148,7 @@ export const FloatingMenu = memo(() => {
     () => [
       {
         href: '/',
-        isActive: (p: string) => p === '/' || p === '/index',
+        isActive: (p: string) => p === '/' || p === '/index' || p === '/(private)/' || p === '/(private)/index',
         icon: HomeIcon,
       },
       {
@@ -180,6 +180,11 @@ export const FloatingMenu = memo(() => {
       router.replace(href);
     }
   };
+
+  // Hide menu on toy-logs screen
+  if (pathname.includes('/toy-logs')) {
+    return null;
+  }
 
   /* render */
   return (
