@@ -1,7 +1,7 @@
 /* eslint-disable react-native/no-color-literals */
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { Image, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions, Modal, TouchableOpacity } from 'react-native'
+import { Image, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions, Modal, TouchableOpacity, Pressable } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { LineChart } from 'react-native-gifted-charts'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -10,6 +10,9 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import { format } from 'date-fns'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ensureMacAddress } from '../utils/ensureMacAddress'
+import DateTimePickerModal from 'react-native-modal-datetime-picker'
+import { collection, query, where, getDocs } from 'firebase/firestore'
+import { db } from '../config/firebase'
 
 import { Button } from '../components/ui/button'
 import {
@@ -32,6 +35,9 @@ import SadEmoji from '../assets/icons/emoji-pensive-face.svg'
 import AngryEmoji from '../assets/icons/emoji-pouting-face.svg'
 import HappyEmoji from '../assets/icons/emoji-slightly-smiling-face.svg'
 import OpenBookIcon from '../assets/icons/open-book.svg'
+import MicrophoneIcon from '../assets/icons/microphone.svg'
+import BrickBackground from '../assets/icons/brick_background.svg'
+import Waves from '../assets/icons/waves.svg'
 
 const WINDOW_DIMENSIONS = Dimensions.get('window')
 
@@ -45,6 +51,16 @@ const emojiIcons = {
 } as { [mood: string]: React.ElementType }
 
 const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input)
+
+type TimeSpan = 'morning' | 'afternoon' | 'evening' | 'night';
+type MoodType = 'happy' | 'sad' | 'anxious' | 'neutral';
+
+interface TimeSpanMoods {
+	morning: MoodType | null;
+	afternoon: MoodType | null;
+	evening: MoodType | null;
+	night: MoodType | null;
+}
 
 export const ReportScreen = () => {
 	const router = useRouter()
@@ -72,6 +88,15 @@ export const ReportScreen = () => {
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
 	const [macAddress, setMacAddress] = useState<string | null>(null)
+	const [selectedDate, setSelectedDate] = useState(new Date())
+	const [isDatePickerVisible, setDatePickerVisibility] = useState(false)
+	const [timeSpanMoods, setTimeSpanMoods] = useState<TimeSpanMoods>({
+		morning: null,
+		afternoon: null,
+		evening: null,
+		night: null
+	})
+	const [macChecked, setMacChecked] = useState(false)
 
 	const allowedDurations = auth.plan === "pro"
 		? [{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }]
@@ -200,12 +225,81 @@ export const ReportScreen = () => {
 				setMacAddress(storedMac)
 				setIsInitialized(false) // Reset initialization to trigger data reload
 			}
+			setMacChecked(true)
 		}
 		checkMacAddress()
 	}, [])
 
+	const showDatePicker = () => setDatePickerVisibility(true)
+	const hideDatePicker = () => setDatePickerVisibility(false)
+	const handleConfirm = (date: Date) => {
+		setSelectedDate(date)
+		hideDatePicker()
+	}
+
+	const fetchMoodsByDate = async (date: Date) => {
+		if (!macAddress) return;
+		try {
+			const start = new Date(date);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(date);
+			end.setHours(23, 59, 59, 999);
+			const moodsRef = collection(db, 'sentiment_logs');
+			const q = query(
+				moodsRef,
+				where('toy_mac_address', '==', macAddress)
+			);
+			const querySnapshot = await getDocs(q);
+			const moods: TimeSpanMoods = {
+				morning: null,
+				afternoon: null,
+				evening: null,
+				night: null
+			};
+			querySnapshot.forEach((doc) => {
+				const data = doc.data();
+				const sentiment = data.sentiment as MoodType;
+				let time: Date;
+				if (data.time?.toDate) {
+					time = data.time.toDate();
+				} else if (data.time?.seconds) {
+					time = new Date(data.time.seconds * 1000);
+				} else {
+					time = new Date();
+				}
+				if (time >= start && time <= end) {
+					const hour = time.getHours();
+					let span: TimeSpan | null = null;
+					if (hour >= 5 && hour < 12) span = 'morning';
+					else if (hour >= 12 && hour < 17) span = 'afternoon';
+					else if (hour >= 17 && hour < 21) span = 'evening';
+					else span = 'night';
+					if (!moods[span]) {
+						moods[span] = sentiment;
+					}
+				}
+			});
+			setTimeSpanMoods(moods);
+		} catch (error) {
+			Toast.show({ type: 'error', text1: 'Failed to fetch mood data' });
+		}
+	}
+
+	useEffect(() => {
+		if (macAddress) {
+			fetchMoodsByDate(selectedDate)
+		}
+	}, [selectedDate, macAddress])
+
+	console.log('MAC address in state:', macAddress);
+	console.log('ensureMacAddress result:', ensureMacAddress(macAddress));
+
 	if (!fontsLoaded) {
 		return null
+	}
+
+	if (!macChecked) {
+		return <View><Text>Loading...</Text></View>;
 	}
 
 	return (
@@ -219,6 +313,43 @@ export const ReportScreen = () => {
 				<View style={styles.header}>
 					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold', textAlign: 'center', flex: 1 }]}>Reports</Text>
 				</View>
+
+				<View style={styles.cardsContainer}>
+					<Pressable
+						onPress={() => router.push('/toy-logs')}
+						style={styles.voiceCard}
+					>
+						<View style={StyleSheet.absoluteFill} pointerEvents="none">
+							<BrickBackground width="100%" height="100%" preserveAspectRatio="none" />
+						</View>
+						<View style={styles.voiceCardIconCircle}>
+							<MicrophoneIcon style={styles.icon} />
+						</View>
+						<View style={[styles.wavesContainer, { borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }]}>
+							<Waves width="100%" height={60} preserveAspectRatio="none" />
+							<View style={styles.wavesOverlay} />
+						</View>
+						<Image
+							source={require('../assets/images/avatar.png')}
+							style={styles.connectedDeviceImage}
+							resizeMode="contain"
+						/>
+						<View style={styles.cardFooter}>
+							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Chat Interactions</Text>
+							<View style={styles.avatarGroup}>
+								<Image
+									source={require('../assets/images/home_img_1.png')}
+									style={styles.avatarThumbnail}
+								/>
+								<Image
+									source={require('../assets/images/home_img_2.png')}
+									style={[styles.avatarThumbnail, styles.avatarThumbnailOverlap]}
+								/>
+							</View>
+						</View>
+					</Pressable>
+				</View>
+
 				<View style={styles.interactionReportContainer}>
 					<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
 					<View style={styles.interactionReportControls}>
@@ -313,14 +444,19 @@ export const ReportScreen = () => {
 					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
 						<View style={styles.moodReportContentRow}>
 							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
-							{ensureMacAddress(macAddress) && Object.keys(sentimentsByDate ?? {}).length > 0 && (
-								<TouchableOpacity
-									style={styles.moodPlusButton}
-									onPress={() => setShowMoodModal(true)}
-								>
-									<Text style={styles.moodPlusText}>+</Text>
-								</TouchableOpacity>
-							)}
+						</View>
+						<View style={{ alignItems: 'center', marginBottom: 12 }}>
+							<TouchableOpacity style={styles.datePickerButton} onPress={showDatePicker}>
+								<Text style={styles.datePickerText}>{format(selectedDate, 'MMM dd, yyyy')}</Text>
+							</TouchableOpacity>
+							<DateTimePickerModal
+								isVisible={isDatePickerVisible}
+								mode="date"
+								onConfirm={handleConfirm}
+								onCancel={hideDatePicker}
+								maximumDate={new Date()}
+								date={selectedDate}
+							/>
 						</View>
 						{(() => {
 							if (!ensureMacAddress(macAddress)) {
@@ -332,7 +468,14 @@ export const ReportScreen = () => {
 									</View>
 								);
 							}
-							if (Object.keys(sentimentsByDate ?? {}).length === 0) {
+							const timeSpans = [
+								{ label: 'Morning', key: 'morning' as TimeSpan },
+								{ label: 'Afternoon', key: 'afternoon' as TimeSpan },
+								{ label: 'Evening', key: 'evening' as TimeSpan },
+								{ label: 'Night', key: 'night' as TimeSpan }
+							];
+							const hasAnyMood = Object.values(timeSpanMoods).some(Boolean);
+							if (!hasAnyMood) {
 								return (
 									<View style={{ padding: 12, alignItems: 'center' }}>
 										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
@@ -341,17 +484,23 @@ export const ReportScreen = () => {
 									</View>
 								);
 							}
-							const latestDate = Object.keys(sentimentsByDate ?? {}).sort().reverse()[0]
-							const latestRecords = latestDate ? (sentimentsByDate ?? {})[latestDate] : {}
 							return (
-								<View style={styles.moodSummaryRow}>
-									{Object.entries(latestRecords ?? {}).map(([mood], idx) => (
-										<View key={idx} style={styles.moodSummaryItem}>
-											{emojiIcons[mood] ? React.createElement(emojiIcons[mood], { width: 32, height: 32 }) : null}
+								<View style={styles.moodTimeSpansContainer}>
+									{timeSpans.map(({ label, key }) => (
+										<View key={key} style={styles.moodTimeSpanItem}>
+											<Text style={[styles.moodTimeSpanLabel, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
+												{label}
+											</Text>
+											<View style={styles.moodTimeSpanEmoji}>
+												{timeSpanMoods[key] && emojiIcons[timeSpanMoods[key] as MoodType] 
+													? React.createElement(emojiIcons[timeSpanMoods[key] as MoodType], { width: 32, height: 32 })
+													: <Text style={styles.noMoodText}>-</Text>
+												}
+											</View>
 										</View>
 									))}
 								</View>
-							)
+							);
 						})()}
 					</View>
 				</View>
@@ -363,45 +512,6 @@ export const ReportScreen = () => {
 					) : null}
 				</View>
 			</ScrollView>
-			<Modal
-				visible={showMoodModal}
-				animationType="slide"
-				transparent
-				onRequestClose={() => setShowMoodModal(false)}>
-				<View style={styles.modalOverlay}>
-					<View style={styles.modalContent}>
-						<TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowMoodModal(false)}>
-							<Text style={styles.modalCloseText}>×</Text>
-						</TouchableOpacity>
-						<ScrollView
-							horizontal={false}
-							bounces={false}
-							nestedScrollEnabled
-							showsVerticalScrollIndicator
-							showsHorizontalScrollIndicator={false}
-							style={styles.moodReportScroll}>
-							{Object.entries(sentimentsByDate ?? {}).map(([date, records], index) => (
-								<View key={index} style={styles.moodReportEntry}>
-									<Text style={[styles.moodReportDate, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
-										{format(new Date(date), 'dd MMM yyyy')}
-									</Text>
-									<View style={styles.moodReportList}>
-										{Object.entries(records ?? {}).map(([mood, number], index) => (
-											<View key={index} style={styles.moodReportItem}>
-												<View style={styles.moodLabel}>
-													<Text style={[styles.moodText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{mood}</Text>
-													{emojiIcons[mood] ? React.createElement(emojiIcons[mood]) : null}
-												</View>
-												<Text style={[styles.moodCount, { fontFamily: 'PlusJakartaSans_400Regular' }]}>{number}</Text>
-											</View>
-										))}
-									</View>
-								</View>
-							))}
-						</ScrollView>
-					</View>
-				</View>
-			</Modal>
 		</SafeAreaView>
 	)
 }
@@ -483,23 +593,27 @@ const styles = StyleSheet.create({
 		gap: 4,
 	},
 	moodReportItem: {
-		width: '91.666667%',
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-	},
-	moodLabel: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 2,
+		paddingVertical: 4,
 	},
 	moodText: {
-		fontSize: 12,
-		marginRight: 30,
+		flex: 2,
+		fontSize: 14,
 		textTransform: 'capitalize',
+		textAlign: 'left',
+	},
+	moodEmojiCol: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		right: 80,
 	},
 	moodCount: {
+		flex: 1,
 		fontSize: 14,
+		textAlign: 'right',
 	},
 	moodReportImage: {
 		width: '100%',
@@ -645,17 +759,56 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	modalContent: {
-		width: '90%',
-		minHeight: '55%',
+	moodModalContent: {
 		backgroundColor: 'white',
-		borderRadius: 16,
-		padding: 20,
+		borderRadius: 20,
+		padding: 24,
+		width: '90%',
+		alignItems: 'center',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 4,
+		shadowOpacity: 0.2,
+		shadowRadius: 8,
 		elevation: 5,
+	},
+	moodModalTitle: {
+		fontSize: 22,
+		fontWeight: '700',
+		marginBottom: 4,
+		color: '#7D65FC',
+	},
+	moodModalDate: {
+		fontSize: 16,
+		color: '#888',
+		marginBottom: 16,
+	},
+	moodGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'space-between',
+		width: '100%',
+		marginTop: 8,
+	},
+	moodGridItem: {
+		width: '45%',
+		alignItems: 'center',
+		marginVertical: 12,
+		backgroundColor: '#F7F6FD',
+		borderRadius: 12,
+		padding: 12,
+	},
+	moodEmojiWrapper: {
+		marginBottom: 8,
+	},
+	moodGridLabel: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#515151',
+	},
+	moodGridMood: {
+		fontSize: 14,
+		color: '#7D65FC',
+		marginTop: 2,
 	},
 	modalCloseButton: {
 		position: 'absolute',
@@ -666,6 +819,130 @@ const styles = StyleSheet.create({
 	modalCloseText: {
 		fontSize: 28,
 		color: '#515151',
+	},
+	cardsContainer: {
+		marginTop: 20,
+		flexDirection: 'row',
+		alignItems: 'stretch',
+		gap: 12,
+	},
+	voiceCard: {
+		width: '100%',
+		height: 245,
+		borderRadius: 32,
+		backgroundColor: '#AE9FFF',
+		marginBottom: 14,
+		marginTop: 0,
+		padding: 24,
+		justifyContent: 'flex-end',
+		alignItems: 'flex-start',
+		position: 'relative',
+		overflow: 'hidden',
+	},
+	voiceCardIconCircle: {
+		position: 'absolute',
+		top: 24,
+		left: 24,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: 'white',
+		zIndex: 2,
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	icon: {
+		width: 24,
+		height: 24,
+		flexShrink: 0,
+	},
+	wavesContainer: {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		bottom: 80,
+		overflow: 'hidden',
+	},
+	wavesOverlay: {
+		position: 'absolute',
+		zIndex: 40,
+		height: '100%',
+		width: '100%',
+		backgroundColor: '#AE9FFF99',
+	},
+	connectedDeviceImage: {
+		position: 'absolute',
+		right: 24,
+		bottom: 24,
+		zIndex: 1,
+		width: 140,
+		height: 140,
+		resizeMode: 'contain',
+	},
+	cardFooter: {
+		marginHorizontal: 16,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	cardTitle: {
+		width: '50%',
+		lineHeight: 24,
+		color: 'black',
+		fontSize: 20,
+		fontWeight: '600',
+	},
+	avatarGroup: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		left: 120,
+		top: 20,
+	},
+	avatarThumbnail: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: 'white',
+		zIndex: 30,
+	},
+	avatarThumbnailOverlap: {
+		position: 'relative',
+		zIndex: 20,
+		marginLeft: -6,
+	},
+	noMoodText: {
+		fontSize: 14,
+		color: '#888',
+	},
+	datePickerButton: {
+		backgroundColor: '#F2F2F2',
+		padding: 12,
+		borderRadius: 8,
+	},
+	datePickerText: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#515151',
+	},
+	moodTimeSpansContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
+	},
+	moodTimeSpanItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	moodTimeSpanLabel: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#515151',
+	},
+	moodTimeSpanEmoji: {
+		marginLeft: 8,
 	},
 })
 

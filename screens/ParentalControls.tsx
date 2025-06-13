@@ -7,6 +7,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ensureMacAddress } from '../utils/ensureMacAddress';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
+import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -121,6 +122,17 @@ const ParentalControlsScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.headerTitle}>Parental Controls</Text>
+        {/* Connected Device Info Box */}
+        <View style={styles.deviceCard}>
+          <View style={styles.deviceIconWrapper}>
+            <ConnectedDeviceIcon width={40} height={40} />
+          </View>
+          <Text style={styles.deviceTitle}>Connected Device Info</Text>
+          <Text style={styles.deviceInfo}>Device Name: TeddyBot</Text>
+          <Text style={styles.deviceInfo}>Status: Connected</Text>
+          <Text style={styles.deviceInfo}>Battery: 85%</Text>
+        </View>
+        {/* Parental Controls Card */}
         <View style={styles.parentalCard}>
           <Text style={styles.parentalTitle}>Device Controls</Text>
           <View style={styles.parentalButtonsRow}>
@@ -346,6 +358,35 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginRight: 8,
+  },
+  deviceCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 28,
+    shadowColor: '#AE9FFF',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  deviceIconWrapper: {
+    backgroundColor: '#E5E1FF',
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 10,
+  },
+  deviceTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7F67FF',
+    marginBottom: 8,
+  },
+  deviceInfo: {
+    fontSize: 15,
+    color: '#444',
+    marginBottom: 2,
   },
 });
 

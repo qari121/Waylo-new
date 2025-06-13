@@ -550,4 +550,26 @@ const styles = StyleSheet.create({
 		width: 2,
 		borderRadius: 1,
 	},
+	moodReportItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingVertical: 4,
+	},
+	moodText: {
+		flex: 2,
+		fontSize: 14,
+		textTransform: 'capitalize',
+		textAlign: 'left',
+	},
+	moodEmojiCol: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	moodCount: {
+		flex: 1,
+		fontSize: 14,
+		textAlign: 'right',
+	},
 });

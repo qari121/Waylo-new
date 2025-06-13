@@ -15,6 +15,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { G, Path } from 'react-native-svg';
+import ParentIcon from '../assets/icons/parents-icon.svg';
+import ProfileUserIcon from '../assets/icons/profile-user.svg';
 
 /* ────── SVG icons ────── */
 interface IconProps {
@@ -72,12 +74,10 @@ const ProfileIcon = (p: IconProps) => (
 );
 
 const ParentalControlsIcon = (p: IconProps) => (
-  <SvgPart
-    {...p}
-    d={[
-      'M12 15c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z',
-      'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'
-    ]}
+  <ParentIcon
+    width={p.width || 35}
+    height={p.height || 32}
+    fill={p.color || 'currentColor'}
   />
 );
 
@@ -96,22 +96,25 @@ interface MenuItemProps {
   icon?: React.ComponentType<IconProps>;
   isActive: boolean;
   isProfile?: boolean;
-  profileImage?: any;
   onPress: () => void;
 }
 
 const MenuItem = memo(
-  ({ icon: Icon, isActive, isProfile, profileImage, onPress }: MenuItemProps) => (
+  ({ icon: Icon, isActive, isProfile, onPress }: MenuItemProps) => (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <View style={styles.menuItem}>
         {/* main icon / avatar */}
         {isProfile ? (
-          <Image source={profileImage} style={styles.profilePic} resizeMode="cover" />
+          <ProfileUserIcon
+            width={30}
+            height={30}
+            fill={isActive ? '#AE9FFF' : '#C5C5C5'}
+          />
         ) : (
           Icon && (
             <Icon
-              width={Icon === ParentalControlsIcon ? 25 : 30}
-              height={Icon === ParentalControlsIcon ? 25 : 30}
+              width={Icon === ParentalControlsIcon ? 35 : 35}
+              height={Icon === ParentalControlsIcon ? 32 : 30}
               color={isActive ? '#AE9FFF' : '#C5C5C5'}
             />
           )
@@ -131,17 +134,6 @@ export const FloatingMenu = memo(() => {
   /* resolve current path (w/out query + group segments) */
   const rawPathname = usePathname().split('?')[0];
   const pathname = stripRouteGroups(rawPathname);
-
-  /* user-selected avatar */
-  const [avatar, setAvatar] = useState<'Bear' | 'Fluffy' | 'Robot'>('Bear');
-  useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem('selectedCharacter');
-      if (stored && characterImages[stored]) {
-        setAvatar(stored as any);
-      }
-    })();
-  }, []);
 
   /* tab definitions */
   const tabs = useMemo(
@@ -165,10 +157,9 @@ export const FloatingMenu = memo(() => {
         href: '/profile',
         isActive: (p: string) => p.startsWith('/profile'),
         isProfile: true,
-        profileImage: characterImages[avatar],
       },
     ],
-    [avatar],
+    [],
   );
 
   /* which tab is active? */

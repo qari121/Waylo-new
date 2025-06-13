@@ -47,20 +47,36 @@ export const fetchSentimentsByDate = createAsyncThunk(
 		try {
 			const sentimentQuery = query(
 				collection(db, 'sentiment_logs'),
-				where('toy_mac_address', '==', macAddress)
+				where('toy_mac_address', '==', macAddress),
+				orderBy('time', 'asc')
 			)
 			const querySnapshot = await getDocs(sentimentQuery)
 
-			const sentimentsByDate: { [date: string]: { [sentiment: string]: number } } = {}
+			const sentimentsByDate: { 
+				[date: string]: { 
+					[sentiment: string]: {
+						count: number;
+						timestamps: number[];
+					}
+				} 
+			} = {}
 
 			querySnapshot.forEach((doc) => {
 				const { time, sentiment } = doc.data()
-				const date = new Date(time.seconds * 1000).toISOString().split('T')[0]
+				const timestamp = time.seconds * 1000
+				const date = new Date(timestamp).toISOString().split('T')[0]
 
 				if (!sentimentsByDate[date]) {
 					sentimentsByDate[date] = {}
 				}
-				sentimentsByDate[date][sentiment] = (sentimentsByDate[date][sentiment] || 0) + 1
+				if (!sentimentsByDate[date][sentiment]) {
+					sentimentsByDate[date][sentiment] = {
+						count: 0,
+						timestamps: []
+					}
+				}
+				sentimentsByDate[date][sentiment].count++
+				sentimentsByDate[date][sentiment].timestamps.push(timestamp)
 			})
 
 			return thunkAPI.fulfillWithValue(sentimentsByDate)
@@ -70,7 +86,22 @@ export const fetchSentimentsByDate = createAsyncThunk(
 	}
 )
 
-const initialState = {} as SentimentState
+interface SentimentState {
+	sentimentsByDate: {
+		[date: string]: {
+			[sentiment: string]: {
+				count: number;
+				timestamps: number[];
+			}
+		}
+	} | null;
+	sentimentRecord: Record<string, Record<string, number>> | null;
+}
+
+const initialState: SentimentState = {
+	sentimentsByDate: null,
+	sentimentRecord: null
+}
 
 const sentimentSlice = createSlice({
 	name: 'sentiments',
@@ -79,26 +110,19 @@ const sentimentSlice = createSlice({
 	extraReducers: (builder) => {
 		builder.addCase(
 			fetchSentimentsCount.fulfilled,
-			(state, action: PayloadAction<SentimentState['sentimentsByDate']>) => {
+			(state, action: PayloadAction<SentimentState['sentimentRecord']>) => {
 				return { ...state, sentimentRecord: action.payload }
 			}
-		),
-			builder.addCase(
-				fetchSentimentsByDate.fulfilled,
-				(
-					state,
-					action: PayloadAction<{
-						[date: string]: {
-							[sentiment: string]: number
-						}
-					}>
-				) => {
-					return { ...state, sentimentsByDate: action.payload }
-				}
-			),
-			builder.addCase(fetchSentimentsByDate.rejected, (state) => {
-				return { ...state, sentimentsByDate: null }
-			})
+		)
+		builder.addCase(
+			fetchSentimentsByDate.fulfilled,
+			(state, action: PayloadAction<SentimentState['sentimentsByDate']>) => {
+				return { ...state, sentimentsByDate: action.payload }
+			}
+		)
+		builder.addCase(fetchSentimentsByDate.rejected, (state) => {
+			return { ...state, sentimentsByDate: null }
+		})
 		builder.addCase(fetchSentimentsCount.rejected, (state) => {
 			return { ...state, sentimentRecord: null }
 		})

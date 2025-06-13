@@ -169,41 +169,6 @@ export const HomeScreen = () => {
 					<Text style={styles.connectedDeviceTitle}>Connected{"\n"}Device</Text>
 				</TouchableOpacity>
 
-				<View style={styles.cardsContainer}>
-					<Pressable
-						onPress={() => router.push('/toy-logs')}
-						style={styles.voiceCard}
-					>
-						<View style={StyleSheet.absoluteFill} pointerEvents="none">
-							<BrickBackground width="100%" height="100%" preserveAspectRatio="none" />
-						</View>
-						<View style={styles.voiceCardIconCircle}>
-							<MicrophoneIcon style={styles.icon} />
-						</View>
-						<View style={[styles.wavesContainer, { borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }] }>
-							<Waves width="100%" height={60} preserveAspectRatio="none" />
-							<View style={styles.wavesOverlay} />
-						</View>
-						<Image
-							source={require('../assets/images/avatar.png')}
-							style={styles.connectedDeviceImage}
-							resizeMode="contain"
-						/>
-						<View style={styles.cardFooter}>
-							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Chat Interactions</Text>
-							<View style={styles.avatarGroup}>
-								<Image
-									source={require('../assets/images/home_img_1.png')}
-									style={styles.avatarThumbnail}
-								/>
-								<Image
-									source={require('../assets/images/home_img_2.png')}
-									style={[styles.avatarThumbnail, styles.avatarThumbnailOverlap]}
-								/>
-							</View>
-						</View>
-					</Pressable>
-				</View>
 				{isOnline && hasPaidModule && (
 					<View style={styles.moodHistoryContainer}>
 						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
