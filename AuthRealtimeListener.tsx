@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from './hooks'; // adjust path if need
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { setUser } from './slices/auth'; // instead of login
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthRealtimeListener = () => {
   const auth = useAppSelector(state => state.auth);
@@ -12,11 +13,30 @@ const AuthRealtimeListener = () => {
     if (!auth.uid) return;
     const unsubscribe = onSnapshot(doc(db, 'users', auth.uid), (docSnap) => {
       if (docSnap.exists()) {
-        dispatch(setUser(docSnap.data() as AuthState));
+        const data = docSnap.data() as AuthState;
+        dispatch(setUser(data));
+
+        // ────────────────────────────────────────────────
+        // Keep MAC address in local storage in sync
+        // ────────────────────────────────────────────────
+        const mac = (data as any).mac_address as string | undefined;
+        if (mac) {
+          AsyncStorage.setItem('macAddress', mac);
+          AsyncStorage.setItem('macAddressEntered', 'true');
+        }
       }
     });
     return () => unsubscribe();
   }, [auth.uid, dispatch]);
+
+  // ──────────────────────────────────────────────────
+  // Clear cached MAC when user logs out / auth.uid→''
+  // ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!auth.uid) {
+      AsyncStorage.multiRemove(['macAddress', 'macAddressEntered']).catch(() => {});
+    }
+  }, [auth.uid]);
 
   return null;
 };

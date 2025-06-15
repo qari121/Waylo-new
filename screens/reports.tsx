@@ -11,7 +11,7 @@ import { format } from 'date-fns'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ensureMacAddress } from '../utils/ensureMacAddress'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
 import { Button } from '../components/ui/button'
@@ -50,8 +50,6 @@ const emojiIcons = {
 	sad: SadEmoji
 } as { [mood: string]: React.ElementType }
 
-const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input)
-
 type TimeSpan = 'morning' | 'afternoon' | 'evening' | 'night';
 type MoodType = 'happy' | 'sad' | 'anxious' | 'neutral';
 
@@ -88,6 +86,8 @@ export const ReportScreen = () => {
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
 	const [macAddress, setMacAddress] = useState<string | null>(null)
+	const [macLoaded, setMacLoaded] = useState<boolean>(false)
+	const [macChecked, setMacChecked] = useState(false)
 	const [selectedDate, setSelectedDate] = useState(new Date())
 	const [isDatePickerVisible, setDatePickerVisibility] = useState(false)
 	const [timeSpanMoods, setTimeSpanMoods] = useState<TimeSpanMoods>({
@@ -96,7 +96,8 @@ export const ReportScreen = () => {
 		evening: null,
 		night: null
 	})
-	const [macChecked, setMacChecked] = useState(false)
+	const [interestBreakdown, setInterestBreakdown] = useState<{interest:string,pct:number}[] | null>(null);
+	const [interestLoading, setInterestLoading] = useState<boolean>(false);
 
 	const allowedDurations = auth.plan === "pro"
 		? [{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }]
@@ -157,78 +158,40 @@ export const ReportScreen = () => {
 		)
 	}
 
-	// Initialize MAC address and data
+	// 1) Load MAC once
 	useEffect(() => {
-		const initializeData = async () => {
-			try {
-				const storedMac = await AsyncStorage.getItem('macAddress')
-				if (storedMac && isValidMac(storedMac)) {
-					setMacAddress(storedMac)
-					setIsLoading(true)
-					
-					// Fetch initial data
-					if (reportDuration?.value === 'day') {
-						await dispatch(fetchDailyLogRanges(storedMac)).unwrap()
-					} else {
-						await dispatch(fetchWeeklyLogRanges(storedMac)).unwrap()
-					}
-					await dispatch(fetchSentimentsByDate(storedMac)).unwrap()
-				}
-			} catch (err: any) {
-				console.error('Error initializing data:', err)
-				Toast.show({ type: 'error', text1: err?.message ?? 'Failed to initialize data' })
-			} finally {
-				setIsLoading(false)
-				setIsInitialized(true)
-			}
-		}
+		AsyncStorage.getItem('macAddress').then(setMacAddress).finally(() => setMacLoaded(true));
+	}, []);
 
-		if (!isInitialized) {
-			initializeData()
-		}
-	}, [isInitialized])
-
-	// Handle report duration changes
+	// 2) Initialize data once MAC available
 	useEffect(() => {
-		const fetchData = async () => {
-			if (!macAddress || !isValidMac(macAddress)) {
-				Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing reports.' })
-				return
-			}
-
+		if (!macLoaded || isInitialized) return;
+		const run = async () => {
+			const clean = ensureMacAddress(macAddress);
+			if (!clean) { setIsInitialized(true); return; }
 			try {
-				setIsLoading(true)
+				setIsLoading(true);
 				if (reportDuration?.value === 'day') {
-					await dispatch(fetchDailyLogRanges(macAddress)).unwrap()
+					await dispatch(fetchDailyLogRanges(clean)).unwrap();
 				} else {
-					await dispatch(fetchWeeklyLogRanges(macAddress)).unwrap()
+					await dispatch(fetchWeeklyLogRanges(clean)).unwrap();
 				}
-				await dispatch(fetchSentimentsByDate(macAddress)).unwrap()
-			} catch (err: any) {
-				console.error('Error fetching report data:', err)
-				Toast.show({ type: 'error', text1: err?.message ?? 'Failed to fetch report data' })
+				await dispatch(fetchSentimentsByDate(clean)).unwrap();
+			} catch(e:any) {
+				Toast.show({ type:'error', text1: e?.message ?? 'Failed to fetch report data' });
 			} finally {
-				setIsLoading(false)
+				setIsLoading(false);
+				setIsInitialized(true);
 			}
-		}
+		};
+		run();
+	}, [macLoaded, macAddress, isInitialized, reportDuration, dispatch]);
 
-		if (isInitialized) {
-			fetchData()
-		}
-	}, [reportDuration, macAddress, isInitialized])
-
-	// Handle MAC address changes
+	// Handle MAC changes (listen once macLoaded)
 	useEffect(() => {
-		const checkMacAddress = async () => {
-			const storedMac = await AsyncStorage.getItem('macAddress')
-			if (storedMac !== macAddress) {
-				setMacAddress(storedMac)
-				setIsInitialized(false) // Reset initialization to trigger data reload
-			}
-			setMacChecked(true)
-		}
-		checkMacAddress()
-	}, [])
+		if (!macLoaded) return;
+		setMacChecked(true);
+	}, [macLoaded]);
 
 	const showDatePicker = () => setDatePickerVisibility(true)
 	const hideDatePicker = () => setDatePickerVisibility(false)
@@ -240,14 +203,16 @@ export const ReportScreen = () => {
 	const fetchMoodsByDate = async (date: Date) => {
 		if (!macAddress) return;
 		try {
-			const start = new Date(date);
-			start.setHours(0, 0, 0, 0);
-			const end = new Date(date);
-			end.setHours(23, 59, 59, 999);
+			const startDate = new Date(date); startDate.setHours(0, 0, 0, 0);
+			const endDate = new Date(date); endDate.setHours(23, 59, 59, 999);
+			const tsStart = Timestamp.fromDate(startDate);
+			const tsEnd   = Timestamp.fromDate(endDate);
 			const moodsRef = collection(db, 'sentiment_logs');
 			const q = query(
 				moodsRef,
-				where('toy_mac_address', '==', macAddress)
+				where('toy_mac_address', '==', macAddress),
+				where('time', '>=', tsStart),
+				where('time', '<=', tsEnd)
 			);
 			const querySnapshot = await getDocs(q);
 			const moods: TimeSpanMoods = {
@@ -267,7 +232,7 @@ export const ReportScreen = () => {
 				} else {
 					time = new Date();
 				}
-				if (time >= start && time <= end) {
+				if (time >= startDate && time <= endDate) {
 					const hour = time.getHours();
 					let span: TimeSpan | null = null;
 					if (hour >= 5 && hour < 12) span = 'morning';
@@ -293,6 +258,41 @@ export const ReportScreen = () => {
 
 	console.log('MAC address in state:', macAddress);
 	console.log('ensureMacAddress result:', ensureMacAddress(macAddress));
+
+	// interest breakdown for the selected day
+	useEffect(() => {
+		const fetchInterestByDate = async () => {
+			if (!ensureMacAddress(macAddress)) { setInterestBreakdown(null); return; }
+			setInterestLoading(true);
+			try {
+				const startDate = new Date(selectedDate); startDate.setHours(0,0,0,0);
+				const endDate = new Date(selectedDate); endDate.setHours(23,59,59,999);
+				const start = Timestamp.fromDate(startDate);
+				const end = Timestamp.fromDate(endDate);
+				const ref = collection(db,'interest_logs');
+				const qSnap = await getDocs(query(ref, where('toy_mac_address','==', macAddress)));
+				const buckets: Record<string,{sum:number,count:number}> = {};
+				qSnap.forEach(doc=>{
+					const d=doc.data();
+					const interest = d.interest as string;
+					const intensity = Number(d.intensity) || 0;
+					let t: Date;
+					if (d.time?.toDate) t = d.time.toDate(); else t = new Date(d.time);
+					if (t < startDate || t > endDate) return;
+					if(!buckets[interest]) buckets[interest]={sum:0,count:0};
+					buckets[interest].sum += intensity;
+					buckets[interest].count +=1;
+				});
+				const avgs = Object.entries(buckets).map(([k,v])=>({interest:k, score:v.sum/v.count}));
+				const total = avgs.reduce((t,i)=>t+i.score,0);
+				const list = total>0 ? avgs.map(i=>({...i, pct: Math.round(i.score/total*100)})) : [];
+				list.sort((a,b)=>b.pct-a.pct);
+				setInterestBreakdown(list);
+			} catch(e){ setInterestBreakdown(null); }
+			setInterestLoading(false);
+		};
+		fetchInterestByDate();
+	},[selectedDate, macAddress]);
 
 	if (!fontsLoaded) {
 		return null
@@ -440,23 +440,24 @@ export const ReportScreen = () => {
 					<View style={styles.legendIndicator} />
 					<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
 				</View>
+				{/* Date picker aligned right */}
+				<View style={styles.datePickerWrapper}>
+					<TouchableOpacity style={styles.datePickerButton} onPress={showDatePicker}>
+						<Text style={styles.datePickerText}>{format(selectedDate, 'MMM dd, yyyy')}</Text>
+					</TouchableOpacity>
+					<DateTimePickerModal
+						isVisible={isDatePickerVisible}
+						mode="date"
+						onConfirm={handleConfirm}
+						onCancel={hideDatePicker}
+						maximumDate={new Date()}
+						date={selectedDate}
+					/>
+				</View>
 				<View style={styles.statsContainer}>
 					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
 						<View style={styles.moodReportContentRow}>
 							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
-						</View>
-						<View style={{ alignItems: 'center', marginBottom: 12 }}>
-							<TouchableOpacity style={styles.datePickerButton} onPress={showDatePicker}>
-								<Text style={styles.datePickerText}>{format(selectedDate, 'MMM dd, yyyy')}</Text>
-							</TouchableOpacity>
-							<DateTimePickerModal
-								isVisible={isDatePickerVisible}
-								mode="date"
-								onConfirm={handleConfirm}
-								onCancel={hideDatePicker}
-								maximumDate={new Date()}
-								date={selectedDate}
-							/>
 						</View>
 						{(() => {
 							if (!ensureMacAddress(macAddress)) {
@@ -479,21 +480,24 @@ export const ReportScreen = () => {
 								return (
 									<View style={{ padding: 12, alignItems: 'center' }}>
 										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
-											No mood data available for this device yet.
+											No mood data for this day.
 										</Text>
 									</View>
 								);
 							}
 							return (
-								<View style={styles.moodTimeSpansContainer}>
+								<View style={[styles.moodTimeSpansContainer, styles.moodTimeSpansContainerData]}>
 									{timeSpans.map(({ label, key }) => (
 										<View key={key} style={styles.moodTimeSpanItem}>
 											<Text style={[styles.moodTimeSpanLabel, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
 												{label}
 											</Text>
 											<View style={styles.moodTimeSpanEmoji}>
-												{timeSpanMoods[key] && emojiIcons[timeSpanMoods[key] as MoodType] 
-													? React.createElement(emojiIcons[timeSpanMoods[key] as MoodType], { width: 32, height: 32 })
+												{timeSpanMoods[key] && emojiIcons[timeSpanMoods[key] as MoodType]
+													? React.createElement(
+														emojiIcons[timeSpanMoods[key] as MoodType],
+														{ width: 32, height: 32 }
+													)
 													: <Text style={styles.noMoodText}>-</Text>
 												}
 											</View>
@@ -502,6 +506,28 @@ export const ReportScreen = () => {
 								</View>
 							);
 						})()}
+					</View>
+					{/* Interest Breakdown card */}
+					<View style={[
+						styles.moodReportCard,
+						styles.moodReportCardFull,
+						!interestLoading && (!interestBreakdown || interestBreakdown.length===0) && styles.interestCardEmpty
+					]}> 
+						<Text style={[styles.moodReportTitle,{marginBottom:8,fontFamily:'PlusJakartaSans_500Medium'}]}>Interest breakdown</Text>
+						{!ensureMacAddress(macAddress) ? (
+							<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>Enter device MAC address to view interest data.</Text>
+						) : interestLoading ? (
+							<Text style={{textAlign:'center'}}>Loading…</Text>
+						) : !interestBreakdown || interestBreakdown.length===0 ? (
+							<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>No interest data for this day.</Text>
+						) : (
+							interestBreakdown.map(row=>(
+								<View key={row.interest} style={styles.interestRow}>
+									<Text style={styles.interestLabel}>{row.interest}</Text>
+									<Text style={styles.interestPct}>{row.pct}%</Text>
+								</View>
+							))
+						)}
 					</View>
 				</View>
 				<View style={{ marginVertical: 16 }}>
@@ -917,24 +943,29 @@ const styles = StyleSheet.create({
 		color: '#888',
 	},
 	datePickerButton: {
-		backgroundColor: '#F2F2F2',
+		backgroundColor: 'white',
 		padding: 12,
 		borderRadius: 8,
+		borderColor:'grey',
+		borderWidth:0.2,
 	},
 	datePickerText: {
-		fontSize: 16,
-		fontWeight: '600',
-		color: '#515151',
+		fontSize: 12,
+		color: '#92929D',
+		//fontWeight: '400',
 	},
 	moodTimeSpansContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
+		flexDirection: 'column',
 		gap: 12,
+	},
+	moodTimeSpansContainerData: {
+		paddingBottom: 16,
 	},
 	moodTimeSpanItem: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 8,
+		justifyContent: 'space-between',
+		paddingVertical: 2,
 	},
 	moodTimeSpanLabel: {
 		fontSize: 16,
@@ -942,7 +973,25 @@ const styles = StyleSheet.create({
 		color: '#515151',
 	},
 	moodTimeSpanEmoji: {
-		marginLeft: 8,
+		width: 40,
+		alignItems: 'center',
+	},
+	interestRow:{
+		flexDirection:'row',
+		justifyContent:'space-between',
+		paddingVertical:4,
+	},
+	interestLabel:{fontSize:16,color:'#515151',textTransform:'capitalize'},
+	interestPct:{fontSize:16,fontWeight:'600',color:'#7D65FC'},
+	interestCardEmpty:{
+		paddingVertical:40,
+	},
+	datePickerWrapper: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'flex-end',
+		marginBottom: 0,
+		marginTop: 25,
 	},
 })
 

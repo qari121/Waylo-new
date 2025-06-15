@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, FlatList, Switch } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Switch, ScrollView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ensureMacAddress } from '../utils/ensureMacAddress';
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
@@ -59,8 +58,6 @@ const OptionModal: React.FC<OptionModalProps> = ({ visible, options, selectedVal
 
 const ParentalControlsScreen = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [showScheduling, setShowScheduling] = useState(false);
   const [startTime, setStartTime] = useState<string>('08:00');
   const [endTime, setEndTime] = useState<string>('20:00');
   const [savedWindow, setSavedWindow] = useState<{ start: string, end: string } | null>(null);
@@ -79,7 +76,8 @@ const ParentalControlsScreen = () => {
   useEffect(() => {
     const fetchDND = async () => {
       if (!macAddress) return;
-      const docRef = doc(db, 'parental_controls', macAddress);
+      const mac = macAddress as string;
+      const docRef = doc(db, 'parental_controls', mac);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const controls = docSnap.data();
@@ -91,58 +89,52 @@ const ParentalControlsScreen = () => {
 
   const handleSave = async () => {
     if (!ensureMacAddress(macAddress)) return;
+    const mac = macAddress as string;
     setSavedWindow({ start: startTime, end: endTime });
-    setShowScheduling(true);
     const user = auth.currentUser;
     if (!user) return;
     const [startHour, startMinute] = startTime.split(':');
     const [endHour, endMinute] = endTime.split(':');
     await setDoc(
-      doc(db, 'parental_controls', macAddress),
-      { mac_address: macAddress, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
+      doc(db, 'parental_controls', mac),
+      { mac_address: mac, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
       { merge: true }
     );
   };
 
   const handleToggleLock = async () => {
     if (!ensureMacAddress(macAddress)) return;
-    setShowScheduling(false);
-    const user = auth.currentUser;
-    if (!user) return;
+    const mac = macAddress as string;
     const newLockState = !isLocked;
     setIsLocked(newLockState);
     await setDoc(
-      doc(db, 'parental_controls', macAddress),
-      { mac_address: macAddress, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
+      doc(db, 'parental_controls', mac),
+      { mac_address: mac, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
       { merge: true }
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView edges={['left','right','bottom']} style={styles.safeArea}>
+      {/* header */}
+      <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Parental Controls</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Connected Device Info Box */}
         <View style={styles.deviceCard}>
           <View style={styles.deviceIconWrapper}>
             <ConnectedDeviceIcon width={40} height={40} />
           </View>
           <Text style={styles.deviceTitle}>Connected Device Info</Text>
-          <Text style={styles.deviceInfo}>Device Name: TeddyBot</Text>
-          <Text style={styles.deviceInfo}>Status: Connected</Text>
-          <Text style={styles.deviceInfo}>Battery: 85%</Text>
+          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Device Name: </Text><Text style={styles.deviceInfoValue}>TeddyBot</Text></Text>
+          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Status: </Text><Text style={styles.deviceInfoValue}>Connected</Text></Text>
+          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Battery: </Text><Text style={styles.deviceInfoValue}>85%</Text></Text>
         </View>
         {/* Parental Controls Card */}
         <View style={styles.parentalCard}>
           <Text style={styles.parentalTitle}>Device Controls</Text>
-          <View style={styles.parentalButtonsRow}>
-            <TouchableOpacity
-              style={[styles.parentalButton, showScheduling && styles.parentalButtonActive]}
-              onPress={() => setShowScheduling(true)}
-            >
-              <Text style={styles.parentalButtonText}>Scheduling</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Lock Device</Text>
             <Switch
@@ -152,41 +144,39 @@ const ParentalControlsScreen = () => {
               thumbColor={isLocked ? '#fff' : '#7F67FF'}
             />
           </View>
-          {showScheduling && (
-            <View style={styles.schedulingSection}>
-              <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
-              <View style={styles.schedulingPickersRow}>
-                <View style={styles.pickerWrapper}>
-                  <Text style={styles.pickerLabel}>Start</Text>
-                  <TouchableOpacity
-                    onPress={() => setPickerType('start')}
-                    style={styles.pickerButton}
-                  >
-                    <Text style={styles.pickerButtonText}>{startTime}</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.pickerWrapper}>
-                  <Text style={styles.pickerLabel}>End</Text>
-                  <TouchableOpacity
-                    onPress={() => setPickerType('end')}
-                    style={styles.pickerButton}
-                  >
-                    <Text style={styles.pickerButtonText}>{endTime}</Text>
-                  </TouchableOpacity>
-                </View>
+          <View style={styles.schedulingSection}>
+            <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
+            <View style={styles.schedulingPickersRow}>
+              <View style={styles.pickerWrapper}>
+                <Text style={styles.pickerLabel}>Start</Text>
+                <TouchableOpacity
+                  onPress={() => setPickerType('start')}
+                  style={styles.pickerButton}
+                >
+                  <Text style={styles.pickerButtonText}>{startTime}</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-              {savedWindow && (
-                <Text style={styles.savedText}>
-                  Current Restriction: {savedWindow.start} – {savedWindow.end}
-                </Text>
-              )}
+              <View style={styles.pickerWrapper}>
+                <Text style={styles.pickerLabel}>End</Text>
+                <TouchableOpacity
+                  onPress={() => setPickerType('end')}
+                  style={styles.pickerButton}
+                >
+                  <Text style={styles.pickerButtonText}>{endTime}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+            {savedWindow && (
+              <Text style={styles.savedText}>
+                Current Restriction: {savedWindow.start} – {savedWindow.end}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      </ScrollView>
 
       <OptionModal
         visible={pickerType === 'start'}
@@ -207,29 +197,39 @@ const ParentalControlsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F6FF',
-  },
-  content: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    padding: 20,
-    paddingTop: 20,
+  safeArea: { flex: 1, backgroundColor: 'white' },
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    width: '100%',
+    zIndex: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 20,
   },
   parentalCard: {
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     shadowColor: '#AE9FFF',
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -241,28 +241,21 @@ const styles = StyleSheet.create({
     color: '#7F67FF',
     marginBottom: 12,
   },
-  parentalButtonsRow: {
+  toggleRow: {
     flexDirection: 'row',
-    marginBottom: 18,
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 16,
   },
-  parentalButton: {
-    backgroundColor: '#E5E1FF',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    marginHorizontal: 6,
-  },
-  parentalButtonActive: {
-    backgroundColor: '#AE9FFF',
-  },
-  parentalButtonText: {
-    color: 'black',
-    fontWeight: '400',
+  toggleLabel: {
+    color: '#7F67FF',
+    fontWeight: 'bold',
     fontSize: 16,
+    marginRight: 8,
   },
   schedulingSection: {
     width: '100%',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 8,
   },
   schedulingLabel: {
@@ -273,7 +266,7 @@ const styles = StyleSheet.create({
   },
   schedulingPickersRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     width: '100%',
     marginBottom: 16,
   },
@@ -347,24 +340,12 @@ const styles = StyleSheet.create({
     color: '#3C2FCB',
     fontWeight: 'bold',
   },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-    marginTop: 12,
-  },
-  toggleLabel: {
-    color: '#7F67FF',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginRight: 8,
-  },
   deviceCard: {
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 28,
     shadowColor: '#AE9FFF',
     shadowOpacity: 0.08,
@@ -386,7 +367,22 @@ const styles = StyleSheet.create({
   deviceInfo: {
     fontSize: 15,
     color: '#444',
-    marginBottom: 2,
+    marginBottom: 8,
+  },
+  deviceInfoLabel: {
+    fontSize: 15,
+    color: '#444',
+    fontWeight: 'bold',
+  },
+  deviceInfoValue: {
+    fontSize: 15,
+    color: '#444',
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    alignItems: 'center',
   },
 });
 

@@ -89,7 +89,7 @@ const characterImages: Record<string, any> = {
 };
 
 /* ────── Helper: strip `(group)` segments from a pathname ────── */
-const stripRouteGroups = (path: string) => path.replace(/\([^)]*\)/g, '');
+const stripRouteGroups = (path: string) => path.replace(/\([^)]*\)/g, '').replace(/\/+/g, '/');
 
 /* ────── Single menu item ────── */
 interface MenuItemProps {

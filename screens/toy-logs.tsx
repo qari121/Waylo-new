@@ -95,8 +95,6 @@ const AudioMessage: React.FC<AudioMessageProps> = ({ uri }) => {
 
 const timeSpans = ['Today', 'Last 7 days', 'This Month', 'All Time'];
 
-const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input);
-
 export const ToyLogsScreen: React.FC = () => {
 	const dispatch = useAppDispatch()
 	const logs = useAppSelector((state) => state.logs.toyLogs)
@@ -111,6 +109,9 @@ export const ToyLogsScreen: React.FC = () => {
 	// NEW: State for OpenAI summary
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
+
+	const [macAddress, setMacAddress] = useState<string | null>(null);
+	const [macLoaded, setMacLoaded] = useState<boolean>(false);
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -132,35 +133,27 @@ export const ToyLogsScreen: React.FC = () => {
 			allowedTimeSpans = ['Today'];
 	}
 
-	
-	// 	return (
-	// 		<SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-	// 			<Text style={{ fontSize: 16, color: '#7D65FC', textAlign: 'center', padding: 24 }}>
-	// 				Upgrade to Pro to access chat interactions.
-	// 			</Text>
-	// 		if (auth.plan !== "pro") {</SafeAreaView>
-	// 	);
-	// }
-
+	// 1) Load MAC once
 	useEffect(() => {
-		const fetchToyLogs = async () => {
-			const macAddress = await AsyncStorage.getItem('macAddress');
-			if (!ensureMacAddress(macAddress)) return;
+		AsyncStorage.getItem('macAddress').then(setMacAddress).finally(() => setMacLoaded(true));
+	}, []);
+
+	// 2) Fetch logs once MAC is available
+	useEffect(() => {
+		const run = async () => {
+			if (!macLoaded) return;
+			if (!ensureMacAddress(macAddress, true)) { setIsLoading(false); return; }
 			try {
-				if (!macAddress || !isValidMac(macAddress)) {
-					Toast.show({ type: 'error', text1: 'Please enter a valid MAC address before viewing logs.' });
-					setIsLoading(false);
-					return;
-				}
-				await dispatch(toyLogs(macAddress)).unwrap();
-				setIsLoading(false);
+				const list = await dispatch(toyLogs(macAddress!)).unwrap();
+				console.log('[ToyLogs] fetched', list.length, 'logs for', macAddress);
 			} catch (err: any) {
 				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch toy logs' });
+			} finally {
 				setIsLoading(false);
 			}
 		};
-		fetchToyLogs();
-	}, [dispatch]);
+		run();
+	}, [macLoaded, macAddress, dispatch]);
 
 	// Helper: filter logs for the selected time span
 	const getLogsForSelectedTimeSpan = () => {
@@ -225,14 +218,14 @@ export const ToyLogsScreen: React.FC = () => {
 		fetchSummary()
 	}
 
-	const logsToDisplay = auth.plan === 'pro'
-		? getLogsForSelectedTimeSpan()
-		: logs.filter(log => {
-			const now = new Date();
-			const today = now.toISOString().split('T')[0];
+	const isFreemium = (auth.plan ?? '').toLowerCase() === 'freemium';
+	const logsToDisplay = isFreemium
+		? logs.filter(log => {
+			const today = new Date().toISOString().split('T')[0];
 			const logDate = new Date(log.time).toISOString().split('T')[0];
 			return logDate === today;
-		});
+		})
+		: getLogsForSelectedTimeSpan();
 
 	// Fetch last 10 messages (adjust collection path as needed)
 	const fetchLast10Messages = async () => {

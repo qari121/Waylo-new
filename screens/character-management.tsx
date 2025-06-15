@@ -3,7 +3,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState, useEffect } from 'react'
-import { Dimensions, Image, Pressable, SafeAreaView, Text, View, StyleSheet, Platform, ScrollView } from 'react-native'
+import { Dimensions, Image, Pressable, SafeAreaView, Text, View, StyleSheet, Platform, ScrollView, TouchableOpacity } from 'react-native'
 import Carousel, { Pagination } from 'react-native-snap-carousel'
 import { useAppSelector } from '../hooks'
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -138,7 +138,25 @@ export const CharacterManagementScreen = () => {
 	}, [characters]);
 
 	if (!toyId) {
-		return <Text>Please pair your device and enter a MAC address first.</Text>;
+		return (
+			<SafeAreaView style={{ flex:1, backgroundColor:'white' }}>
+				<View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:20, paddingVertical:16 }}>
+					<Pressable onPress={() => router.back()} hitSlop={10}>
+						<ChevronLeftIcon width={28} height={28} />
+					</Pressable>
+					<Text style={{ fontSize:18, fontWeight:'bold', color:'black' }}>Character Management</Text>
+					<View style={{ width:28 }} />
+				</View>
+				<View style={{ flex:1, justifyContent:'center', alignItems:'center', paddingHorizontal:24 }}>
+					<Text style={{ fontSize:16, color:'#7D65FC', textAlign:'center', marginBottom:20 }}>
+						Please pair your device by scanning its QR code to manage characters.
+					</Text>
+					<TouchableOpacity onPress={() => router.push('/(private)/qr-code')} style={{ backgroundColor:'#7D65FC', borderRadius:12, paddingVertical:12, paddingHorizontal:32 }}>
+						<Text style={{ color:'white', fontWeight:'700', fontSize:16 }}>Scan QR Code</Text>
+					</TouchableOpacity>
+				</View>
+			</SafeAreaView>
+		);
 	}
 
 	const renderCarouselItem = ({ item, index }: { item: CarouselItem, index: number }) => {

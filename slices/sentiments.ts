@@ -96,11 +96,13 @@ interface SentimentState {
 		}
 	} | null;
 	sentimentRecord: Record<string, Record<string, number>> | null;
+	fetchedAt: number | null;
 }
 
 const initialState: SentimentState = {
 	sentimentsByDate: null,
-	sentimentRecord: null
+	sentimentRecord: null,
+	fetchedAt: null,
 }
 
 const sentimentSlice = createSlice({
@@ -111,13 +113,14 @@ const sentimentSlice = createSlice({
 		builder.addCase(
 			fetchSentimentsCount.fulfilled,
 			(state, action: PayloadAction<SentimentState['sentimentRecord']>) => {
-				return { ...state, sentimentRecord: action.payload }
+				state.sentimentRecord = action.payload;
+				state.fetchedAt = Date.now();
 			}
 		)
 		builder.addCase(
 			fetchSentimentsByDate.fulfilled,
 			(state, action: PayloadAction<SentimentState['sentimentsByDate']>) => {
-				return { ...state, sentimentsByDate: action.payload }
+				state.sentimentsByDate = action.payload;
 			}
 		)
 		builder.addCase(fetchSentimentsByDate.rejected, (state) => {

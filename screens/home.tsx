@@ -1,12 +1,14 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import { Link, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity, StatusBar, Dimensions } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity, StatusBar, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
 import { Auth, getAuth } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootState } from '../store';
+import { ensureMacAddress } from '../utils/ensureMacAddress';
 
 import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
@@ -50,19 +52,31 @@ export const HomeScreen = () => {
 	})
 
 	const defaultSentiments = [
-		{ day: 'Mon', mood: 'neutral' },
-		{ day: 'Tue', mood: 'neutral' },
-		{ day: 'Wed', mood: 'neutral' },
-		{ day: 'Thu', mood: 'neutral' },
-		{ day: 'Fri', mood: 'neutral' },
-		{ day: 'Sat', mood: 'neutral' },
-		{ day: 'Sun', mood: 'neutral' }
+		{ day: 'Mon', mood: 'none' },
+		{ day: 'Tue', mood: 'none' },
+		{ day: 'Wed', mood: 'none' },
+		{ day: 'Thu', mood: 'none' },
+		{ day: 'Fri', mood: 'none' },
+		{ day: 'Sat', mood: 'none' },
+		{ day: 'Sun', mood: 'none' }
 	]
 
-	const [macAddress, setMacAddress] = useState<string | null>(null);
-	const [sentiments, setSentiments] = useState<{ day: string; mood: string }[]>(defaultSentiments)
+	const reduxMac = useAppSelector((state: RootState) => (state.auth as any).mac_address) as string | undefined;
+	const [macAddress, setMacAddress] = useState<string | null>(reduxMac ?? null);
+	const { sentimentRecord: cachedSentiments, fetchedAt } = useAppSelector((state: RootState) => state.sentiments);
+	const ttlMs = .5 * 60_000;
+	const pageReadyRedux = useMemo(() => {
+		if (!reduxMac) return true;                    // no device yet → render immediately with prompt
+		if (!ensureMacAddress(reduxMac)) return true; // invalid stored value → same prompt
+		const cacheValid = fetchedAt && (Date.now() - fetchedAt < ttlMs);
+		return cacheValid && !!cachedSentiments;      // we have fresh data in cache
+	}, [reduxMac, fetchedAt, cachedSentiments]);
+	const [dataFetched, setDataFetched] = useState<boolean>(!!pageReadyRedux);
 	const [deviceModalVisible, setDeviceModalVisible] = useState(false);
 	const [showScheduling, setShowScheduling] = useState(false);
+
+	// Show ActivityIndicator only when redux says we don't have fresh cached data yet.
+	const pageReady = pageReadyRedux && dataFetched;
 
 	const activities = [
 		{
@@ -88,7 +102,8 @@ export const HomeScreen = () => {
 		neutral: NeutralEmoji,
 		angry: AngryEmoji,
 		anxious: CryingEmoji,
-		sad: SadEmoji
+		sad: SadEmoji,
+		none: () => <Text style={{ fontSize: 24, color: '#C5C5C5' }}>—</Text>,
 	} as { [mood: string]: React.ElementType }
 
 	const isOnline = true; // or useAppSelector(state => state.network.isOnline)
@@ -117,33 +132,66 @@ export const HomeScreen = () => {
 	}, [dispatch, router])
 
 	useEffect(() => {
-		const fetchSentimentRecords = async () => {
-			try {
-				const mac = await AsyncStorage.getItem('macAddress');
-				setMacAddress(mac ? mac : null);
-				if (!mac || !isValidMac(mac)) {
-					// No Toast, just set state
-					return;
-				}
-				const response = await dispatch(fetchSentimentsCount(mac)).unwrap();
-				const updatedSentiments = defaultSentiments.map((entry) => {
+		if (reduxMac && isValidMac(reduxMac)) {
+			setMacAddress(reduxMac);
+		} else {
+			AsyncStorage.getItem('macAddress').then(setMacAddress);
+		}
+	}, [reduxMac]);
+
+	useEffect(() => {
+		const run = async () => {
+			if (!macAddress || !isValidMac(macAddress)) return;
+			const cacheValid = fetchedAt && Date.now() - fetchedAt < ttlMs;
+			if (cacheValid && cachedSentiments) {
+				const updated = defaultSentiments.map((entry) => {
 					const fullDay = entry.day;
-					if (!fullDay || !response[fullDay]) return entry;
-					const mostFrequentSentiment = Object.entries(response[fullDay]).reduce((a, b) =>
-						a[1] > b[1] ? a : b
-					)[0];
-					return { ...entry, mood: mostFrequentSentiment };
+					if (!fullDay || !cachedSentiments[fullDay]) return entry;
+					const most = Object.entries(cachedSentiments[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+					return { ...entry, mood: most };
 				});
-				setSentiments(updatedSentiments);
-			} catch (err: any) {
-				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
+				setSentiments(updated);
+				setDataFetched(true);
+			} else {
+				try {
+					const response = await dispatch(fetchSentimentsCount(macAddress)).unwrap();
+					const updated = defaultSentiments.map((entry) => {
+						const fullDay = entry.day;
+						if (!fullDay || !response[fullDay]) return entry;
+						const most = Object.entries(response[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+						return { ...entry, mood: most };
+					});
+					setSentiments(updated);
+					setDataFetched(true);
+				} catch (err: any) {
+					Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
+				}
 			}
 		};
-		fetchSentimentRecords();
-	}, []);
+		run();
+	}, [macAddress, fetchedAt]);
 
-	if (!fontsLoaded) {
-		return null; // Or a loading component
+	// helper to convert sentiment record to the list used by UI
+	const buildSentiments = (record: Record<string, Record<string, number>> | null) => {
+		if (!record) return defaultSentiments;
+		return defaultSentiments.map((entry) => {
+			const dayData = record[entry.day];
+			if (!dayData) return { ...entry, mood: 'none' };
+			const most = Object.entries(dayData).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+			return { ...entry, mood: most };
+		});
+	};
+
+	const [sentiments, setSentiments] = useState<{ day: string; mood: string }[]>(
+		pageReadyRedux ? buildSentiments(cachedSentiments) : defaultSentiments
+	);
+
+	if (!pageReady) {
+		return (
+			<SafeAreaView style={{ flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'white' }}>
+				<ActivityIndicator size="large" color="#7F67FF" />
+			</SafeAreaView>
+		);
 	}
 
 	return (
@@ -176,24 +224,30 @@ export const HomeScreen = () => {
 							<View style={styles.macPromptBox}>
 								<Text style={styles.macPromptText}>Please pair your device and enter a MAC address to view mood history</Text>
 							</View>
-						) : sentiments.every(entry => entry.mood === 'neutral') ? (
+						) : !dataFetched ? (
+							<View style={styles.macPromptBox}><Text style={styles.macPromptText}>Loading…</Text></View>
+						) : sentiments.every(entry => entry.mood === 'none') ? (
 							<View style={styles.macPromptBox}>
 								<Text style={styles.macPromptText}>No mood data available for this device yet</Text>
 							</View>
 						) : (
 							<View style={styles.moodHistoryList}>
-								{sentiments.map((sentiment) => (
-									<View
-										key={sentiment.day}
-										style={[
-											styles.moodHistoryItem,
-											sentiments[((new Date().getDay() + 6) % 7)].day === sentiment.day && styles.moodHistoryItemActive
-										]}
-									>
-										{emojiIcons[sentiment.mood] && React.createElement(emojiIcons[sentiment.mood])}
-										<Text style={[styles.moodHistoryDay, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}> {sentiment.day} </Text>
-									</View>
-								))}
+								{sentiments.map((sentiment) => {
+									const todayDay = sentiments[((new Date().getDay() + 6) % 7)].day;
+									const isToday = todayDay === sentiment.day;
+									const Emoji = emojiIcons[sentiment.mood];
+									return (
+										<View
+											key={sentiment.day}
+											style={[styles.moodHistoryRow, isToday && styles.moodHistoryRowActive]}
+										>
+											{Emoji && <Emoji />}
+											<Text style={[styles.moodHistoryDay, isToday && styles.moodHistoryDayActive, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
+												{sentiment.day}
+											</Text>
+										</View>
+									);
+								})}
 							</View>
 						)}
 					</View>
@@ -330,23 +384,22 @@ const styles = StyleSheet.create({
 		gap: 10,
 	},
 	moodHistoryList: {
+		flexDirection: 'column',
+		gap: 12,
+	},
+	moodHistoryRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 24,
+		gap: 12,
 	},
-	moodHistoryItem: {
-		flex: 1,
-		flexDirection: 'column',
-		alignItems: 'center',
-		gap: 6,
-	},
-	moodHistoryItemActive: {
-		borderRadius: 16,
-		borderWidth: 0.5,
-		borderColor: '#C5C5C5',
+	moodHistoryRowActive: {
 		backgroundColor: '#F4F3EC',
+		borderRadius: 12,
 		paddingHorizontal: 8,
 		paddingVertical: 4,
+	},
+	moodHistoryDayActive: {
+		color: '#7D65FC',
 	},
 	moodHistoryDay: {
 		fontSize: 12,

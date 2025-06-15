@@ -6,6 +6,7 @@ interface AuthState {
 	lastName: string
 	createdAt: string
 	plan: "freemium" | "standard" | "pro"
+	mac_address?: string
 }
 
 interface ToyLogs {

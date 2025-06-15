@@ -1,13 +1,11 @@
 import { View, StyleSheet } from 'react-native'
 
-import { FloatingMenu } from '../../components/floating-menu'
 import { ToyLogsScreen } from '../../screens/toy-logs'
 
 export default function Page() {
 	return (
 		<View style={styles.container}>
 			<ToyLogsScreen />
-			<FloatingMenu />
 		</View>
 	)
 }

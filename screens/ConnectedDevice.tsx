@@ -85,7 +85,8 @@ const ConnectedDeviceScreen = () => {
   useEffect(() => {
     const fetchDND = async () => {
       if (!macAddress) return;
-      const docRef = doc(db, 'parental_controls', macAddress);
+      const mac = macAddress as string;
+      const docRef = doc(db, 'parental_controls', mac);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const controls = docSnap.data();
@@ -104,9 +105,10 @@ const ConnectedDeviceScreen = () => {
     // Split time into hour and minute
     const [startHour, startMinute] = startTime.split(':');
     const [endHour, endMinute] = endTime.split(':');
+    const mac = macAddress as string;
     await setDoc(
-      doc(db, 'parental_controls', macAddress),
-      { mac_address: macAddress, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
+      doc(db, 'parental_controls', mac),
+      { mac_address: mac, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
       { merge: true }
     );
     // Optionally show a message
@@ -121,9 +123,10 @@ const ConnectedDeviceScreen = () => {
     if (!user) return;
     const newLockState = !isLocked;
     setIsLocked(newLockState);
+    const mac = macAddress as string;
     await setDoc(
-      doc(db, 'parental_controls', macAddress),
-      { mac_address: macAddress, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
+      doc(db, 'parental_controls', mac),
+      { mac_address: mac, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
       { merge: true }
     );
     // Optionally show a message
@@ -132,7 +135,8 @@ const ConnectedDeviceScreen = () => {
 
   const getControls = async () => {
     if (!ensureMacAddress(macAddress)) return;
-    const docRef = doc(db, 'parental_controls', macAddress);
+    const mac = macAddress as string;
+    const docRef = doc(db, 'parental_controls', mac);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const controls = docSnap.data();
