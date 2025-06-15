@@ -245,7 +245,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
-    marginBottom: 16,
   },
   toggleLabel: {
     color: '#7F67FF',
@@ -367,7 +366,7 @@ const styles = StyleSheet.create({
   deviceInfo: {
     fontSize: 15,
     color: '#444',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   deviceInfoLabel: {
     fontSize: 15,

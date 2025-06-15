@@ -60,7 +60,6 @@ const OptionModal: React.FC<OptionModalProps> = ({ visible, options, selectedVal
 const ConnectedDeviceScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [showScheduling, setShowScheduling] = useState(false);
 
   // New: start and end times (default 08:00 to 20:00)
   const [startTime, setStartTime] = useState<string>('08:00');
@@ -99,7 +98,6 @@ const ConnectedDeviceScreen = () => {
   const handleSave = async () => {
     if (!ensureMacAddress(macAddress)) return;
     setSavedWindow({ start: startTime, end: endTime });
-    setShowScheduling(true);
     const user = auth.currentUser;
     if (!user) return;
     // Split time into hour and minute
@@ -118,7 +116,6 @@ const ConnectedDeviceScreen = () => {
   // Toggle Lock/Unlock (DND)
   const handleToggleLock = async () => {
     if (!ensureMacAddress(macAddress)) return;
-    setShowScheduling(false);
     const user = auth.currentUser;
     if (!user) return;
     const newLockState = !isLocked;
@@ -145,128 +142,129 @@ const ConnectedDeviceScreen = () => {
   };
 
   return (
-<SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-  <View style={styles.screen}>
-    <View style={styles.headerRow}>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={styles.backButton}
-        hitSlop={{ left: 20, right: 20, top: 10, bottom: 10 }}
-      >
-        <ChevronLeftIcon width={28} height={28} />
-      </TouchableOpacity>
-      <View style={styles.headerCenter}>
-        <Text style={styles.headerTitle}>Connected Device</Text>
-      </View>
+<SafeAreaView style={styles.safeArea} edges={['top','left','right','bottom']}>
+  {/* Full-width header */}
+  <View style={styles.headerRow}>
+    <TouchableOpacity
+      onPress={() => router.back()}
+      style={styles.backButton}
+      hitSlop={{ left: 20, right: 20, top: 10, bottom: 10 }}
+    >
+      <ChevronLeftIcon width={28} height={28} />
+    </TouchableOpacity>
+    <View style={styles.headerCenter}>
+      <Text style={styles.headerTitle}>Connected Device</Text>
     </View>
-        {/* DEVICE CARD */}
-        <View style={styles.deviceCard}>
-          <View style={styles.deviceIconWrapper}>
-            <ConnectedDeviceIcon width={40} height={40} />
-          </View>
-          <Text style={styles.deviceTitle}>Connected Device Info</Text>
-          <Text style={styles.deviceInfo}>Device Name: TeddyBot</Text>
-          <Text style={styles.deviceInfo}>Status: Connected</Text>
-          <Text style={styles.deviceInfo}>Battery: 85%</Text>
-        </View>
-        {/* PARENTAL CONTROLS */}
-        <View style={styles.parentalCard}>
-          <Text style={styles.parentalTitle}>Parental Controls</Text>
-          <View style={styles.parentalButtonsRow}>
+  </View>
+
+  {/* Main content */}
+  <View style={styles.screen}>
+    {/* DEVICE CARD */}
+    <View style={styles.deviceCard}>
+      <View style={styles.deviceIconWrapper}>
+        <ConnectedDeviceIcon width={40} height={40} />
+      </View>
+      <Text style={styles.deviceTitle}>Connected Device Info</Text>
+      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Device Name: </Text><Text style={styles.deviceInfoValue}>TeddyBot</Text></Text>
+      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Status: </Text><Text style={styles.deviceInfoValue}>Connected</Text></Text>
+      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Battery: </Text><Text style={styles.deviceInfoValue}>85%</Text></Text>
+    </View>
+    {/* PARENTAL CONTROLS */}
+    <View style={styles.parentalCard}>
+      <Text style={styles.parentalTitle}>Parental Controls</Text>
+      <View style={styles.toggleRow}>
+        <Text style={styles.toggleLabel}>Lock Device</Text>
+        <Switch
+          value={isLocked}
+          onValueChange={handleToggleLock}
+          trackColor={{ false: '#E5E1FF', true: '#7F67FF' }}
+          thumbColor={isLocked ? '#fff' : '#7F67FF'}
+        />
+      </View>
+      <View style={styles.schedulingSection}>
+        <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
+        <View style={styles.schedulingPickersRow}>
+          {/* Start Time Picker */}
+          <View style={styles.pickerWrapper}>
+            <Text style={styles.pickerLabel}>Start</Text>
             <TouchableOpacity
-              style={[styles.parentalButton, showScheduling && styles.parentalButtonActive]}
-              onPress={() => setShowScheduling(true)}
+              onPress={() => setPickerType('start')}
+              style={styles.pickerButton}
             >
-              <Text style={styles.parentalButtonText}>Scheduling</Text>
+              <Text style={styles.pickerButtonText}>{startTime}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Lock Device</Text>
-            <Switch
-              value={isLocked}
-              onValueChange={handleToggleLock}
-              trackColor={{ false: '#E5E1FF', true: '#7F67FF' }}
-              thumbColor={isLocked ? '#fff' : '#7F67FF'}
-            />
+          {/* End Time Picker */}
+          <View style={styles.pickerWrapper}>
+            <Text style={styles.pickerLabel}>End</Text>
+            <TouchableOpacity
+              onPress={() => setPickerType('end')}
+              style={styles.pickerButton}
+            >
+              <Text style={styles.pickerButtonText}>{endTime}</Text>
+            </TouchableOpacity>
           </View>
-          {showScheduling && (
-            <View style={styles.schedulingSection}>
-              <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
-              <View style={styles.schedulingPickersRow}>
-                {/* Start Time Picker */}
-                <View style={styles.pickerWrapper}>
-                  <Text style={styles.pickerLabel}>Start</Text>
-                  <TouchableOpacity
-                    onPress={() => setPickerType('start')}
-                    style={styles.pickerButton}
-                  >
-                    <Text style={styles.pickerButtonText}>{startTime}</Text>
-                  </TouchableOpacity>
-                </View>
-                {/* End Time Picker */}
-                <View style={styles.pickerWrapper}>
-                  <Text style={styles.pickerLabel}>End</Text>
-                  <TouchableOpacity
-                    onPress={() => setPickerType('end')}
-                    style={styles.pickerButton}
-                  >
-                    <Text style={styles.pickerButtonText}>{endTime}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-              {savedWindow && (
-                <Text style={styles.savedText}>
-                  Current Restriction: {savedWindow.start} – {savedWindow.end}
-                </Text>
-              )}
-            </View>
-          )}
         </View>
-      {/* Time modals */}
-      <OptionModal
-        visible={pickerType === 'start'}
-        options={timeOptions}
-        selectedValue={startTime}
-        onSelect={setStartTime}
-        onClose={() => setPickerType(null)}
-      />
-      <OptionModal
-        visible={pickerType === 'end'}
-        options={timeOptions}
-        selectedValue={endTime}
-        onSelect={setEndTime}
-        onClose={() => setPickerType(null)}
-      />
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+        {savedWindow && (
+          <Text style={styles.savedText}>
+            Current Restriction: {savedWindow.start} – {savedWindow.end}
+          </Text>
+        )}
       </View>
-    </SafeAreaView>
+    </View>
+    {/* Time modals */}
+    <OptionModal
+      visible={pickerType === 'start'}
+      options={timeOptions}
+      selectedValue={startTime}
+      onSelect={setStartTime}
+      onClose={() => setPickerType(null)}
+    />
+    <OptionModal
+      visible={pickerType === 'end'}
+      options={timeOptions}
+      selectedValue={endTime}
+      onSelect={setEndTime}
+      onClose={() => setPickerType(null)}
+    />
+  </View>
+</SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F6FF',
+    backgroundColor: 'white',
   },
   screen: {
     flex: 1,
-    backgroundColor: 'transparent',
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: Platform.OS === 'ios' ? 50 : 0,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   headerRow: {
-    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: -60,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: 'white',
     width: '100%',
-    position: 'relative',
-    // REMOVE ANY marginTop!
+    zIndex: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
     backButton: {
       position: 'absolute',
@@ -293,7 +291,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 28,
     shadowColor: '#AE9FFF',
     shadowOpacity: 0.08,
@@ -315,14 +313,23 @@ const styles = StyleSheet.create({
   deviceInfo: {
     fontSize: 15,
     color: '#444',
-    marginBottom: 2,
+    marginBottom: 8,
+  },
+  deviceInfoLabel: {
+    fontSize: 15,
+    color: '#444',
+    fontWeight: 'bold',
+  },
+  deviceInfoValue: {
+    fontSize: 15,
+    color: '#444',
   },
   parentalCard: {
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     shadowColor: '#AE9FFF',
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -334,28 +341,21 @@ const styles = StyleSheet.create({
     color: '#7F67FF',
     marginBottom: 12,
   },
-  parentalButtonsRow: {
+  toggleRow: {
     flexDirection: 'row',
-    marginBottom: 18,
+    alignItems: 'flex-start',
+    marginLeft: 12,
+    marginTop: 12,
   },
-  parentalButton: {
-    backgroundColor: '#E5E1FF',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    marginHorizontal: 6,
-  },
-  parentalButtonActive: {
-    backgroundColor: '#AE9FFF',
-  },
-  parentalButtonText: {
-    color: 'black',
-    fontWeight: '400',
+  toggleLabel: {
+    color: '#7F67FF',
+    fontWeight: 'bold',
     fontSize: 16,
+    marginRight: 8,
   },
   schedulingSection: {
     width: '100%',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 8,
   },
   schedulingLabel: {
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   schedulingPickersRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     width: '100%',
     marginBottom: 16,
   },
@@ -440,18 +440,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#3C2FCB',
     fontWeight: 'bold',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 12,
-    marginTop: 12,
-  },
-  toggleLabel: {
-    color: '#7F67FF',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginRight: 8,
   },
 });
 
