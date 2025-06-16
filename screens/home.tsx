@@ -1,6 +1,6 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import { Link, useRouter } from 'expo-router';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity, StatusBar, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootState } from '../store';
 import { ensureMacAddress } from '../utils/ensureMacAddress';
+import { useFocusEffect } from 'expo-router';
 
 import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
@@ -139,37 +140,46 @@ export const HomeScreen = () => {
 		}
 	}, [reduxMac]);
 
-	useEffect(() => {
-		const run = async () => {
-			if (!macAddress || !isValidMac(macAddress)) return;
-			const cacheValid = fetchedAt && Date.now() - fetchedAt < ttlMs;
-			if (cacheValid && cachedSentiments) {
+	const fetchSentimentsData = useCallback(async () => {
+		if (!macAddress || !isValidMac(macAddress)) return;
+		const cacheValid = fetchedAt && Date.now() - fetchedAt < ttlMs;
+		if (cacheValid && cachedSentiments) {
+			const updated = defaultSentiments.map((entry) => {
+				const fullDay = entry.day;
+				if (!fullDay || !cachedSentiments[fullDay]) return entry;
+				const most = Object.entries(cachedSentiments[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+				return { ...entry, mood: most };
+			});
+			setSentiments(updated);
+			setDataFetched(true);
+		} else {
+			try {
+				const response = await dispatch(fetchSentimentsCount(macAddress)).unwrap();
 				const updated = defaultSentiments.map((entry) => {
 					const fullDay = entry.day;
-					if (!fullDay || !cachedSentiments[fullDay]) return entry;
-					const most = Object.entries(cachedSentiments[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
+					if (!fullDay || !response[fullDay]) return entry;
+					const most = Object.entries(response[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
 					return { ...entry, mood: most };
 				});
 				setSentiments(updated);
 				setDataFetched(true);
-			} else {
-				try {
-					const response = await dispatch(fetchSentimentsCount(macAddress)).unwrap();
-					const updated = defaultSentiments.map((entry) => {
-						const fullDay = entry.day;
-						if (!fullDay || !response[fullDay]) return entry;
-						const most = Object.entries(response[fullDay]).reduce((a, b) => (a[1] > b[1] ? a : b))[0];
-						return { ...entry, mood: most };
-					});
-					setSentiments(updated);
-					setDataFetched(true);
-				} catch (err: any) {
-					Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
-				}
+			} catch (err: any) {
+				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch sentiment records' });
 			}
-		};
-		run();
-	}, [macAddress, fetchedAt]);
+		}
+	}, [macAddress, fetchedAt, cachedSentiments, dispatch]);
+
+	// Initial fetch when dependencies change
+	useEffect(() => {
+		fetchSentimentsData();
+	}, [fetchSentimentsData]);
+
+	// Refresh whenever the home screen gains focus (e.g., user navigates back later in the week)
+	useFocusEffect(
+		useCallback(() => {
+			fetchSentimentsData();
+		}, [fetchSentimentsData])
+	);
 
 	// helper to convert sentiment record to the list used by UI
 	const buildSentiments = (record: Record<string, Record<string, number>> | null) => {
@@ -218,8 +228,8 @@ export const HomeScreen = () => {
 				</TouchableOpacity>
 
 				{isOnline && hasPaidModule && (
-					<View style={styles.moodHistoryContainer}>
-						<Text style={[styles.sectionTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood History</Text>
+					<View style={styles.moodHistoryCard}>
+						<Text style={[styles.moodHistoryTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Weekly Mood Summary</Text>
 						{!macAddress || !isValidMac(macAddress) ? (
 							<View style={styles.macPromptBox}>
 								<Text style={styles.macPromptText}>Please pair your device and enter a MAC address to view mood history</Text>
@@ -533,5 +543,23 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontWeight: '600',
 		textAlign: 'center',
+	},
+	moodHistoryCard: {
+		width: '100%',
+		backgroundColor: '#fff',
+		borderRadius: 20,
+		padding: 24,
+		marginTop: 18,
+		marginBottom: 112,
+		flexDirection: 'column',
+		gap: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 4,
+	},
+	moodHistoryTitle: {
+		color: '#404040',
 	},
 })

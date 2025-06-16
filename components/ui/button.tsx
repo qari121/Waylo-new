@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
 		color: 'var(--primary)',
 	},
 	sizeDefault: {
-		height: Platform.select({ native: 48, default: 40 }),
-		paddingHorizontal: Platform.select({ native: 20, default: 16 }),
-		paddingVertical: Platform.select({ native: 12, default: 8 }),
+		height: 56,
+		paddingHorizontal: 24,
+		paddingVertical: 14,
 		borderRadius: 8,
 	},
 	sizeSm: {
@@ -62,9 +62,9 @@ const styles = StyleSheet.create({
 		borderRadius: 6,
 	},
 	sizeLg: {
-		height: Platform.select({ native: 56, default: 44 }),
-		paddingHorizontal: 32,
-		borderRadius: 6,
+		height: 56,
+		paddingHorizontal: 24,
+		borderRadius: 8,
 	},
 	sizeIcon: {
 		height: 40,

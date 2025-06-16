@@ -182,7 +182,7 @@ const ConnectedDeviceScreen = () => {
         />
       </View>
       <View style={styles.schedulingSection}>
-        <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
+        <Text style={styles.schedulingLabel}>Set Restriction Schedule</Text>
         <View style={styles.schedulingPickersRow}>
           {/* Start Time Picker */}
           <View style={styles.pickerWrapper}>
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: 'black',
     textAlign: 'center',
   },
@@ -293,10 +293,12 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'flex-start',
     marginBottom: 28,
-    shadowColor: '#AE9FFF',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   deviceIconWrapper: {
     backgroundColor: '#E5E1FF',
@@ -330,10 +332,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     alignItems: 'flex-start',
-    shadowColor: '#AE9FFF',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   parentalTitle: {
     fontSize: 18,
@@ -343,30 +346,31 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginLeft: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 12,
+    width: '100%',
   },
   toggleLabel: {
     color: '#7F67FF',
     fontWeight: 'bold',
     fontSize: 16,
-    marginRight: 8,
   },
   schedulingSection: {
     width: '100%',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginTop: 8,
   },
   schedulingLabel: {
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginTop: 20,
+    marginBottom: 20,
     color: '#444',
     fontSize: 15,
   },
   schedulingPickersRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     width: '100%',
     marginBottom: 16,
   },
@@ -395,22 +399,25 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#7F67FF',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    marginTop: 8,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    marginTop: 16,
+    width: '70%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
   savedText: {
     marginTop: 10,
     color: '#7F67FF',
     fontWeight: 'bold',
   },
-  // Modal styles for picker replacement
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.2)',

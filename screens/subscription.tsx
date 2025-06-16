@@ -226,10 +226,10 @@ export const SubscriptionScreen = () => {
 				style={styles.scrollView}
 				showsHorizontalScrollIndicator={false}>
 				<View style={styles.header}>
-					<Pressable onPress={() => router.back()} hitSlop={10} style={styles.backButton}>
+					<Pressable onPress={() => router.back()} hitSlop={{top:20,bottom:20,left:20,right:20}} style={styles.backButton}>
 						<ChevronLeftIcon />
 					</Pressable>
-					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Subscription Management</Text>
+					<Text pointerEvents="none" style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Subscription Management</Text>
 					<Text />
 				</View>
 				<Text style={[styles.planTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Choose your plan</Text>
@@ -287,7 +287,7 @@ export const SubscriptionScreen = () => {
 						onPress={openPaymentSheet}
 						disabled={loading || currentPlanIndex === selectedSubscription}
 					>
-						<Text style={[styles.checkoutButtonText, { fontFamily: 'PlusJakartaSans_500Medium' }]}> 
+						<Text style={[styles.checkoutButtonText, { fontSize: 18, fontWeight: 'bold'}]}> 
 							{currentPlanIndex === selectedSubscription ? 'Subscribed' : 'Subscribe'}
 						</Text>
 					</Button>
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 		color: 'black',
 		fontSize: 18,
-		marginTop: -20,
+		marginTop: -33,
 		letterSpacing: 0.2,
 	},
 	planTitle: {
@@ -452,8 +452,8 @@ const styles = StyleSheet.create({
 	},
 	checkoutButton: {
 		marginHorizontal: 'auto',
-		marginBottom: 40,
-		marginTop: 32,
+		marginBottom: 20,
+		marginTop: 40,
 		backgroundColor: '#AE9FFF',
 		width: '83.333333%',
 	},

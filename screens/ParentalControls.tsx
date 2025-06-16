@@ -122,16 +122,6 @@ const ParentalControlsScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Connected Device Info Box */}
-        <View style={styles.deviceCard}>
-          <View style={styles.deviceIconWrapper}>
-            <ConnectedDeviceIcon width={40} height={40} />
-          </View>
-          <Text style={styles.deviceTitle}>Connected Device Info</Text>
-          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Device Name: </Text><Text style={styles.deviceInfoValue}>TeddyBot</Text></Text>
-          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Status: </Text><Text style={styles.deviceInfoValue}>Connected</Text></Text>
-          <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Battery: </Text><Text style={styles.deviceInfoValue}>85%</Text></Text>
-        </View>
         {/* Parental Controls Card */}
         <View style={styles.parentalCard}>
           <Text style={styles.parentalTitle}>Device Controls</Text>
@@ -145,7 +135,7 @@ const ParentalControlsScreen = () => {
             />
           </View>
           <View style={styles.schedulingSection}>
-            <Text style={styles.schedulingLabel}>Set Restriction Start and End Time</Text>
+            <Text style={styles.schedulingLabel}>Set Restricion Schedule</Text>
             <View style={styles.schedulingPickersRow}>
               <View style={styles.pickerWrapper}>
                 <Text style={styles.pickerLabel}>Start</Text>
@@ -245,27 +235,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
+    justifyContent: 'space-between',
+    width: '100%',
   },
   toggleLabel: {
     color: '#7F67FF',
     fontWeight: 'bold',
     fontSize: 16,
-    marginRight: 8,
   },
   schedulingSection: {
     width: '100%',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginTop: 8,
   },
   schedulingLabel: {
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginTop: 20,
+    marginBottom: 20,
     color: '#444',
     fontSize: 15,
   },
   schedulingPickersRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     width: '100%',
     marginBottom: 16,
   },
@@ -294,15 +286,19 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#7F67FF',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    marginTop: 8,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    marginTop: 16,
+    width: '70%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
   savedText: {
     marginTop: 10,

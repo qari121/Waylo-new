@@ -145,16 +145,16 @@ export default function Support() {
             </Pressable>
           ))}
         </View>
-      </ScrollView>
 
-      {/* Bottom Image */}
-      <View style={styles.bottomImageWrapper}>
-        <Image
-          source={require('assets/images/support-illustration.png')}
-          style={styles.bottomImage}
-          resizeMode="contain"
-        />
-      </View>
+        {/* Bottom Image inside scroll to avoid overlay */}
+        <View style={styles.bottomImageWrapper}>
+          <Image
+            source={require('assets/images/support-illustration.png')}
+            style={styles.bottomImage}
+            resizeMode="contain"
+          />
+        </View>
+      </ScrollView>
     </View>
   )
 }

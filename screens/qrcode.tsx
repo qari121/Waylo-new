@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Pressable, SafeAreaView, StyleSheet, Text, View, Platform, ActivityIndicator } from 'react-native'
+import { Pressable, SafeAreaView, StyleSheet, Text, View, Platform, ActivityIndicator, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import { auth, db } from '../firebase'; // adjust path as needed
@@ -9,6 +9,7 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useAppDispatch } from '../hooks';
 import { toyLogs } from '../slices/logs';
 import  Toast  from 'react-native-toast-message';
+import { Button } from '../components/ui/button'
 
 // Helper to check MAC format: XX:XX:XX:XX:XX:XX, only hex and colons
 const isValidMac = (input: string) => {
@@ -95,22 +96,22 @@ export const QRCodeScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
-          <ChevronLeftIcon width={28} height={28} />
+          <ChevronLeftIcon width={24} height={24} />
         </Pressable>
-        <Text style={styles.headerTitle}>Device Pairing</Text>
+        <Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Device Pairing</Text>
         {/* Placeholder for centering */}
         <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Scan your device's MAC Address</Text>
-        <Pressable
+        <Button
           style={styles.scanButton}
           onPress={openScanner}
           disabled={isSubmitting || scannerVisible}
         >
           <Text style={styles.scanButtonText}>{scannerVisible ? 'Scanning...' : 'Start Scan'}</Text>
-        </Pressable>
+        </Button>
         {!!error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
@@ -121,30 +122,33 @@ export const QRCodeScreen = () => {
       </View>
 
       {/* Barcode Scanner Overlay */}
-      {scannerVisible && permission?.granted && (
-        <View style={styles.scannerOverlay}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing={'back'}
-            onBarcodeScanned={handleBarCodeScanned}
-            barcodeScannerSettings={{ barcodeTypes: ['qr', 'code128', 'code39', 'code93', 'ean13', 'ean8', 'itf14', 'upc_a', 'upc_e'] }}
-          />
-          <Pressable style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
-            <Text style={{ color: '#fff', fontSize: 18 }}>Cancel</Text>
-          </Pressable>
-        </View>
-      )}
-      {scannerVisible && permission && !permission.granted && (
-        <View style={styles.scannerOverlay}>
-          <Text style={{ color: '#fff', fontSize: 18, marginBottom: 20 }}>No access to camera</Text>
-          <Pressable style={styles.closeScannerBtn} onPress={requestPermission}>
-            <Text style={{ color: '#fff', fontSize: 18 }}>Grant Permission</Text>
-          </Pressable>
-          <Pressable style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
-            <Text style={{ color: '#fff', fontSize: 18 }}>Close</Text>
-          </Pressable>
-        </View>
+      {scannerVisible && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setScannerVisible(false)}>
+          {permission?.granted ? (
+            <View style={styles.scannerOverlay}>
+              <CameraView
+                ref={cameraRef}
+                style={styles.camera}
+                facing={'back'}
+                onBarcodeScanned={handleBarCodeScanned}
+                barcodeScannerSettings={{ barcodeTypes: ['qr', 'code128', 'code39', 'code93', 'ean13', 'ean8', 'itf14', 'upc_a', 'upc_e'] }}
+              />
+              <Button size="sm" style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Cancel</Text>
+              </Button>
+            </View>
+          ) : (
+            <View style={styles.scannerOverlay}>
+              <Text style={{ color: '#fff', fontSize: 18, marginBottom: 20, fontWeight: 'bold' }}>No access to camera</Text>
+              <Button size="sm" style={styles.closeScannerBtn} onPress={requestPermission}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Grant Permission</Text>
+              </Button>
+              <Button size="sm" style={styles.closeScannerBtn} onPress={() => setScannerVisible(false)}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Close</Text>
+              </Button>
+            </View>
+          )}
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: 'black',
     textAlign: 'center',
@@ -200,8 +204,6 @@ const styles = StyleSheet.create({
   scanButton: {
     backgroundColor: '#7F67FF',
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
     alignItems: 'center',
     width: '100%',
     shadowColor: '#AE9FFF',
@@ -243,7 +245,6 @@ const styles = StyleSheet.create({
   closeScannerBtn: {
     marginTop: 20,
     backgroundColor: '#7F67FF',
-    padding: 12,
     borderRadius: 8,
   },
 });
