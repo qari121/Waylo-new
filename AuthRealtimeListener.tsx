@@ -13,7 +13,16 @@ const AuthRealtimeListener = () => {
     if (!auth.uid) return;
     const unsubscribe = onSnapshot(doc(db, 'users', auth.uid), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data() as AuthState;
+        const rawData = docSnap.data();
+        
+        // Convert Firestore timestamps to serializable strings
+        const data = {
+          ...rawData,
+          createdAt: rawData.createdAt?.toDate?.()?.toISOString() || rawData.createdAt || '',
+          updatedAt: rawData.updatedAt?.toDate?.()?.toISOString() || rawData.updatedAt || '',
+          profileImageUrl: rawData.profileImageUrl || '',
+        } as AuthState;
+        
         dispatch(setUser(data));
 
         // ────────────────────────────────────────────────

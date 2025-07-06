@@ -2,9 +2,10 @@
 import React from 'react'
 import { useRouter } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
-import { Image, ImageBackground, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native'
+import { Image, ImageBackground, Pressable, ScrollView, Text, View, StyleSheet, Platform, Modal, FlatList, TouchableOpacity, Alert } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import Svg, { G, Path } from 'react-native-svg'
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
 
 import {
 	BottomSheetBackdrop,
@@ -20,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { cn } from '../lib/utils'
 import { fetchInterestLogs } from '../slices/logs'
 import { useAppDispatch, useAppSelector } from '../hooks'
+import { setUser } from '../slices/auth'
 
 import PlusIcon from '../assets/icons/add.svg'
 import ArrowDownIcon from '../assets/icons/arrow-down.svg'
@@ -27,9 +29,13 @@ import ArrowUpIcon from '../assets/icons/arrow-up.svg'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import MaleIcon from '../assets/icons/male.svg'
 import FemaleIcon from '../assets/icons/female.svg'
+import SettingsIcon from '../assets/icons/settings.svg'
+import { db } from '../firebase'
+import { doc, updateDoc } from 'firebase/firestore'
 
 interface FormValues {
 	name: string
+	username: string
 	age: number | null
 	gender: string
 	interests: string[]
@@ -40,6 +46,12 @@ export const WyloRegistrationScreen = () => {
 	const router = useRouter()
 	const dispatch = useAppDispatch()
 	const interestLogs = useAppSelector((state) => state.logs.interestLogs)
+	const auth = useAppSelector(state => state.auth)
+	const [fontsLoaded] = useFonts({
+		PlusJakartaSans_400Regular,
+		PlusJakartaSans_500Medium,
+		PlusJakartaSans_600SemiBold,
+	})
 
 	const bottomSheetModalRef = useRef<BottomSheetModal>(null)
 	const interestBottomSheetModalRef = useRef<BottomSheetModal>(null)
@@ -47,11 +59,13 @@ export const WyloRegistrationScreen = () => {
 	const [isLoading, setIsLoading] = useState(false)
 	const [formValues, setFormValues] = useState<FormValues>({
 		name: '',
+		username: '',
 		age: null,
 		gender: '',
 		interests: [],
 		language: 'German'
 	})
+	const [agePickerVisible, setAgePickerVisible] = useState(false)
 
 	const handlePresentModalPress = useCallback(() => {
 		bottomSheetModalRef.current?.present()
@@ -71,7 +85,7 @@ export const WyloRegistrationScreen = () => {
 		if (!formValues.interests.includes(value)) {
 			setIsLoading(true)
 			handlePresentInterestModalPress()
-			await dispatch(fetchInterestLogs(value.toLowerCase()))
+			await dispatch(fetchInterestLogs({ interestValue: value.toLowerCase(), macAddress: '' }))
 			setIsLoading(false)
 		}
 	}
@@ -83,67 +97,85 @@ export const WyloRegistrationScreen = () => {
 		[]
 	)
 
+	if (!fontsLoaded) return null;
+
+	const ageOptions = Array.from({ length: 18 }, (_, i) => (i + 1).toString());
+
+	const savePersonalInfoToFirestore = async () => {
+		if (!auth.uid) return;
+		try {
+			await updateDoc(doc(db, 'users', auth.uid), {
+				name: formValues.name,
+				username: formValues.username,
+				age: formValues.age,
+				gender: formValues.gender,
+				updatedAt: new Date().toISOString(),
+			});
+		} catch (error) {
+			console.error('Error saving personal info:', error);
+		}
+	};
+
 	return (
 		<ScrollView style={styles.container}>
-			<View style={styles.header}>
-				<Pressable onPress={() => router.dismiss()}>
-					<ChevronLeftIcon />
-				</Pressable>
+			<View style={styles.circleBg} />
+			<View style={styles.headerRow}>
+				<View style={{ width: 24 }} />
 				<Text style={styles.headerTitle}>Wylo Registration</Text>
-				<Text />
+				<Pressable onPress={() => router.push('/profile')}>
+					<SettingsIcon width={24} height={24} />
+				</Pressable>
 			</View>
-			<View style={styles.characterSection}>
+			<View style={styles.characterSectionRow}>
 				<Image
 					source={require('../assets/images/avatar.png')}
 					style={styles.characterImage}
 				/>
-				<View style={styles.characterInfo}>
-					<Text style={styles.characterLabel}>Character Selected</Text>
-					<Text style={styles.characterName}>Friendly teddy bear</Text>
-					<View style={styles.characterAvatars}>
-						<Image
-							source={require('../assets/images/avatar.png')}
-							style={styles.avatarImage}
-						/>
-						<Image
-							source={require('../assets/images/avatar.png')}
-							style={[styles.avatarImage, styles.avatarImageOverlap]}
-						/>
-						<Image
-							source={require('../assets/images/avatar.png')}
-							style={[styles.avatarImage, styles.avatarImageOverlap]}
-						/>
-					</View>
+				<View style={styles.characterInfoCol}>
+					{/* <Text style={styles.characterLabel}>Character Selected</Text>
+					<Text style={styles.characterName}>Friendly teddy bear</Text> */}
+					{/* <View style={styles.characterAvatarsRow}>
+						<Image source={require('../assets/images/avatar.png')} style={styles.avatarImage} />
+						<Image source={require('../assets/images/avatar.png')} style={[styles.avatarImage, styles.avatarImageOverlap]} />
+						<Image source={require('../assets/images/avatar.png')} style={[styles.avatarImage, styles.avatarImageOverlap]} />
+						<View style={styles.avatarPlus}><PlusIcon width={20} height={20} /></View>
+					</View> */}
 				</View>
 			</View>
 			<View style={styles.formContainer}>
 				<View style={styles.tabsContainer}>
-					<Tabs value={selectedTab} onValueChange={setSelectedTab} style={styles.tabs}>
+					<Tabs value={selectedTab} onValueChange={async (tab) => {
+						if (selectedTab === 'info') {
+							await savePersonalInfoToFirestore();
+						}
+						setSelectedTab(tab);
+					}} style={styles.tabs}>
 						<TabsList style={styles.tabsList}>
 							<TabsTrigger
 								asChild
 								value="info"
-								style={[styles.tabTrigger, selectedTab === 'info' && styles.tabTriggerActive]}>
-								<Text style={[styles.tabText, selectedTab === 'info' ? styles.tabTextActive : styles.tabTextInactive]}>
-									Personal Info.
-								</Text>
+								style={[styles.tabTrigger, selectedTab === 'info' && styles.tabTriggerActive]}
+							>
+								<Text style={[styles.tabText, selectedTab === 'info' ? styles.tabTextActive : styles.tabTextInactive]}>Personal Info.</Text>
 							</TabsTrigger>
+							{/*
 							<TabsTrigger
 								asChild
 								value="interests"
-								style={[styles.tabTrigger, selectedTab === 'interests' && styles.tabTriggerActive]}>
-								<Text style={[styles.tabText, selectedTab === 'interests' ? styles.tabTextActive : styles.tabTextInactive]}>
-									Interests
-								</Text>
+								style={[styles.tabTrigger, selectedTab === 'interests' && styles.tabTriggerActive]}
+							>
+								<Text style={[styles.tabText, selectedTab === 'interests' ? styles.tabTextActive : styles.tabTextInactive]}>Interests</Text>
 							</TabsTrigger>
+							*/}
+							
 							<TabsTrigger
 								asChild
 								value="language"
-								style={[styles.tabTrigger, selectedTab === 'language' && styles.tabTriggerActive]}>
-								<Text style={[styles.tabText, selectedTab === 'language' ? styles.tabTextActive : styles.tabTextInactive]}>
-									Language
-								</Text>
+								style={[styles.tabTrigger, selectedTab === 'language' && styles.tabTriggerActive]}
+							>
+								<Text style={[styles.tabText, selectedTab === 'language' ? styles.tabTextActive : styles.tabTextInactive]}>Language</Text>
 							</TabsTrigger>
+							
 						</TabsList>
 						<TabsContent value="info">
 							<View style={styles.infoForm}>
@@ -153,96 +185,103 @@ export const WyloRegistrationScreen = () => {
 										value={formValues.name}
 										nativeID="name"
 										style={[styles.input, styles.inputShadow]}
-										onChangeText={(text: string) =>
-											setFormValues((prev) => ({ ...prev, name: text }))
-										}
+										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, name: text }))}
+									/>
+								</View>
+								<View style={styles.formRow}>
+									<Label style={styles.label} nativeID="username">Username:</Label>
+									<Input
+										value={formValues.username}
+										nativeID="username"
+										style={[styles.input, styles.inputShadow]}
+										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, username: text }))}
 									/>
 								</View>
 								<View style={styles.formRow}>
 									<Label style={styles.label} nativeID="age">Age:</Label>
 									<View style={[styles.ageInputContainer, styles.inputShadow]}>
 										<Input
-											value={formValues.age?.toString()}
+											value={formValues.age?.toString() || ''}
 											keyboardType="numeric"
 											placeholder="Eg.24"
 											style={styles.ageInput}
-											onChangeText={(text: string) =>
-												setFormValues((prev) => ({
-													...prev,
-													age: text === '' ? null : Number(text.replace(/[^0-9]/g, ''))
-												}))
-											}
+											editable={true}
+											onChangeText={(text: string) => {
+												const ageNum = parseInt(text);
+												if (text === '' || (ageNum >= 1 && ageNum <= 18)) {
+													setFormValues((prev) => ({ ...prev, age: text === '' ? null : ageNum }));
+												}
+											}}
 										/>
-										<View style={styles.ageControls}>
-											<Pressable
-												onPress={() =>
-													setFormValues((prev) => ({ ...prev, age: (prev.age ?? 0) + 1 }))
-												}>
-												<ArrowDownIcon />
-											</Pressable>
-											<Pressable
-												onPress={() =>
-													setFormValues((prev) => ({
-														...prev,
-														age: Math.max((prev.age ?? 0) - 1, 0)
-													}))
-												}>
-												<ArrowUpIcon />
-											</Pressable>
-										</View>
+										<Pressable style={styles.ageDropdown} onPress={() => setAgePickerVisible(true)}>
+											<ArrowDownIcon />
+										</Pressable>
 									</View>
 								</View>
 								<View style={styles.formRow}>
-									<Label style={[styles.label, styles.genderLabel]} nativeID="gender">
-										Gender:
-									</Label>
+									<Label style={[styles.label, styles.genderLabel]} nativeID="gender">Gender:</Label>
 									<View style={styles.genderButtons}>
-										<Pressable
-											style={[
-												styles.genderButton,
-												styles.inputShadow,
-												formValues.gender === 'male' && styles.genderButtonActive
-											]}
-											onPress={() => setFormValues((prev) => ({ ...prev, gender: 'male' }))}>
-											<MaleIcon
-												width={24}
-												height={24}
-												color={formValues.gender === 'male' ? 'white' : '#3664C0'}
-											/>
+										<Pressable style={[styles.genderButton, styles.inputShadow, formValues.gender === 'male' && styles.genderButtonActive]} onPress={() => setFormValues((prev) => ({ ...prev, gender: 'male' }))}>
+											<MaleIcon width={24} height={24} color={formValues.gender === 'male' ? 'white' : '#3664C0'} />
 										</Pressable>
-										<Pressable
-											style={[
-												styles.genderButton,
-												styles.inputShadow,
-												formValues.gender === 'female' && styles.genderButtonActiveFemale
-											]}
-											onPress={() => setFormValues((prev) => ({ ...prev, gender: 'female' }))}>
-											<FemaleIcon
-												width={24}
-												height={24}
-												color={formValues.gender === 'female' ? 'white' : '#FF6AFF'}
-											/>
+										<Pressable style={[styles.genderButton, styles.inputShadow, formValues.gender === 'female' && styles.genderButtonActiveFemale]} onPress={() => setFormValues((prev) => ({ ...prev, gender: 'female' }))}>
+											<FemaleIcon width={24} height={24} color={formValues.gender === 'female' ? 'white' : '#FF6AFF'} />
 										</Pressable>
 									</View>
 								</View>
+								<Button
+									style={{ marginTop: 24, backgroundColor: '#AE9FFF', borderRadius: 8 }}
+									onPress={async () => {
+										try {
+											const ageNum = typeof formValues.age === 'string' ? Number(formValues.age) : formValues.age;
+											const nameValid = typeof formValues.name === 'string' && formValues.name.trim().length > 0;
+											const usernameValid = typeof formValues.username === 'string' && formValues.username.trim().length > 0;
+											const ageValid = typeof ageNum === 'number' && !isNaN(ageNum) && ageNum > 0;
+											const genderValid = typeof formValues.gender === 'string' && formValues.gender.trim().length > 0;
+											if (!nameValid || !usernameValid || !ageValid || !genderValid) {
+												Alert.alert('Error', 'Please fill in all fields.');
+												return;
+											}
+											
+											const updatedUserData = {
+												...auth,
+												name: formValues.name.trim(),
+												username: formValues.username.trim(),
+												age: ageNum,
+												gender: formValues.gender.trim(),
+												updatedAt: new Date().toISOString(),
+											};
+											
+											await updateDoc(doc(db, 'users', auth.uid), {
+												name: formValues.name.trim(),
+												username: formValues.username.trim(),
+												age: ageNum,
+												gender: formValues.gender.trim(),
+												updatedAt: new Date().toISOString(),
+											});
+											
+											// Update Redux state immediately
+											dispatch(setUser(updatedUserData));
+											
+											Alert.alert('Success', 'Personal info saved!');
+										} catch (error) {
+											Alert.alert('Error', 'Failed to save personal info.');
+										}
+									}}
+								>
+									<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Save</Text>
+								</Button>
 							</View>
 						</TabsContent>
+						{/*
 						<TabsContent value="interests">
 							<View style={styles.interestsGrid}>
-								<Pressable
-									onPress={() => handleInterestSelection('Space')}
-									style={styles.interestItem}>
-									<ImageBackground
-										source={require('../assets/images/space.png')}
-										resizeMode="cover"
-										style={styles.interestImage}>
+								<Pressable onPress={() => handleInterestSelection('Space')} style={styles.interestItem}>
+									<ImageBackground source={require('../assets/images/space.png')} resizeMode="cover" style={styles.interestImage}>
 										<View style={styles.interestContent}>
 											<View style={styles.interestHeader}>
 												<Text style={styles.interestTitle}>Space</Text>
-												<View style={[
-													styles.interestCheckbox,
-													!formValues.interests.includes('Space') && styles.interestCheckboxHidden
-												]}>
+												<View style={[styles.interestCheckbox, !formValues.interests.includes('Space') && styles.interestCheckboxHidden]}>
 													<View style={styles.interestCheckboxInner} />
 												</View>
 											</View>
@@ -251,27 +290,15 @@ export const WyloRegistrationScreen = () => {
 								</Pressable>
 							</View>
 						</TabsContent>
+						*/}
+						
 						<TabsContent value="language">
 							<View style={styles.languageGrid}>
-								<Pressable
-									onPress={() => {
-										handlePresentModalPress()
-										setFormValues((prev) => ({ ...prev, language: 'Spanish' }))
-									}}
-									style={styles.languageItem}>
+								<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Spanish' })); }} style={styles.languageItem}>
 									<View style={styles.languageImageContainer}>
-										<Image
-											source={require('../assets/images/spanish.png')}
-											resizeMode="cover"
-											style={styles.languageImage}
-										/>
-										{formValues.language !== 'Spanish' && (
-											<View style={styles.languageOverlay} />
-										)}
-										<View style={[
-											styles.languageCheckbox,
-											formValues.language !== 'Spanish' && styles.languageCheckboxHidden
-										]}>
+										<Image source={require('../assets/images/spanish.png')} resizeMode="cover" style={styles.languageImage} />
+										{formValues.language !== 'Spanish' && <View style={styles.languageOverlay} />}
+										<View style={[styles.languageCheckbox, formValues.language !== 'Spanish' && styles.languageCheckboxHidden]}>
 											<View style={styles.languageCheckboxInner} />
 										</View>
 									</View>
@@ -279,8 +306,41 @@ export const WyloRegistrationScreen = () => {
 								</Pressable>
 							</View>
 						</TabsContent>
+						
 					</Tabs>
 				</View>
+			</View>
+
+			{/* Age Picker Modal */}
+			<Modal
+				visible={agePickerVisible}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setAgePickerVisible(false)}
+			>
+				<TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPressOut={() => setAgePickerVisible(false)}>
+					<View style={{ backgroundColor: 'white', borderRadius: 10, padding: 16, minWidth: 120, maxHeight: 300 }}>
+						<FlatList
+							data={ageOptions}
+							keyExtractor={item => item}
+							renderItem={({ item }) => (
+								<TouchableOpacity
+									style={{ paddingVertical: 12, alignItems: 'center' }}
+									onPress={() => {
+										setFormValues(prev => ({ ...prev, age: Number(item) }));
+										setAgePickerVisible(false);
+									}}
+								>
+									<Text style={{ fontSize: 18 }}>{item}</Text>
+								</TouchableOpacity>
+							)}
+						/>
+					</View>
+				</TouchableOpacity>
+			</Modal>
+
+			<View style={styles.noteBox}>
+				<Text style={styles.noteText}><Text style={styles.noteBold}>Note :</Text> <Text style={styles.noteHighlight}>Above information will be used when interacting with the child.</Text></Text>
 			</View>
 		</ScrollView>
 	)
@@ -290,71 +350,109 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: 'white',
+		paddingTop: Platform.OS === 'ios' ? 44 : 0,
 	},
-	header: {
+	circleBg: {
+		position: 'absolute',
+		top: -90,
+		right: -120,
+		width: 500,
+		height: 350,
+		borderRadius: 250,
+		backgroundColor: '#E5D8FF',
+		zIndex: -1,
+	},
+	headerRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		paddingHorizontal: 20,
-		paddingTop: 20,
+		paddingTop: Platform.OS === 'ios' ? 14 : 20,
+		marginBottom: 8,
 	},
 	headerTitle: {
+		flex: 1,
 		textAlign: 'center',
 		fontWeight: 'bold',
 		color: '#7F67FF',
+		fontSize: 20,
+		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
-	characterSection: {
+	characterSectionRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 6,
+		justifyContent: 'flex-start',
+		gap: 12,
 		paddingHorizontal: 20,
+		marginBottom: 8,
 	},
 	characterImage: {
-		marginTop: 20,
-		width: 203,
-		height: 272,
+		width: 160,
+		height: 210,
+		marginTop: 10,
+		marginRight: 8,
 	},
-	characterInfo: {
-		marginTop: 128,
-		flexShrink: 1,
+	characterInfoCol: {
+		flex: 1,
 		flexDirection: 'column',
+		marginTop: 40,
 	},
 	characterLabel: {
 		fontSize: 14,
-		color: 'black',
+		color: '#222',
+		fontFamily: 'PlusJakartaSans_400Regular',
 	},
 	characterName: {
 		marginTop: 4,
 		fontSize: 20,
 		fontWeight: '600',
 		color: '#0E2C76',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
-	characterAvatars: {
-		marginTop: 16,
+	characterAvatarsRow: {
+		marginTop: 12,
 		flexDirection: 'row',
 		alignItems: 'center',
+		gap: 0,
 	},
 	avatarImage: {
-		width: 24,
-		height: 24,
-		borderRadius: 12,
-		borderWidth: 1,
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		borderWidth: 2,
 		borderColor: 'white',
-		overflow: 'hidden',
+		backgroundColor: '#eee',
+		zIndex: 1,
 	},
 	avatarImageOverlap: {
-		marginLeft: -6,
+		marginLeft: -10,
+		zIndex: 0,
+	},
+	avatarPlus: {
+		marginLeft: -10,
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		backgroundColor: '#fff',
+		alignItems: 'center',
+		justifyContent: 'center',
+		borderWidth: 1,
+		borderColor: '#E5D8FF',
+		zIndex: 2,
 	},
 	formContainer: {
-		marginTop: Platform.OS === 'web' ? 8 : 40,
+		marginTop: 10,
 		marginHorizontal: 16,
-		borderRadius: 8,
+		borderRadius: 16,
 		borderWidth: 1,
 		borderColor: '#F2F2F2',
 		backgroundColor: 'white',
 		padding: 16,
 		paddingTop: 0,
+		shadowColor: '#E5D8FF',
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+		elevation: 2,
 	},
 	tabsContainer: {
 		flex: 1,
@@ -364,31 +462,37 @@ const styles = StyleSheet.create({
 		width: '100%',
 	},
 	tabsList: {
-		position: 'relative',
 		flexDirection: 'row',
 		alignItems: 'flex-end',
 		justifyContent: 'space-between',
 		borderBottomWidth: 1,
 		borderBottomColor: '#D9D9D9',
+		marginBottom: 8,
 	},
 	tabTrigger: {
 		paddingBottom: 2,
+		flex: 1,
+		alignItems: 'center',
 	},
 	tabTriggerActive: {
-		borderBottomWidth: 1,
+		borderBottomWidth: 2,
 		borderBottomColor: '#0E2C76',
 	},
 	tabText: {
 		fontWeight: '600',
+		fontFamily: 'PlusJakartaSans_500Medium',
+		fontSize: 14,
+		textAlign: 'center',
 	},
 	tabTextActive: {
 		color: '#0E2C76',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
 	tabTextInactive: {
 		color: '#B2B1B1',
 	},
 	infoForm: {
-		marginTop: Platform.OS === 'web' ? 29 : 20,
+		marginTop: 20,
 		flexDirection: 'column',
 		gap: 36,
 	},
@@ -401,6 +505,7 @@ const styles = StyleSheet.create({
 		flexBasis: '17%',
 		fontSize: 14,
 		color: 'black',
+		fontFamily: 'PlusJakartaSans_500Medium',
 	},
 	genderLabel: {
 		flexShrink: 0,
@@ -411,6 +516,7 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#F2F2F2',
 		backgroundColor: 'white',
+		fontFamily: 'PlusJakartaSans_400Regular',
 	},
 	inputShadow: {
 		...(Platform.OS === 'web' ? {
@@ -436,20 +542,21 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		borderTopLeftRadius: 4,
 		borderBottomLeftRadius: 4,
+		fontFamily: 'PlusJakartaSans_400Regular',
 		...(Platform.OS === 'web' && {
 			outlineStyle: 'solid',
 		}),
 	},
-	ageControls: {
-		flexDirection: 'column',
+	ageDropdown: {
+		width: 32,
+		height: 48,
+		alignItems: 'center',
 		justifyContent: 'center',
-		gap: 4,
-		alignSelf: 'stretch',
-		borderRadius: 4,
+		borderTopRightRadius: 4,
+		borderBottomRightRadius: 4,
 		borderWidth: 1,
 		borderColor: '#F2F2F2',
 		backgroundColor: 'white',
-		paddingHorizontal: 6,
 	},
 	genderButtons: {
 		flexDirection: 'row',
@@ -479,13 +586,17 @@ const styles = StyleSheet.create({
 		height: Platform.OS === 'web' ? 'auto' : 132,
 		width: Platform.OS === 'web' ? 'auto' : 174,
 		overflow: 'hidden',
-		borderRadius: 4,
+		borderRadius: 8,
+		backgroundColor: '#F7F6FF',
+		borderWidth: 1,
+		borderColor: '#E5D8FF',
 	},
 	interestImage: {
 		height: Platform.OS === 'web' ? '100%' : 132,
 		width: Platform.OS === 'web' ? '100%' : 174,
 		minHeight: 132,
 		overflow: 'hidden',
+		borderRadius: 8,
 		...(Platform.OS === 'web' && {
 			minWidth: 174,
 		}),
@@ -494,8 +605,9 @@ const styles = StyleSheet.create({
 		height: '100%',
 		width: '100%',
 		flex: 1,
-		borderRadius: 4,
+		borderRadius: 8,
 		padding: 8,
+		justifyContent: 'flex-end',
 	},
 	interestHeader: {
 		flexDirection: 'row',
@@ -506,6 +618,7 @@ const styles = StyleSheet.create({
 	interestTitle: {
 		fontWeight: 'bold',
 		color: 'white',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
 	interestCheckbox: {
 		height: 24,
@@ -543,6 +656,7 @@ const styles = StyleSheet.create({
 		height: Platform.OS === 'web' ? '100%' : 80,
 		width: Platform.OS === 'web' ? '100%' : 80,
 		overflow: 'hidden',
+		borderRadius: 8,
 	},
 	languageOverlay: {
 		position: 'absolute',
@@ -577,5 +691,32 @@ const styles = StyleSheet.create({
 	languageName: {
 		fontSize: 14,
 		color: '#404040',
+		fontFamily: 'PlusJakartaSans_500Medium',
+	},
+	noteBox: {
+		marginTop: 24,
+		marginBottom: 94,
+		marginHorizontal: 16,
+		padding: 12,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#E5D8FF',
+		backgroundColor: '#F7F6FF',
+	},
+	noteText: {
+		fontSize: 14,
+		color: '#7F67FF',
+		fontFamily: 'PlusJakartaSans_400Regular',
+	},
+	noteBold: {
+		fontWeight: 'bold',
+		color: '#3C2FCB',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
+	},
+	noteHighlight: {
+		color: '#7F67FF',
+		fontFamily: 'PlusJakartaSans_500Medium',
 	},
 })
+
+export default WyloRegistrationScreen;

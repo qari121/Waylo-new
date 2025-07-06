@@ -30,6 +30,7 @@ export default function PrivateLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="reports" />
           <Stack.Screen name="profile" />
+          <Stack.Screen name="wylo-registration" />
         </Stack>
 
         {/* single persistent bottom bar */}

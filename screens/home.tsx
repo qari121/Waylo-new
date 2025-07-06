@@ -1,7 +1,7 @@
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity, StatusBar, Dimensions, ActivityIndicator } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, StyleSheet, Platform, SafeAreaView, Modal, TouchableOpacity, StatusBar, Dimensions, ActivityIndicator, AppState } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import Toast from 'react-native-toast-message';
 import { Auth, getAuth } from 'firebase/auth';
@@ -17,6 +17,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 import { logout } from '../slices/auth';
 import { fetchSentimentsCount } from '../slices/sentiments';
+import { toyLogs } from '../slices/logs';
 
 import BookIcon from '../assets/icons/book.svg';
 import ClockIcon from '../assets/icons/clock.svg';
@@ -37,6 +38,7 @@ import { Chase } from 'react-native-animated-spinkit';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import BrickBackground from '../assets/icons/brick_background.svg';
 import Waves from '../assets/icons/waves.svg';
+import CalendarIcon from '../assets/icons/calendar.svg';
 
 const isValidMac = (input: string) => /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(input);
 
@@ -75,6 +77,9 @@ export const HomeScreen = () => {
 	const [dataFetched, setDataFetched] = useState<boolean>(!!pageReadyRedux);
 	const [deviceModalVisible, setDeviceModalVisible] = useState(false);
 	const [showScheduling, setShowScheduling] = useState(false);
+	const logs = useAppSelector((state) => state.logs.toyLogs);
+	const [logsLoading, setLogsLoading] = useState(false);
+	const [logsError, setLogsError] = useState<string | null>(null);
 
 	// Show ActivityIndicator only when redux says we don't have fresh cached data yet.
 	const pageReady = pageReadyRedux && dataFetched;
@@ -114,6 +119,95 @@ export const HomeScreen = () => {
 	const cardWidth = screenWidth * 0.75;
 	const cardHeight = 245;
 	const cardBorderRadius = 32;
+
+	// Calculate today's usage time from toyLogs
+	const today = new Date().toISOString().split('T')[0];
+	const todayLogs = logs
+		? logs.filter((log: any) => {
+			const logDate = new Date(log.time).toISOString().split('T')[0];
+			return logDate === today;
+		})
+		: [];
+	let usageSeconds = 0;
+	if (todayLogs.length >= 2) {
+		const times = todayLogs.map((log: any) => new Date(log.time).getTime() / 1000);
+		usageSeconds = Math.max(...times) - Math.min(...times);
+	}
+	const usageMinutes = Math.floor(usageSeconds / 60);
+	const usageHours = Math.floor(usageMinutes / 60);
+	const usageMins = usageMinutes % 60;
+	const usageDisplay = usageHours > 0 ? `${usageHours}h ${usageMins}m` : `${usageMins}m`;
+
+	// Restore useFocusEffect for schedule fetching
+	useFocusEffect(
+		React.useCallback(() => {
+			const fetchData = async () => {
+				try {
+					const val = await AsyncStorage.getItem('schedule-downtime');
+					console.log('HomeScreen - Loaded schedule from AsyncStorage:', val);
+					if (val) {
+						try {
+							const sched = JSON.parse(val);
+							console.log('HomeScreen - Parsed schedule:', sched);
+							if (sched && sched.start && sched.end) {
+								setSchedule(sched);
+								let text = '';
+								if (sched.date) {
+									try {
+										const dateObj = new Date(sched.date);
+										if (!isNaN(dateObj.getTime())) {
+											const dateStr = dateObj.toLocaleDateString(undefined, { 
+												weekday: 'short',
+												month: 'short', 
+												day: 'numeric', 
+												year: 'numeric' 
+											});
+											text = `Downtime ${dateStr} ${sched.start} – ${sched.end}`;
+										} else {
+											text = `Current Restriction: ${sched.start} – ${sched.end}`;
+										}
+									} catch (dateError) {
+										console.error('HomeScreen - Error parsing date:', dateError);
+										text = `Current Restriction: ${sched.start} – ${sched.end}`;
+									}
+								} else if (sched.start && sched.end) {
+									text = `Current Restriction: ${sched.start} – ${sched.end}`;
+								} else {
+									text = 'No schedule set';
+								}
+								console.log('HomeScreen - Setting schedule text:', text);
+								setScheduleText(text);
+							} else {
+								console.log('HomeScreen - Invalid schedule structure:', sched);
+								setSchedule(null);
+								setScheduleText('No schedule set');
+							}
+						} catch (parseError) {
+							console.error('HomeScreen - Error parsing schedule:', parseError);
+							setSchedule(null);
+							setScheduleText('No schedule set');
+							// Clear corrupted data
+							try {
+								await AsyncStorage.removeItem('schedule-downtime');
+								console.log('HomeScreen - Cleared corrupted schedule data');
+							} catch (clearError) {
+								console.error('HomeScreen - Error clearing corrupted data:', clearError);
+							}
+						}
+					} else {
+						console.log('HomeScreen - No schedule found in AsyncStorage');
+						setSchedule(null);
+						setScheduleText('No schedule set');
+					}
+				} catch (error) {
+					console.error('HomeScreen - Error fetching data:', error);
+					setSchedule(null);
+					setScheduleText('No schedule set');
+				}
+			};
+			fetchData();
+		}, [])
+	);
 
 	useEffect(() => {
 		const auth = getAuth()
@@ -196,6 +290,150 @@ export const HomeScreen = () => {
 		pageReadyRedux ? buildSentiments(cachedSentiments) : defaultSentiments
 	);
 
+	// Fetch logs if not present
+	useEffect(() => {
+		if (!macAddress || !isValidMac(macAddress)) return;
+		if (logs && logs.length > 0) return;
+		setLogsLoading(true);
+		dispatch(toyLogs(macAddress))
+			.unwrap()
+			.catch((err: any) => setLogsError(err?.message || 'Failed to fetch usage logs'))
+			.finally(() => setLogsLoading(false));
+	}, [macAddress, dispatch]);
+
+	// Get last 3 used app icons (show only if appIcon exists)
+	const appIcons = logs
+		.filter((log: any) => !!log.appIcon)
+		.map((log: any, idx: number) => (
+			<Image
+				key={idx}
+				source={{ uri: log.appIcon }}
+				style={styles.usageAppIcon}
+			/>
+		));
+
+	const [schedule, setSchedule] = useState<{date: string, start: string, end: string, label: string} | null>(null);
+	const [scheduleText, setScheduleText] = useState('No schedule set');
+
+	// Also load schedule on component mount
+	useEffect(() => {
+		const loadSchedule = async () => {
+			try {
+				const val = await AsyncStorage.getItem('schedule-downtime');
+				console.log('HomeScreen - Initial load schedule from AsyncStorage:', val);
+				if (val) {
+					try {
+						const sched = JSON.parse(val);
+						console.log('HomeScreen - Initial parsed schedule:', sched);
+						if (sched && sched.start && sched.end) {
+							setSchedule(sched);
+							let text = '';
+							if (sched.date) {
+								try {
+									const dateObj = new Date(sched.date);
+									if (!isNaN(dateObj.getTime())) {
+										const dateStr = dateObj.toLocaleDateString(undefined, { 
+											weekday: 'short',
+											month: 'short', 
+											day: 'numeric', 
+											year: 'numeric' 
+										});
+										text = `Downtime ${dateStr} ${sched.start} – ${sched.end}`;
+									} else {
+										text = `Current Restriction: ${sched.start} – ${sched.end}`;
+									}
+								} catch (dateError) {
+									console.error('HomeScreen - Initial error parsing date:', dateError);
+									text = `Current Restriction: ${sched.start} – ${sched.end}`;
+								}
+							} else if (sched.start && sched.end) {
+								text = `Current Restriction: ${sched.start} – ${sched.end}`;
+							} else {
+								text = 'No schedule set';
+							}
+							console.log('HomeScreen - Initial setting schedule text:', text);
+							setScheduleText(text);
+						} else {
+							console.log('HomeScreen - Initial invalid schedule structure:', sched);
+							setSchedule(null);
+							setScheduleText('No schedule set');
+						}
+					} catch (parseError) {
+						console.error('HomeScreen - Initial error parsing schedule:', parseError);
+						setSchedule(null);
+						setScheduleText('No schedule set');
+						// Clear corrupted data
+						try {
+							await AsyncStorage.removeItem('schedule-downtime');
+							console.log('HomeScreen - Initial cleared corrupted schedule data');
+						} catch (clearError) {
+							console.error('HomeScreen - Initial error clearing corrupted data:', clearError);
+						}
+					}
+				} else {
+					console.log('HomeScreen - Initial no schedule found in AsyncStorage');
+					setSchedule(null);
+					setScheduleText('No schedule set');
+				}
+			} catch (error) {
+				console.error('HomeScreen - Initial error fetching data:', error);
+				setSchedule(null);
+				setScheduleText('No schedule set');
+			}
+		};
+		loadSchedule();
+	}, []);
+
+	const [nearestSchedule, setNearestSchedule] = useState<{ start: string; end: string; date: string | null } | null>(null);
+
+	// Load and find nearest schedule
+	useEffect(() => {
+		const loadNearestSchedule = async () => {
+			try {
+				const val = await AsyncStorage.getItem('schedules-downtime');
+				if (val) {
+					const arr = JSON.parse(val);
+					if (Array.isArray(arr) && arr.length > 0) {
+						const now = new Date();
+						// Map schedules to their next occurrence (date+start time)
+						const withDate = arr.map((sched: any) => {
+							let schedDate: Date;
+							if (sched.date) {
+								// Use the schedule's date
+								const [h, m] = sched.start.split(':');
+								schedDate = new Date(sched.date);
+								schedDate.setHours(Number(h), Number(m), 0, 0);
+							} else {
+								// No date: treat as today
+								const [h, m] = sched.start.split(':');
+								schedDate = new Date();
+								schedDate.setHours(Number(h), Number(m), 0, 0);
+							}
+							return { ...sched, schedDate };
+						});
+						// Filter to future or currently active
+						const futureOrActive = withDate.filter((sched: any) => {
+							const [endH, endM] = sched.end.split(':');
+							const endDate = new Date(sched.schedDate);
+							endDate.setHours(Number(endH), Number(endM), 0, 0);
+							return endDate >= now;
+						});
+						// Sort by soonest start time
+						futureOrActive.sort((a: any, b: any) => a.schedDate.getTime() - b.schedDate.getTime());
+						setNearestSchedule(futureOrActive.length > 0 ? futureOrActive[0] : null);
+					} else {
+						setNearestSchedule(null);
+					}
+				} else {
+					setNearestSchedule(null);
+				}
+			} catch {
+				setNearestSchedule(null);
+			}
+		};
+		loadNearestSchedule();
+	}, []);
+
 	if (!pageReady) {
 		return (
 			<SafeAreaView style={{ flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'white' }}>
@@ -212,6 +450,19 @@ export const HomeScreen = () => {
 				<Text style={[styles.greeting, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Hello {auth.username}</Text>
 				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Welcome back, check the latest activities</Text>
 
+				{/* Usage Info Card */}
+				<View style={styles.usageInfoCard}>
+					<View>
+						<Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', fontFamily: 'PlusJakartaSans_700Bold' }}>
+							{logsLoading ? '...' : usageDisplay}
+						</Text>
+						<Text style={{ color: '#C5C5C5', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular' }}>Time spent today</Text>
+					</View>
+					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+						{appIcons}
+					</View>
+				</View>
+
 				<TouchableOpacity
 					activeOpacity={0.8}
 					onPress={() => router.push('/ConnectedDevice')}
@@ -227,41 +478,36 @@ export const HomeScreen = () => {
 					<Text style={styles.connectedDeviceTitle}>Connected{"\n"}Device</Text>
 				</TouchableOpacity>
 
-				{isOnline && hasPaidModule && (
-					<View style={styles.moodHistoryCard}>
-						<Text style={[styles.moodHistoryTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Weekly Mood Summary</Text>
-						{!macAddress || !isValidMac(macAddress) ? (
-							<View style={styles.macPromptBox}>
-								<Text style={styles.macPromptText}>Please pair your device and enter a MAC address to view mood history</Text>
-							</View>
-						) : !dataFetched ? (
-							<View style={styles.macPromptBox}><Text style={styles.macPromptText}>Loading…</Text></View>
-						) : sentiments.every(entry => entry.mood === 'none') ? (
-							<View style={styles.macPromptBox}>
-								<Text style={styles.macPromptText}>No mood data available for this device yet</Text>
-							</View>
-						) : (
-							<View style={styles.moodHistoryList}>
-								{sentiments.map((sentiment) => {
-									const todayDay = sentiments[((new Date().getDay() + 6) % 7)].day;
-									const isToday = todayDay === sentiment.day;
-									const Emoji = emojiIcons[sentiment.mood];
-									return (
-										<View
-											key={sentiment.day}
-											style={[styles.moodHistoryRow, isToday && styles.moodHistoryRowActive]}
-										>
-											{Emoji && <Emoji />}
-											<Text style={[styles.moodHistoryDay, isToday && styles.moodHistoryDayActive, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>
-												{sentiment.day}
-											</Text>
-										</View>
-									);
-								})}
-							</View>
-						)}
+				{/* Schedules Box */}
+				<TouchableOpacity
+					style={styles.scheduleCard}
+					activeOpacity={0.8}
+					onPress={() => router.replace('/parental-controls')}
+				>
+					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+						<View
+							style={{
+								width: 44,
+								height: 44,
+								borderRadius: 22,
+								backgroundColor: 'white',
+								alignItems: 'center',
+								justifyContent: 'center',
+								marginRight: 14,
+							}}
+						>
+							<CalendarIcon width={28} height={28} />
+						</View>
+						<View>
+							<Text style={{ color: 'white', fontSize: 17, fontWeight: 'bold', fontFamily: 'PlusJakartaSans_600SemiBold' }}>Schedule</Text>
+							<Text style={{ color: '#C5C5C5', fontSize: 14, fontFamily: 'PlusJakartaSans_500Medium', marginTop: 2 }}>
+								{nearestSchedule
+									? `Next: ${(nearestSchedule.date ? new Date(nearestSchedule.date).toLocaleDateString() : 'Any')} ${nearestSchedule.start} – ${nearestSchedule.end}`
+									: 'No schedule set'}
+							</Text>
+						</View>
 					</View>
-				)}
+				</TouchableOpacity>
 			</ScrollView>
 		</SafeAreaView>
 	)
@@ -561,5 +807,62 @@ const styles = StyleSheet.create({
 	},
 	moodHistoryTitle: {
 		color: '#404040',
+	},
+	usageInfoCard: {
+		width: '100%',
+		backgroundColor: '#A6A6A6',
+		borderRadius: 20,
+		padding: 24,
+		marginTop: 18,
+		marginBottom: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 4,
+		elevation: 4,
+	},
+	usageAppIcon: {
+		width: 36,
+		height: 36,
+		borderRadius: 10,
+		marginLeft: -8,
+		borderWidth: 2,
+		borderColor: '#23232B',
+		backgroundColor: '#fff',
+	},
+	usageAppIconPlaceholder: {
+		width: 36,
+		height: 36,
+		borderRadius: 10,
+		marginLeft: -8,
+		backgroundColor: '#444',
+		opacity: 0.3,
+	},
+	scheduleCard: {
+		width: '100%',
+		backgroundColor: '#AE9FFF',
+		opacity: 0.8,
+		borderRadius: 20,
+		padding: 24,
+		marginTop: 18,
+		marginBottom: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.15,
+		shadowRadius: 4,
+		elevation: 4,
+	},
+	scheduleIconWrapper: {
+		width: 44,
+		height: 44,
+		borderRadius: 12,
+		backgroundColor: '#3B5BDB',
+		alignItems: 'center',
+		justifyContent: 'center',
 	},
 })

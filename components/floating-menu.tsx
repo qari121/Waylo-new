@@ -154,8 +154,8 @@ export const FloatingMenu = memo(() => {
         icon: ParentalControlsIcon,
       },
       {
-        href: '/profile',
-        isActive: (p: string) => p.startsWith('/profile'),
+        href: '/wylo-registration',
+        isActive: (p: string) => p.startsWith('/wylo-registration'),
         isProfile: true,
       },
     ],

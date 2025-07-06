@@ -1,9 +1,8 @@
 /* eslint-disable react-native/no-color-literals */
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
-import { Image, SafeAreaView, ScrollView, Text, useWindowDimensions, View, StyleSheet, Platform, Dimensions, Modal, TouchableOpacity, Pressable } from 'react-native'
-import { Chase } from 'react-native-animated-spinkit'
-import { LineChart } from 'react-native-gifted-charts'
+import React, { useEffect, useState, useRef } from 'react'
+import { Image, SafeAreaView, ScrollView, Text, View, StyleSheet, Platform, Dimensions, TouchableOpacity, Pressable, Animated } from 'react-native'
+import { BarChart, PieChart } from 'react-native-gifted-charts'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans'
@@ -12,34 +11,163 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ensureMacAddress } from '../utils/ensureMacAddress'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { db } from '../firebase'
+import { LinearGradient } from 'expo-linear-gradient'
+import Svg, { Circle, G, Path, Text as SvgText, Defs, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg'
 
-import { Button } from '../components/ui/button'
-import {
-	Option,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from '../components/ui/select'
-import { Eye as EyeIcon } from 'lucide-react-native'
-import { fetchDailyLogRanges, fetchWeeklyLogRanges } from '../slices/logs'
 import { fetchSentimentsByDate } from '../slices/sentiments'
 import { useAppDispatch, useAppSelector } from '../hooks'
-import ClosedBookIcon from '../assets/icons/closed-book.svg'
-import DownloadIcon from '../assets/icons/download.svg'
 import CryingEmoji from '../assets/icons/emoji-loudly-crying-face.svg'
 import NeutralEmoji from '../assets/icons/emoji-neutral-face.svg'
 import SadEmoji from '../assets/icons/emoji-pensive-face.svg'
 import AngryEmoji from '../assets/icons/emoji-pouting-face.svg'
 import HappyEmoji from '../assets/icons/emoji-slightly-smiling-face.svg'
-import OpenBookIcon from '../assets/icons/open-book.svg'
 import MicrophoneIcon from '../assets/icons/microphone.svg'
 import BrickBackground from '../assets/icons/brick_background.svg'
 import Waves from '../assets/icons/waves.svg'
 
 const WINDOW_DIMENSIONS = Dimensions.get('window')
+
+// Beautiful Pie Chart Component
+interface BeautifulPieChartProps {
+	data: {interest: string, pct: number}[];
+	radius: number;
+	innerRadius: number;
+	colors: {start: string, end: string}[];
+	onSegmentPress?: (index: number) => void;
+	selectedSegment?: number | null;
+}
+
+const BeautifulPieChart: React.FC<BeautifulPieChartProps> = ({
+	data,
+	radius,
+	innerRadius,
+	colors,
+	onSegmentPress,
+	selectedSegment,
+}) => {
+	const centerX = radius + 30;
+	const centerY = radius + 30;
+
+	// Store animated values in refs to avoid changing hooks count
+	const scalesRef = React.useRef<Animated.Value[]>([]);
+	const offsetsRef = React.useRef<Animated.Value[]>([]);
+
+	// Initialize or update animated values when data length changes
+	React.useEffect(() => {
+		if (scalesRef.current.length !== data.length) {
+			scalesRef.current = data.map((_, i) => new Animated.Value(selectedSegment === i ? 1.08 : 1));
+		}
+		if (offsetsRef.current.length !== data.length) {
+			offsetsRef.current = data.map((_, i) => new Animated.Value(selectedSegment === i ? 16 : 0));
+		}
+	}, [data.length]);
+
+	// Animate on selectedSegment change
+	React.useEffect(() => {
+		data.forEach((_, i) => {
+			Animated.spring(scalesRef.current[i], {
+				toValue: selectedSegment === i ? 1.08 : 1,
+				useNativeDriver: true,
+				speed: 16,
+				bounciness: 8,
+			}).start();
+			Animated.spring(offsetsRef.current[i], {
+				toValue: selectedSegment === i ? 16 : 0,
+				useNativeDriver: true,
+				speed: 16,
+				bounciness: 8,
+			}).start();
+		});
+	}, [selectedSegment, data]);
+
+	const createPieSegment = (startAngle: number, endAngle: number, color: {start: string, end: string}, index: number) => {
+		const scale = scalesRef.current[index] || new Animated.Value(1);
+		const offset = offsetsRef.current[index] || new Animated.Value(0);
+		const strokeWidth = 2;
+
+		const midAngle = (startAngle + endAngle) / 2;
+		const midRad = (midAngle - 90) * Math.PI / 180;
+		const offsetX = Animated.multiply(offset, Math.cos(midRad));
+		const offsetY = Animated.multiply(offset, Math.sin(midRad));
+
+		const startRad = (startAngle - 90) * Math.PI / 180;
+		const endRad = (endAngle - 90) * Math.PI / 180;
+
+		const x1 = centerX + (radius * Math.cos(startRad));
+		const y1 = centerY + (radius * Math.sin(startRad));
+		const x2 = centerX + (radius * Math.cos(endRad));
+		const y2 = centerY + (radius * Math.sin(endRad));
+
+		const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+
+		const outerPath = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+		const innerPath = `M ${centerX} ${centerY} L ${centerX + (innerRadius * Math.cos(startRad))} ${centerY + (innerRadius * Math.sin(startRad))} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${centerX + (innerRadius * Math.cos(endRad))} ${centerY + (innerRadius * Math.sin(endRad))} Z`;
+
+		return (
+			<Pressable key={index} onPress={() => onSegmentPress?.(index)} style={{ position: 'absolute', left: 0, top: 0 }}>
+				<Animated.View
+					style={{
+						transform: [
+							{ scale },
+							{ translateX: offsetX },
+							{ translateY: offsetY },
+						],
+					}}
+				>
+					<Svg width={(radius + 30) * 2} height={(radius + 30) * 2} style={{ position: 'absolute', left: 0, top: 0 }}>
+						<Defs>
+							<SvgLinearGradient id={`gradient${index}`} x1="0%" y1="0%" x2="100%" y2="100%">
+								<Stop offset="0%" stopColor={color.start} />
+								<Stop offset="100%" stopColor={color.end} />
+							</SvgLinearGradient>
+						</Defs>
+						<Path
+							d={outerPath}
+							fill={`url(#gradient${index})`}
+							stroke="#fff"
+							strokeWidth={strokeWidth}
+						/>
+						<Path
+							d={innerPath}
+							fill="white"
+							stroke="transparent"
+						/>
+					</Svg>
+				</Animated.View>
+			</Pressable>
+		);
+	};
+
+	const renderSegments = () => {
+		let currentAngle = 0;
+		return data.map((item, index) => {
+			const angle = (item.pct / 100) * 360;
+			const segment = createPieSegment(currentAngle, currentAngle + angle, colors[index % colors.length], index);
+			currentAngle += angle;
+			return segment;
+		});
+	};
+
+	return (
+		<View style={{ alignItems: 'center', justifyContent: 'center', padding: 8, marginBottom: 8 }}>
+			<View style={{ width: (radius + 30) * 2, height: (radius + 30) * 2, position: 'relative', zIndex: 1 }}>
+				{renderSegments()}
+				{/* Center circle for donut effect */}
+				<Svg width={(radius + 30) * 2} height={(radius + 30) * 2} style={{ position: 'absolute', left: 0, top: 0 }}>
+					<Circle
+						cx={centerX}
+						cy={centerY}
+						r={innerRadius}
+						fill="white"
+						stroke="#f0f0f0"
+						strokeWidth={1}
+					/>
+				</Svg>
+			</View>
+		</View>
+	);
+};
 
 const emojiIcons = {
 	happy: HappyEmoji,
@@ -66,9 +194,6 @@ export const ReportScreen = () => {
 	const dispatch = useAppDispatch()
 	const reportType = useLocalSearchParams()
 	const sentimentsByDate = useAppSelector((state) => state.sentiments.sentimentsByDate)
-	const weeklyLogRanges = useAppSelector((state) => state.logs.weeklyLogs)
-	const dailyLogRanges = useAppSelector((state) => state.logs.dailyLogs)
-	const toyLogs = useAppSelector((state) => state.logs.toyLogs)
 	const auth = useAppSelector(state => state.auth)
 	const [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -79,9 +204,6 @@ export const ReportScreen = () => {
 
 	const [isLoading, setIsLoading] = useState(true)
 	const [isInitialized, setIsInitialized] = useState(false)
-	const [reportDuration, setReportDuration] = useState<Option>(
-		reportType?.type === 'daily' ? { label: 'Day', value: 'day' } : { label: 'Week', value: 'week' }
-	)
 	const [showMoodModal, setShowMoodModal] = useState(false)
 	const [summary, setSummary] = useState<string | null>(null)
 	const [isSummarizing, setIsSummarizing] = useState(false)
@@ -98,57 +220,162 @@ export const ReportScreen = () => {
 	})
 	const [interestBreakdown, setInterestBreakdown] = useState<{interest:string,pct:number}[] | null>(null);
 	const [interestLoading, setInterestLoading] = useState<boolean>(false);
+	const [dailyUsageData, setDailyUsageData] = useState<{day: string, hours: number}[]>([]);
+	const [usageLoading, setUsageLoading] = useState<boolean>(false);
+	const [barTooltip, setBarTooltip] = useState<{visible: boolean, index: number, hours: number} | null>(null);
+	const [selectedInterestIndex, setSelectedInterestIndex] = useState<number | null>(null);
+	const [pieAnimation] = useState(new Animated.Value(0));
+	const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
+	const [pieTooltip, setPieTooltip] = useState<{visible: boolean, x: number, y: number, data: any} | null>(null);
+	const PIE_RADIUS = 130;
+	const PIE_INNER_RADIUS = 90;
+	const PIE_PADDING = 30;
+	const PIE_CENTER_X = WINDOW_DIMENSIONS.width / 2 - 20; // 20 is horizontal padding
+	const PIE_CENTER_Y = 110 + 16; // radius + vertical padding
+	const [tooltip, setTooltip] = useState<{x: number, y: number, index: number} | null>(null);
+	const [chartLayout, setChartLayout] = useState<{x: number, y: number, width: number, height: number} | null>(null);
+	const chartContainerRef = useRef<View>(null);
+	const [chartScreenPos, setChartScreenPos] = useState<{x: number, y: number, width: number, height: number} | null>(null);
 
-	const allowedDurations = auth.plan === "pro"
-		? [{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }]
-		: [{ label: 'Week', value: 'week' }]
+	// Define a multi-color palette for the pie chart
+	const PIE_COLORS = [
+		'#FF6384', // red/pink
+		'#36A2EB', // blue
+		'#FFCE56', // yellow
+		'#4BC0C0', // teal
+		'#9966FF', // violet
+		'#FF9F40', // orange
+		'#C9CBCF', // gray
+		'#2ecc71', // green
+		'#e67e22', // dark orange
+		'#e74c3c', // dark red
+	];
 
-	const generateWeeklyChartData = () => {
-		if (!weeklyLogRanges) return []
+	// Modern gradient color palette for the beautiful pie chart
+	const PIE_GRADIENT_COLORS = [
+		{ start: '#FF6384', end: '#FF6384' }, // Vibrant Red
+		{ start: '#36A2EB', end: '#36A2EB' }, // Bright Blue
+		{ start: '#4BC0C0', end: '#4BC0C0' }, // Teal
+		{ start: '#FFCE56', end: '#FFCE56' }, // Yellow
+		{ start: '#9966FF', end: '#9966FF' }, // Purple
+		{ start: '#FF9F40', end: '#FF9F40' }, // Orange
+		{ start: '#2ecc71', end: '#2ecc71' }, // Green
+		{ start: '#e67e22', end: '#e67e22' }, // Dark Orange
+		{ start: '#e74c3c', end: '#e74c3c' }, // Dark Red
+		{ start: '#00b894', end: '#00b894' }, // Mint
+	];
 
-		const sortedWeeks = Object.entries(weeklyLogRanges).sort(
-			([weekA], [weekB]) =>
-				parseInt(weekA.replace(/\D/g, ''), 10) - parseInt(weekB.replace(/\D/g, ''), 10)
-		)
+	const generateWeeklyBarChartData = () => {
+		if (dailyUsageData.length === 0) return []
 
-		return sortedWeeks.map(([_, logs], index) => {
-			const totalHours = logs.reduce((sum, log) => sum + log.hours, 0)
-
+		return dailyUsageData.map((dayData) => {
+			const isZero = dayData.hours === 0;
 			return {
-				value: totalHours,
-				labelComponent: index % 2 === 0 ? () => customLabel(`Week ${index + 1}`) : undefined,
-				hideDataPoint: true
+				value: isZero ? -0.00001 : dayData.hours,
+				label: dayData.day,
+				labelComponent: () => customLabel(dayData.day),
+				frontColor: isZero ? 'transparent' : '#AE9FFF',
+				barWidth: BAR_WIDTH,
+				topLabelComponent: !isZero ? () => (
+					<Text style={{ color: '#666666', fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular' }}>
+						{dayData.hours.toFixed(1)}h
+					</Text>
+				) : undefined,
 			}
 		})
 	}
 
-	const generateDailyChartData = () => {
-		if (!dailyLogRanges || dailyLogRanges.length === 0) return []
+	const fetchWeeklyUsageData = async () => {
+		if (!ensureMacAddress(macAddress)) return;
+		setUsageLoading(true);
+		try {
+			// Use selectedDate to determine week
+			const dateToUse = selectedDate || new Date();
+			const startOfWeek = new Date(dateToUse);
+			const dayOfWeek = dateToUse.getDay();
+			const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
+			startOfWeek.setDate(dateToUse.getDate() - daysToSubtract);
+			startOfWeek.setHours(0, 0, 0, 0);
+			const endOfWeek = new Date(startOfWeek);
+			endOfWeek.setDate(startOfWeek.getDate() + 6);
+			endOfWeek.setHours(23, 59, 59, 999);
+			const tsStart = Timestamp.fromDate(startOfWeek);
+			const tsEnd = Timestamp.fromDate(endOfWeek);
 
-		const sortedLogs = [...dailyLogRanges].sort(
-			(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-		)
+			// Fetch toy logs from Firestore
+			const toyLogsRef = collection(db, 'toy_logs');
+			const q = query(
+				toyLogsRef,
+				where('toy_mac_address', '==', macAddress),
+				where('time', '>=', tsStart),
+				where('time', '<=', tsEnd),
+				orderBy('time', 'asc')
+			);
+			const querySnapshot = await getDocs(q);
 
-		return sortedLogs.map((log, index) => {
-			return {
-				value: log.hours,
-				labelComponent: index % 2 === 0 ? () => customLabel(`Day ${index + 1}`) : undefined,
-				hideDataPoint: true
+			// Group logs by date
+			const logsByDate: { [key: string]: number[] } = {};
+			querySnapshot.forEach((doc) => {
+				const data = doc.data();
+				let logTime: Date;
+				if (data.time?.toDate) {
+					logTime = data.time.toDate();
+				} else if (data.time?.seconds) {
+					logTime = new Date(data.time.seconds * 1000);
+				} else {
+					logTime = new Date(data.time);
+				}
+				if (logTime >= startOfWeek && logTime <= endOfWeek) {
+					const dayKey = logTime.toISOString().split('T')[0];
+					const timestamp = logTime.getTime();
+					if (!logsByDate[dayKey]) logsByDate[dayKey] = [];
+					logsByDate[dayKey].push(timestamp);
+				}
+			});
+
+			// Calculate hours for each day based on timestamp ranges
+			const dailyData: { [key: string]: number } = {};
+			const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+			for (let i = 0; i < 7; i++) {
+				const date = new Date(startOfWeek);
+				date.setDate(startOfWeek.getDate() + i);
+				const dayKey = date.toISOString().split('T')[0];
+				const timestamps = logsByDate[dayKey] || [];
+				let hours = 0;
+				if (timestamps.length >= 2) {
+					const earliest = Math.min(...timestamps);
+					const latest = Math.max(...timestamps);
+					hours = (latest - earliest) / (1000 * 60 * 60); // ms to hours
+				}
+				dailyData[dayKey] = hours;
 			}
-		})
-	}
+
+			// Convert to array format for the chart
+			const chartData = [];
+			for (let i = 0; i < 7; i++) {
+				const date = new Date(startOfWeek);
+				date.setDate(startOfWeek.getDate() + i);
+				const dayKey = date.toISOString().split('T')[0];
+				chartData.push({
+					day: dayNames[i],
+					hours: dailyData[dayKey] || 0
+				});
+			}
+			setDailyUsageData(chartData);
+		} catch (error) {
+			console.error('Error fetching weekly usage data:', error);
+			Toast.show({ type: 'error', text1: 'Failed to fetch usage data' });
+		} finally {
+			setUsageLoading(false);
+		}
+	};
 
 	const CHART_WIDTH = WINDOW_DIMENSIONS.width - 70
+	const BAR_WIDTH = 30;
+	const BAR_SPACING = (CHART_WIDTH - (BAR_WIDTH * 7)) / 6;
 
-	const data =
-		reportDuration?.value === 'week' ? generateWeeklyChartData() : generateDailyChartData()
-
-	const contentInsets = {
-		top: insets.top,
-		bottom: insets.bottom,
-		left: 12,
-		right: 12
-	}
+	// Generate bar chart data from daily usage data
+	const weeklyBarChartData = generateWeeklyBarChartData()
 
 	const customLabel = (val: string) => {
 		return (
@@ -171,11 +398,8 @@ export const ReportScreen = () => {
 			if (!clean) { setIsInitialized(true); return; }
 			try {
 				setIsLoading(true);
-				if (reportDuration?.value === 'day') {
-					await dispatch(fetchDailyLogRanges(clean)).unwrap();
-				} else {
-					await dispatch(fetchWeeklyLogRanges(clean)).unwrap();
-				}
+				// Fetch weekly usage data and sentiments
+				await fetchWeeklyUsageData();
 				await dispatch(fetchSentimentsByDate(clean)).unwrap();
 			} catch(e:any) {
 				Toast.show({ type:'error', text1: e?.message ?? 'Failed to fetch report data' });
@@ -185,13 +409,20 @@ export const ReportScreen = () => {
 			}
 		};
 		run();
-	}, [macLoaded, macAddress, isInitialized, reportDuration, dispatch]);
+	}, [macLoaded, macAddress, isInitialized, dispatch]);
 
 	// Handle MAC changes (listen once macLoaded)
 	useEffect(() => {
 		if (!macLoaded) return;
 		setMacChecked(true);
 	}, [macLoaded]);
+
+	// Refetch weekly usage data when MAC address changes
+	useEffect(() => {
+		if (macAddress && ensureMacAddress(macAddress)) {
+			fetchWeeklyUsageData();
+		}
+	}, [selectedDate, macAddress]);
 
 	const showDatePicker = () => setDatePickerVisibility(true)
 	const hideDatePicker = () => setDatePickerVisibility(false)
@@ -287,12 +518,42 @@ export const ReportScreen = () => {
 				const total = avgs.reduce((t,i)=>t+i.score,0);
 				const list = total>0 ? avgs.map(i=>({...i, pct: Math.round(i.score/total*100)})) : [];
 				list.sort((a,b)=>b.pct-a.pct);
-				setInterestBreakdown(list);
+				
+				// Take top 5 interests and combine the rest into "Others"
+				const top5 = list.slice(0, 5);
+				const others = list.slice(5);
+				
+				let finalList = [...top5];
+				
+				// If there are remaining interests, combine them into "Others"
+				if (others.length > 0) {
+					const othersPct = others.reduce((sum, item) => sum + item.pct, 0);
+					finalList.push({
+						interest: 'Others',
+						score: others.reduce((sum, item) => sum + item.score, 0),
+						pct: othersPct
+					});
+				}
+				
+				setInterestBreakdown(finalList);
 			} catch(e){ setInterestBreakdown(null); }
 			setInterestLoading(false);
 		};
 		fetchInterestByDate();
 	},[selectedDate, macAddress]);
+
+	// 2. Normalize pie data to always fill 100%
+	function normalizePieData(data: {interest: string, pct: number}[]): {interest: string, pct: number}[] {
+		if (!data || data.length === 0) return [];
+		const total = data.reduce((sum: number, d: {pct: number}) => sum + d.pct, 0);
+		if (total === 100) return data;
+		const normalized = data.map((d: {interest: string, pct: number}, i: number) =>
+			i === data.length - 1
+				? { ...d, pct: Math.round(100 - data.slice(0, -1).reduce((sum: number, d: {pct: number}) => sum + d.pct, 0)) }
+				: d
+		);
+		return normalized;
+	}
 
 	if (!fontsLoaded) {
 		return null
@@ -309,7 +570,9 @@ export const ReportScreen = () => {
 				bounces={false}
 				showsVerticalScrollIndicator
 				style={[styles.container, styles.scrollView]}
-				showsHorizontalScrollIndicator={false}>
+				showsHorizontalScrollIndicator={false}
+				onScrollBeginDrag={() => setBarTooltip(null)}
+			>
 				<View style={styles.header}>
 					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold', textAlign: 'center', flex: 1 }]}>Reports</Text>
 				</View>
@@ -349,98 +612,7 @@ export const ReportScreen = () => {
 						</View>
 					</Pressable>
 				</View>
-
-				<View style={styles.interactionReportContainer}>
-					<Text style={[styles.interactionReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Interaction Report</Text>
-					<View style={styles.interactionReportControls}>
-						<Select
-							value={reportDuration}
-							onValueChange={(option) => {
-								setIsLoading(true)
-								setReportDuration(option)
-							}}>
-							<SelectTrigger style={styles.selectTrigger}>
-								<SelectValue
-									style={styles.selectValue}
-									placeholder="Duration"
-								/>
-							</SelectTrigger>
-							<SelectContent insets={contentInsets} style={styles.selectContent}>
-								{allowedDurations.map(opt => (
-									<SelectItem key={opt.value} label={opt.label} value={opt.value}>
-										{opt.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						
-					</View>
-				</View>
-				<View style={styles.chartContainer}>
-					{!ensureMacAddress(macAddress) ? (
-						<View style={{ padding: 24, alignItems: 'center' }}>
-							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
-								Please pair your device and enter a MAC address to view interaction reports.
-							</Text>
-						</View>
-					) : data.length === 0 ? (
-						<View style={{ padding: 24, alignItems: 'center' }}>
-							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
-								No interaction data available for this device yet.
-							</Text>
-						</View>
-					) : (
-						<LineChart
-							areaChart
-							thickness={5}
-							color="#AE9FFF"
-							yAxisTextNumberOfLines={2}
-							curved
-							data={data}
-							endSpacing={0}
-							height={350}
-							noOfSections={5}
-							yAxisThickness={0}
-							width={CHART_WIDTH}
-							xAxisThickness={0}
-							startOpacity={1}
-							endOpacity={0.1}
-							isAnimated
-							yAxisTextStyle={{ color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}
-							rulesColor="#D9E7FF"
-							rulesType="solid"
-							stepValue={2}
-							yAxisLabelSuffix="hr"
-							yAxisColor="#666666"
-							pointerConfig={{
-								pointerStripColor: '#D9E7FF',
-								pointerStripWidth: 1,
-								pointerStripUptoDataPoint: true,
-								width: 8,
-								height: 8,
-								pointerLabelWidth: 60,
-								pointerColor: '#0E2C76',
-								activatePointersOnLongPress: true,
-								pointerLabelComponent: (items: any) => (
-									<View
-										style={[styles.pointerLabel, { transform: [{ translateY: -20 }] }]}>
-										<Text style={styles.pointerLabelText}>
-											${items[0].value}
-										</Text>
-									</View>
-								)
-							}}
-							xAxisColor="#666666"
-							startFillColor={'#AE9FFF'}
-							endFillColor={'#AE9FFF1A'}
-						/>
-					)}
-				</View>
-				<View style={styles.chartLegend}>
-					<View style={styles.legendIndicator} />
-					<Text style={[styles.legendText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Interaction</Text>
-				</View>
-				{/* Date picker aligned right */}
+				{/* Date picker for selecting day/week (now applies to all reports) */}
 				<View style={styles.datePickerWrapper}>
 					<TouchableOpacity style={styles.datePickerButton} onPress={showDatePicker}>
 						<Text style={styles.datePickerText}>{format(selectedDate, 'MMM dd, yyyy')}</Text>
@@ -454,10 +626,87 @@ export const ReportScreen = () => {
 						date={selectedDate}
 					/>
 				</View>
+				{/* Weekly Usage Report */}
+				<View style={styles.weeklyUsageContainer}>
+					<Text style={[styles.weeklyUsageTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Daily Usage Report</Text>
+				</View>
+				<View style={styles.chartContainer}>
+					{!ensureMacAddress(macAddress) ? (
+						<View style={{ padding: 24, alignItems: 'center' }}>
+							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+								Please pair your device and enter a MAC address to view usage reports.
+							</Text>
+						</View>
+					) : usageLoading ? (
+						<View style={{ padding: 24, alignItems: 'center' }}>
+							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+								Loading usage data...
+							</Text>
+						</View>
+					) : weeklyBarChartData.length === 0 ? (
+						<View style={{ padding: 24, alignItems: 'center' }}>
+							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+								No usage data available for this week.
+							</Text>
+						</View>
+					) : (
+						<View style={{ backgroundColor: '#fff', borderRadius: 16, paddingVertical: 8, alignItems: 'center' }}>
+							<BarChart
+								data={weeklyBarChartData.map((bar, idx) => ({
+									...bar,
+									frontColor: '#AE9FFF',
+									topLabelComponent: undefined,
+									onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
+									labelComponent: () => (
+										<Text style={{ textAlign: 'center', fontSize: 13, color: '#92929D', fontFamily: 'PlusJakartaSans_400Regular', marginTop: 6 }}>{bar.label}</Text>
+									)
+								}))}
+								width={CHART_WIDTH}
+								height={180}
+								barWidth={BAR_WIDTH}
+								spacing={BAR_SPACING}
+								roundedTop={false}
+								roundedBottom={false}
+								barBorderRadius={5}
+								hideRules
+								xAxisThickness={0}
+								yAxisThickness={0}
+								yAxisTextStyle={{ color: '#92929D', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'right' }}
+								yAxisLabelSuffix="h"
+								yAxisColor="#fff"
+								xAxisColor="#fff"
+								noOfSections={5}
+								maxValue={10}
+								stepValue={2}
+								isAnimated
+								showLine={false}
+								showVerticalLines={false}
+								barStyle={{ alignItems: 'center', justifyContent: 'flex-end'}}
+							/>
+							{/* Tooltip for bar */}
+							{barTooltip && barTooltip.visible && (
+								<View style={{
+									position: 'absolute',
+									left: (barTooltip.index * (BAR_WIDTH + BAR_SPACING)) + BAR_WIDTH/2 + 16, // 16 for left padding
+									top: 30,
+									backgroundColor: '#222',
+									paddingHorizontal: 12,
+									paddingVertical: 6,
+									borderRadius: 8,
+									zIndex: 10,
+								}}>
+									<Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+										{`${Math.floor(barTooltip.hours)}h ${Math.round((barTooltip.hours % 1) * 60)}m`}
+									</Text>
+								</View>
+							)}
+						</View>
+					)}
+				</View>
 				<View style={styles.statsContainer}>
 					<View style={[styles.moodReportCard, styles.moodReportCardFull, { elevation: 5 }]}>
 						<View style={styles.moodReportContentRow}>
-							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Mood report</Text>
+							<Text style={[styles.moodReportTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Mood report</Text>
 						</View>
 						{(() => {
 							if (!ensureMacAddress(macAddress)) {
@@ -508,27 +757,56 @@ export const ReportScreen = () => {
 						})()}
 					</View>
 					{/* Interest Breakdown card */}
-					<View style={[
-						styles.moodReportCard,
-						styles.moodReportCardFull,
-						!interestLoading && (!interestBreakdown || interestBreakdown.length===0) && styles.interestCardEmpty
-					]}> 
-						<Text style={[styles.moodReportTitle,{marginBottom:8,fontFamily:'PlusJakartaSans_500Medium'}]}>Interest breakdown</Text>
-						{!ensureMacAddress(macAddress) ? (
-							<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>Enter device MAC address to view interest data.</Text>
-						) : interestLoading ? (
-							<Text style={{textAlign:'center'}}>Loading…</Text>
-						) : !interestBreakdown || interestBreakdown.length===0 ? (
-							<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>No interest data for this day.</Text>
-						) : (
-							interestBreakdown.map(row=>(
-								<View key={row.interest} style={styles.interestRow}>
-									<Text style={styles.interestLabel}>{row.interest}</Text>
-									<Text style={styles.interestPct}>{row.pct}%</Text>
+					<Pressable
+						style={{ flex: 1 }}
+						onPress={() => { setTooltip(null); setSelectedInterestIndex(null); }}
+					>
+						<View style={[styles.moodReportCard, styles.moodReportCardFull, !interestLoading && (!interestBreakdown || interestBreakdown.length===0) && styles.interestCardEmpty]}>
+							<Text style={[styles.moodReportTitle,{marginBottom:8,fontFamily:'PlusJakartaSans_600SemiBold'}]}>Interest breakdown</Text>
+							{!ensureMacAddress(macAddress) ? (
+								<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>Enter device MAC address to view interest data.</Text>
+							) : interestLoading ? (
+								<Text style={{textAlign:'center'}}>Loading…</Text>
+							) : !interestBreakdown || interestBreakdown.length===0 ? (
+								<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>No interest data for this day.</Text>
+							) : (
+								<View style={{ alignItems: 'center', justifyContent: 'center', marginVertical: 32 }}>
+									<BeautifulPieChart 
+										data={normalizePieData(interestBreakdown)}
+										radius={PIE_RADIUS}
+										innerRadius={PIE_INNER_RADIUS}
+										colors={PIE_GRADIENT_COLORS}
+										onSegmentPress={(index) => setSelectedSegment(index)}
+										selectedSegment={selectedSegment}
+									/>
+									{/* Legend */}
+									<View style={styles.pieLegend}>
+										{normalizePieData(interestBreakdown).map((item: {interest: string, pct: number}, index: number) => (
+											<TouchableOpacity
+												key={index}
+												style={[
+													styles.legendItem,
+													selectedSegment === index && styles.legendItemSelected
+												]}
+												onPress={() => setSelectedSegment(selectedSegment === index ? null : index)}
+											>
+												<View style={[
+													styles.legendColor,
+													{ backgroundColor: PIE_GRADIENT_COLORS[index % PIE_GRADIENT_COLORS.length].start }
+												]} />
+												<Text style={[
+													styles.legendText,
+													selectedSegment === index && styles.legendTextSelected
+												]}>
+													{item.interest.charAt(0).toUpperCase() + item.interest.slice(1)}
+												</Text>
+											</TouchableOpacity>
+										))}
+									</View>
 								</View>
-							))
-						)}
-					</View>
+							)}
+						</View>
+					</Pressable>
 				</View>
 				<View style={{ marginVertical: 16 }}>
 					{isSummarizing ? (
@@ -596,7 +874,9 @@ const styles = StyleSheet.create({
 	},
 	moodReportTitle: {
 		fontWeight: '500',
-		color: '#515151',
+		color: 'black',
+		fontSize: 18,
+		marginBottom: 15,
 	},
 	moodReportScroll: {
 		maxHeight: 400,
@@ -626,7 +906,7 @@ const styles = StyleSheet.create({
 	},
 	moodText: {
 		flex: 2,
-		fontSize: 14,
+		fontSize: 18,
 		textTransform: 'capitalize',
 		textAlign: 'left',
 	},
@@ -680,62 +960,9 @@ const styles = StyleSheet.create({
 		fontSize: 18,
 		color: '#0E2C76',
 	},
-	interactionReportContainer: {
-		marginTop: 40,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-	interactionReportTitle: {
-		fontWeight: '500',
-		color: 'black',
-	},
-	interactionReportControls: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
-	},
-	selectTrigger: {
-		width: 79,
-		borderRadius: 8,
-		borderWidth: 0.5,
-		borderColor: '#D9D9D9',
-		padding: 10,
-	},
-	selectValue: {
-		fontSize: 12,
-		color: '#92929D',
-	},
-	selectContent: {
-		width: 79,
-	},
-	downloadButton: {
-		width: 36,
-		height: 36,
-		borderRadius: 8,
-		borderWidth: 0.5,
-		borderColor: '#D9D9D9',
-		backgroundColor: 'white',
-	},
 	chartContainer: {
 		marginTop: 16,
 		width: '100%',
-	},
-	pointerLabel: {
-		position: 'relative',
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		borderRadius: 35,
-		backgroundColor: '#0E2C76',
-		paddingHorizontal: 18,
-		paddingVertical: 5,
-	},
-	pointerLabelText: {
-		color: 'white',
-		fontSize: 12,
-		flexShrink: 0,
-		fontFamily: 'PlusJakartaSans_400Regular',
 	},
 	chartLegend: {
 		marginTop: 16,
@@ -753,98 +980,9 @@ const styles = StyleSheet.create({
 	legendText: {
 		fontSize: 14,
 		color: '#666666',
-	},
-	moodSummaryRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: -2,
-		marginBottom: 8,
-	},
-	moodSummaryItem: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 0,
-	},
-	moodPlusButton: {
-		width: 32,
-		height: 32,
-		borderRadius: 16,
-		backgroundColor: '#F2F2F2',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginLeft: 8,
-	},
-	moodPlusText: {
-		fontSize: 24,
-		color: '#515151',
-		fontWeight: '700',
-	},
-	modalOverlay: {
+		fontFamily: 'PlusJakartaSans_500Medium',
 		flex: 1,
-		backgroundColor: 'rgba(0,0,0,0.4)',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	moodModalContent: {
-		backgroundColor: 'white',
-		borderRadius: 20,
-		padding: 24,
-		width: '90%',
-		alignItems: 'center',
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 8,
-		elevation: 5,
-	},
-	moodModalTitle: {
-		fontSize: 22,
-		fontWeight: '700',
-		marginBottom: 4,
-		color: '#7D65FC',
-	},
-	moodModalDate: {
-		fontSize: 16,
-		color: '#888',
-		marginBottom: 16,
-	},
-	moodGrid: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		justifyContent: 'space-between',
-		width: '100%',
-		marginTop: 8,
-	},
-	moodGridItem: {
-		width: '45%',
-		alignItems: 'center',
-		marginVertical: 12,
-		backgroundColor: '#F7F6FD',
-		borderRadius: 12,
-		padding: 12,
-	},
-	moodEmojiWrapper: {
-		marginBottom: 8,
-	},
-	moodGridLabel: {
-		fontSize: 16,
-		fontWeight: '600',
-		color: '#515151',
-	},
-	moodGridMood: {
-		fontSize: 14,
-		color: '#7D65FC',
-		marginTop: 2,
-	},
-	modalCloseButton: {
-		position: 'absolute',
-		top: 10,
-		right: 10,
-		zIndex: 10,
-	},
-	modalCloseText: {
-		fontSize: 28,
-		color: '#515151',
+		textTransform: 'capitalize',
 	},
 	cardsContainer: {
 		marginTop: 20,
@@ -986,12 +1124,95 @@ const styles = StyleSheet.create({
 	interestCardEmpty:{
 		paddingVertical:40,
 	},
+	pieChartContainer: {
+		alignItems: 'center',
+		paddingVertical: 16,
+	},
+	pieChartCenterLabel: {
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	pieChartCenterText: {
+		fontSize: 12,
+		color: '#515151',
+		fontFamily: 'PlusJakartaSans_500Medium',
+	},
+	pieChartLegend: {
+		marginTop: 16,
+		width: '100%',
+	},
+	legendItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginVertical: 6,
+		paddingVertical: 8,
+		paddingHorizontal: 12,
+		borderRadius: 8,
+		backgroundColor: '#f8f9fa',
+	},
+	legendItemSelected: {
+		backgroundColor: '#e3f2fd',
+		borderWidth: 2,
+		borderColor: '#2196f3',
+		shadowColor: '#2196f3',
+		shadowOpacity: 0.2,
+		shadowRadius: 6,
+	},
+	legendTextSelected: {
+		color: '#2196f3',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
+	},
+	legendPercentage: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: '#666',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
+	},
+	pieLegend: {
+		marginTop: 24,
+		width: '100%',
+		paddingHorizontal: 16,
+	},
+	legendColor: {
+		width: 16,
+		height: 16,
+		borderRadius: 8,
+		marginRight: 12,
+	},
 	datePickerWrapper: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'flex-end',
 		marginBottom: 0,
 		marginTop: 25,
+	},
+	weeklyUsageContainer: {
+		marginTop: 40,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	weeklyUsageTitle: {
+		fontWeight: '500',
+		color: 'black',
+		fontSize: 18,
+		marginBottom: 15,
+	},
+	pieTooltip: {
+		position: 'absolute',
+		backgroundColor: '#222',
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 8,
+		zIndex: 20,
+		minWidth: 80,
+		alignItems: 'center',
+	},
+	pieTooltipText: {
+		color: '#fff',
+		fontWeight: '600',
+		fontSize: 14,
+		textAlign: 'center',
 	},
 })
 

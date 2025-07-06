@@ -10,13 +10,29 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.waylo.app'
+    bundleIdentifier: 'com.waylo.app',
+    infoPlist: {
+      NSCameraUsageDescription: 'This app needs access to your camera to take profile pictures.',
+      NSPhotoLibraryUsageDescription: 'This app needs access to your photo library to select profile pictures.'
+    }
   },
   android: {
-    package: 'com.waylo.app'
+    package: 'com.waylo.app',
+    permissions: [
+      'android.permission.CAMERA',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE'
+    ]
   },
   plugins: [
-    ['expo-router']
+    ['expo-router'],
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'This app needs access to your photo library to select profile pictures.',
+        cameraPermission: 'This app needs access to your camera to take profile pictures.'
+      }
+    ]
   ],
   extra: {
     router: {

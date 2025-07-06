@@ -5,8 +5,13 @@ interface AuthState {
 	firstName: string
 	lastName: string
 	createdAt: string
+	updatedAt?: string
 	plan: "freemium" | "standard" | "pro"
 	mac_address?: string
+	profileImageUrl?: string
+	name?: string
+	age?: number
+	gender?: string
 }
 
 interface ToyLogs {

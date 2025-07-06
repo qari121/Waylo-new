@@ -12,13 +12,22 @@ export const login = createAsyncThunk(
 			const response = await signInWithEmailAndPassword(auth, data.email, data.password)
 			const userDoc = await getDoc(doc(db, 'users', response.user.uid))
 			if (userDoc.exists()) {
-				const data = userDoc.data() as any;
+				const rawData = userDoc.data() as any;
+				
+				// Convert Firestore timestamps to serializable strings
+				const userData = {
+					...rawData,
+					createdAt: rawData.createdAt?.toDate?.()?.toISOString() || rawData.createdAt || '',
+					updatedAt: rawData.updatedAt?.toDate?.()?.toISOString() || rawData.updatedAt || '',
+					profileImageUrl: rawData.profileImageUrl || '',
+				} as AuthState;
+				
 				// sync MAC to local storage for first-install restore
-				if (data?.mac_address) {
-					await AsyncStorage.setItem('macAddress', data.mac_address as string);
+				if (userData?.mac_address) {
+					await AsyncStorage.setItem('macAddress', userData.mac_address as string);
 					await AsyncStorage.setItem('macAddressEntered', 'true');
 				}
-				return thunkAPI.fulfillWithValue(data as AuthState)
+				return thunkAPI.fulfillWithValue(userData)
 			} else {
 				return thunkAPI.rejectWithValue('User data not found in Firestore')
 			}
@@ -57,8 +66,10 @@ const initialState: AuthState = {
 	firstName: '',
 	lastName: '',
 	createdAt: '',
+	updatedAt: '',
 	plan: 'freemium',
 	mac_address: undefined,
+	profileImageUrl: '',
 }
 
 const authSlice = createSlice({
