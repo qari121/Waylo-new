@@ -227,6 +227,10 @@ export const ToyLogsScreen: React.FC = () => {
 		})
 		: getLogsForSelectedTimeSpan();
 
+	// Determine if summary button should be shown
+	const plan = (auth.plan ?? '').toLowerCase();
+	const showSummaryButton = plan === 'standard' || plan === 'pro' || plan === 'premium';
+
 	// Fetch last 10 messages (adjust collection path as needed)
 	const fetchLast10Messages = async () => {
 		const q = query(
@@ -245,6 +249,38 @@ export const ToyLogsScreen: React.FC = () => {
 	useEffect(() => {
 		fetchLast10Messages();
 	}, []);
+
+	// Helper: Beautify summary by bolding and enlarging headings
+	function renderBeautifiedSummary(summary: string) {
+		if (!summary) return null;
+		// Remove leading 'Summary:' if present
+		summary = summary.replace(/^\s*summary\s*:/i, '').trim();
+		// Only beautify these headings in the summary body
+		const headings = [
+			'Interest of child',
+			'Suggestion to parents',
+		];
+		// Split summary into lines
+		const lines = summary.split(/\n|\r|(?=Interest of child:|Suggestion to parents:)/g).filter(Boolean);
+		return lines.map((line, idx) => {
+			const headingMatch = headings.find(h => line.trim().toLowerCase().startsWith(h.toLowerCase()));
+			if (headingMatch) {
+				// Extract heading and rest of line
+				const [heading, ...rest] = line.split(':');
+				return (
+					<Text key={idx} style={{ fontWeight: 'bold', fontSize: 18, marginTop: idx === 0 ? 0 : 18, marginBottom: 6, color: '#333' }}>
+						{heading.trim() + (rest.length ? ':' : '')}
+						{rest.length > 0 && (
+							<Text style={{ fontWeight: 'normal', fontSize: 15, color: '#444' }}> {rest.join(':').trim()}</Text>
+						)}
+					</Text>
+				);
+			}
+			return (
+				<Text key={idx} style={{ fontSize: 15, color: '#444', marginBottom: 8 }}>{line.trim()}</Text>
+			);
+		});
+	}
 
 	if (!fontsLoaded) {
 		return null
@@ -283,13 +319,24 @@ export const ToyLogsScreen: React.FC = () => {
 								</View>
 							) : (
 								<>
-									<View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 20 }}>
+									<View
+										style={{
+											flexDirection: 'row',
+											justifyContent: 'flex-end',
+											alignItems: 'center',
+											gap: 8,
+											marginBottom: 8,
+											paddingHorizontal: 20,
+										}}
+									>
 										<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
 											<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
 										</TouchableOpacity>
-										<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
-											<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
-										</TouchableOpacity>
+										{showSummaryButton && (
+											<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
+												<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
+											</TouchableOpacity>
+										)}
 									</View>
 
 									{/* Summary Modal */}
@@ -306,7 +353,8 @@ export const ToyLogsScreen: React.FC = () => {
 													{isSummarizing ? (
 														<Text style={{ color: '#444' }}>Summarizing...</Text>
 													) : (
-														<Text style={{ color: '#444' }}>{summary}</Text>
+														// Beautified summary rendering
+														<View>{renderBeautifiedSummary(summary || '')}</View>
 													)}
 												</ScrollView>
 												<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>

@@ -282,7 +282,7 @@ export const CharacterManagementScreen = () => {
 							elevation: 2,
 						}}>
 							<Text style={{ color: 'white', fontSize: 16, fontWeight: '600', textAlign: 'center' }}>
-								{`You can now enjoy ${maxCharacters} characters with ${maxCharacters} voices on the ${auth.plan.charAt(0).toUpperCase() + auth.plan.slice(1)} plan.`}
+								{`You can now enjoy ${maxCharacters} character with ${maxCharacters} voice on the ${auth.plan.charAt(0).toUpperCase() + auth.plan.slice(1)} plan.`}
 							</Text>
 						</View>
 

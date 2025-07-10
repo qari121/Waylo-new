@@ -450,19 +450,7 @@ export const HomeScreen = () => {
 				<Text style={[styles.greeting, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Hello {auth.username}</Text>
 				<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>Welcome back, check the latest activities</Text>
 
-				{/* Usage Info Card */}
-				<View style={styles.usageInfoCard}>
-					<View>
-						<Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', fontFamily: 'PlusJakartaSans_700Bold' }}>
-							{logsLoading ? '...' : usageDisplay}
-						</Text>
-						<Text style={{ color: '#C5C5C5', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular' }}>Time spent today</Text>
-					</View>
-					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-						{appIcons}
-					</View>
-				</View>
-
+				{/* Connected Device Box - moved up */}
 				<TouchableOpacity
 					activeOpacity={0.8}
 					onPress={() => router.push('/ConnectedDevice')}
@@ -477,6 +465,19 @@ export const HomeScreen = () => {
 					<Image source={require('../assets/images/avatar.png')} style={styles.connectedDeviceImage} resizeMode="contain" />
 					<Text style={styles.connectedDeviceTitle}>Connected{"\n"}Device</Text>
 				</TouchableOpacity>
+
+				{/* Usage Info Card - moved below Connected Device */}
+				<View style={styles.usageInfoCard}>
+					<View>
+						<Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', fontFamily: 'PlusJakartaSans_700Bold' }}>
+							{logsLoading ? '...' : usageDisplay}
+						</Text>
+						<Text style={{ color: '#C5C5C5', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular' }}>Time spent today</Text>
+					</View>
+					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+						{appIcons}
+					</View>
+				</View>
 
 				{/* Schedules Box */}
 				<TouchableOpacity

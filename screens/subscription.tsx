@@ -276,9 +276,9 @@ export const SubscriptionScreen = () => {
 				</View>
 
 				<View style={styles.paymentMethodContainer}>
-					<Text style={[styles.paymentMethodTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Payment Method</Text>
+					{/* <Text style={[styles.paymentMethodTitle, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Payment Method</Text> */}
 					<Button variant="ghost" style={styles.addCardButton}>
-						<Text style={[styles.addCardText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Add Card</Text>
+						{/* <Text style={[styles.addCardText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>Add Card</Text> */}
 					</Button>
 				</View>
 				<View style={styles.cardsContainer}>

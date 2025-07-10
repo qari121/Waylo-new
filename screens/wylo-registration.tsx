@@ -33,10 +33,11 @@ import SettingsIcon from '../assets/icons/settings.svg'
 import { db } from '../firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 
+type AgeType = number | '45+' | null;
 interface FormValues {
 	name: string
 	username: string
-	age: number | null
+	age: AgeType
 	gender: string
 	interests: string[]
 	language: string
@@ -99,7 +100,7 @@ export const WyloRegistrationScreen = () => {
 
 	if (!fontsLoaded) return null;
 
-	const ageOptions = Array.from({ length: 18 }, (_, i) => (i + 1).toString());
+	const ageOptions = Array.from({ length: 45 }, (_, i) => (i + 1).toString()).concat('45+');
 
 	const savePersonalInfoToFirestore = async () => {
 		if (!auth.uid) return;
@@ -179,37 +180,41 @@ export const WyloRegistrationScreen = () => {
 						</TabsList>
 						<TabsContent value="info">
 							<View style={styles.infoForm}>
-								<View style={styles.formRow}>
+								<View style={styles.formRowAligned}>
 									<Label style={styles.label} nativeID="name">Name:</Label>
 									<Input
 										value={formValues.name}
 										nativeID="name"
-										style={[styles.input, styles.inputShadow]}
+										style={[styles.inputAligned, styles.inputShadow]}
 										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, name: text }))}
 									/>
 								</View>
-								<View style={styles.formRow}>
+								<View style={styles.formRowAligned}>
 									<Label style={styles.label} nativeID="username">Username:</Label>
 									<Input
 										value={formValues.username}
 										nativeID="username"
-										style={[styles.input, styles.inputShadow]}
+										style={[styles.inputAligned, styles.inputShadow]}
 										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, username: text }))}
 									/>
 								</View>
-								<View style={styles.formRow}>
+								<View style={styles.formRowAligned}>
 									<Label style={styles.label} nativeID="age">Age:</Label>
-									<View style={[styles.ageInputContainer, styles.inputShadow]}>
+									<View style={[styles.ageInputContainerAligned, styles.inputShadow]}>
 										<Input
 											value={formValues.age?.toString() || ''}
 											keyboardType="numeric"
 											placeholder="Eg.24"
-											style={styles.ageInput}
+											style={styles.ageInputAligned}
 											editable={true}
 											onChangeText={(text: string) => {
-												const ageNum = parseInt(text);
-												if (text === '' || (ageNum >= 1 && ageNum <= 18)) {
-													setFormValues((prev) => ({ ...prev, age: text === '' ? null : ageNum }));
+												if (text === '45+') {
+													setFormValues((prev) => ({ ...prev, age: '45+' }));
+												} else {
+													const ageNum = parseInt(text);
+													if (text === '' || (ageNum >= 1 && ageNum <= 45)) {
+														setFormValues((prev) => ({ ...prev, age: text === '' ? null : ageNum }));
+													}
 												}
 											}}
 										/>
@@ -218,9 +223,9 @@ export const WyloRegistrationScreen = () => {
 										</Pressable>
 									</View>
 								</View>
-								<View style={styles.formRow}>
+								<View style={styles.formRowAligned}>
 									<Label style={[styles.label, styles.genderLabel]} nativeID="gender">Gender:</Label>
-									<View style={styles.genderButtons}>
+									<View style={styles.genderButtonsAligned}>
 										<Pressable style={[styles.genderButton, styles.inputShadow, formValues.gender === 'male' && styles.genderButtonActive]} onPress={() => setFormValues((prev) => ({ ...prev, gender: 'male' }))}>
 											<MaleIcon width={24} height={24} color={formValues.gender === 'male' ? 'white' : '#3664C0'} />
 										</Pressable>
@@ -233,36 +238,34 @@ export const WyloRegistrationScreen = () => {
 									style={{ marginTop: 24, backgroundColor: '#AE9FFF', borderRadius: 8 }}
 									onPress={async () => {
 										try {
-											const ageNum = typeof formValues.age === 'string' ? Number(formValues.age) : formValues.age;
+											const ageValue = formValues.age === '45+' ? '45+' : (typeof formValues.age === 'string' ? formValues.age : Number(formValues.age));
 											const nameValid = typeof formValues.name === 'string' && formValues.name.trim().length > 0;
 											const usernameValid = typeof formValues.username === 'string' && formValues.username.trim().length > 0;
-											const ageValid = typeof ageNum === 'number' && !isNaN(ageNum) && ageNum > 0;
+											const ageValid = (typeof ageValue === 'string' && ageValue === '45+') || (typeof ageValue === 'number' && !isNaN(ageValue) && ageValue > 0);
 											const genderValid = typeof formValues.gender === 'string' && formValues.gender.trim().length > 0;
 											if (!nameValid || !usernameValid || !ageValid || !genderValid) {
 												Alert.alert('Error', 'Please fill in all fields.');
 												return;
 											}
-											
 											const updatedUserData = {
 												...auth,
 												name: formValues.name.trim(),
 												username: formValues.username.trim(),
-												age: ageNum,
 												gender: formValues.gender.trim(),
 												updatedAt: new Date().toISOString(),
 											};
-											
+											// Only add age to Redux if it's a number
+											if (typeof ageValue === 'number') {
+												(updatedUserData as any).age = ageValue;
+											}
 											await updateDoc(doc(db, 'users', auth.uid), {
 												name: formValues.name.trim(),
 												username: formValues.username.trim(),
-												age: ageNum,
+												age: ageValue,
 												gender: formValues.gender.trim(),
 												updatedAt: new Date().toISOString(),
 											});
-											
-											// Update Redux state immediately
 											dispatch(setUser(updatedUserData));
-											
 											Alert.alert('Success', 'Personal info saved!');
 										} catch (error) {
 											Alert.alert('Error', 'Failed to save personal info.');
@@ -293,17 +296,113 @@ export const WyloRegistrationScreen = () => {
 						*/}
 						
 						<TabsContent value="language">
-							<View style={styles.languageGrid}>
-								<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Spanish' })); }} style={styles.languageItem}>
-									<View style={styles.languageImageContainer}>
-										<Image source={require('../assets/images/spanish.png')} resizeMode="cover" style={styles.languageImage} />
-										{formValues.language !== 'Spanish' && <View style={styles.languageOverlay} />}
-										<View style={[styles.languageCheckbox, formValues.language !== 'Spanish' && styles.languageCheckboxHidden]}>
-											<View style={styles.languageCheckboxInner} />
-										</View>
+							<View style={styles.languageContainer}>
+								<ScrollView 
+									showsVerticalScrollIndicator={true}
+									contentContainerStyle={styles.languageScrollContent}
+								>
+									<View style={styles.languageGrid}>
+										{/* English (UK) */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'English (UK)' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/english.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'English (UK)' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'English (UK)' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>English (UK)</Text>
+										</Pressable>
+										{/* English (US) */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'English (US)' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/us-english.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'English (US)' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'English (US)' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>English (US)</Text>
+										</Pressable>
+										{/* Spanish */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Spanish' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/spanish.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Spanish' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Spanish' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Spanish</Text>
+										</Pressable>
+										{/* German */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'German' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/german.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'German' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'German' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>German</Text>
+										</Pressable>
+										{/* Italian */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Italian' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/italian.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Italian' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Italian' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Italian</Text>
+										</Pressable>
+										{/* Greek */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Greek' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/greek.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Greek' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Greek' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Greek</Text>
+										</Pressable>
+										{/* Portuguese */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Portuguese' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/portuguese.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Portuguese' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Portuguese' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Portuguese</Text>
+										</Pressable>
+										{/* Swedish */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Swedish' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/swedish.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Swedish' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Swedish' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Swedish</Text>
+										</Pressable>
+										{/* Dutch */}
+										<Pressable onPress={() => { handlePresentModalPress(); setFormValues((prev) => ({ ...prev, language: 'Dutch' })); }} style={styles.languageItem}>
+											<View style={styles.languageImageContainer}>
+												<Image source={require('../assets/images/dutch.png')} resizeMode="cover" style={styles.languageImage} />
+												{formValues.language !== 'Dutch' && <View style={styles.languageOverlay} />}
+												<View style={[styles.languageCheckbox, formValues.language !== 'Dutch' && styles.languageCheckboxHidden]}>
+													<View style={styles.languageCheckboxInner} />
+												</View>
+											</View>
+											<Text style={styles.languageName}>Dutch</Text>
+										</Pressable>
 									</View>
-									<Text style={styles.languageName}>Spanish</Text>
-								</Pressable>
+								</ScrollView>
 							</View>
 						</TabsContent>
 						
@@ -327,7 +426,7 @@ export const WyloRegistrationScreen = () => {
 								<TouchableOpacity
 									style={{ paddingVertical: 12, alignItems: 'center' }}
 									onPress={() => {
-										setFormValues(prev => ({ ...prev, age: Number(item) }));
+										setFormValues(prev => ({ ...prev, age: item === '45+' ? '45+' : Number(item) }));
 										setAgePickerVisible(false);
 									}}
 								>
@@ -496,13 +595,13 @@ const styles = StyleSheet.create({
 		flexDirection: 'column',
 		gap: 36,
 	},
-	formRow: {
+	formRowAligned: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: 20,
+		marginBottom: 16,
 	},
 	label: {
-		flexBasis: '17%',
+		width: 90,
 		fontSize: 14,
 		color: 'black',
 		fontFamily: 'PlusJakartaSans_500Medium',
@@ -515,6 +614,7 @@ const styles = StyleSheet.create({
 		borderRadius: 4,
 		borderWidth: 1,
 		borderColor: '#F2F2F2',
+		left: 12,
 		backgroundColor: 'white',
 		fontFamily: 'PlusJakartaSans_400Regular',
 	},
@@ -530,6 +630,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		height: 48,
 		width: 95,
+		left: 32,
 		borderRadius: 4,
 		backgroundColor: 'white',
 	},
@@ -637,24 +738,34 @@ const styles = StyleSheet.create({
 		borderRadius: 6,
 		backgroundColor: '#AE9FFF',
 	},
+	languageContainer: {
+		height: 310,
+		padding: 16,
+	},
+	languageScrollContent: {
+		flexGrow: 1,
+		paddingBottom: 40,
+	},
 	languageGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		gap: 16,
+		justifyContent: 'flex-start',
 	},
 	languageItem: {
-		flexBasis: Platform.OS === 'web' ? '25%' : '33%',
+		width: '33.33%',
 		alignItems: 'center',
-		gap: 4,
-		marginHorizontal: 8,
+		marginBottom: 28,
+		paddingHorizontal: 0,
+		minWidth: 80,
+		maxWidth: 120,
 	},
 	languageImageContainer: {
 		position: 'relative',
 		borderRadius: 8,
 	},
 	languageImage: {
-		height: Platform.OS === 'web' ? '100%' : 80,
-		width: Platform.OS === 'web' ? '100%' : 80,
+		height: 80,
+		width: 80,
 		overflow: 'hidden',
 		borderRadius: 8,
 	},
@@ -716,6 +827,49 @@ const styles = StyleSheet.create({
 	noteHighlight: {
 		color: '#7F67FF',
 		fontFamily: 'PlusJakartaSans_500Medium',
+	},
+	inputAligned: {
+		flex: 1,
+		borderRadius: 4,
+		borderWidth: 1,
+		left: -20,
+		borderColor: '#F2F2F2',
+		backgroundColor: 'white',
+		fontFamily: 'PlusJakartaSans_400Regular',
+		paddingHorizontal: 12,
+	},
+	ageInputContainerAligned: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		height: 48,
+		width: 104,
+		left: -20,
+		borderRadius: 4,
+		backgroundColor: 'white',
+		marginRight: 24,
+	},
+	ageInputAligned: {
+		flex: 1,
+		borderWidth: 1,
+		borderRightWidth: 0,
+		borderColor: '#F2F2F2',
+		backgroundColor: 'white',
+		paddingHorizontal: 12,
+		borderTopLeftRadius: 4,
+		borderBottomLeftRadius: 4,
+		fontFamily: 'PlusJakartaSans_400Regular',
+	},
+	genderButtonsAligned: {
+		flex: 1,
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 23,
+		left: -20,
+	},
+	inputUsername: {
+		backgroundColor: '#F5F7FA',
+		borderColor: '#3664C0',
+		left: -72,
 	},
 })
 

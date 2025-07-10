@@ -271,7 +271,7 @@ export const ReportScreen = () => {
 		return dailyUsageData.map((dayData) => {
 			const isZero = dayData.hours === 0;
 			return {
-				value: isZero ? -0.00001 : dayData.hours,
+				value: isZero ? 0 : dayData.hours,
 				label: dayData.day,
 				labelComponent: () => customLabel(dayData.day),
 				frontColor: isZero ? 'transparent' : '#AE9FFF',
@@ -380,7 +380,7 @@ export const ReportScreen = () => {
 	const customLabel = (val: string) => {
 		return (
 			<View style={styles.labelContainer}>
-				<Text style={{ textAlign: 'right', color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular' }}>{val}</Text>
+				<Text style={{ textAlign: 'right', color: '#666666', fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular', marginTop: 16 }}>{val}</Text>
 			</View>
 		)
 	}
@@ -650,57 +650,59 @@ export const ReportScreen = () => {
 							</Text>
 						</View>
 					) : (
-						<View style={{ backgroundColor: '#fff', borderRadius: 16, paddingVertical: 8, alignItems: 'center' }}>
-							<BarChart
-								data={weeklyBarChartData.map((bar, idx) => ({
-									...bar,
-									frontColor: '#AE9FFF',
-									topLabelComponent: undefined,
-									onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
-									labelComponent: () => (
-										<Text style={{ textAlign: 'center', fontSize: 13, color: '#92929D', fontFamily: 'PlusJakartaSans_400Regular', marginTop: 6 }}>{bar.label}</Text>
-									)
-								}))}
-								width={CHART_WIDTH}
-								height={180}
-								barWidth={BAR_WIDTH}
-								spacing={BAR_SPACING}
-								roundedTop={false}
-								roundedBottom={false}
-								barBorderRadius={5}
-								hideRules
-								xAxisThickness={0}
-								yAxisThickness={0}
-								yAxisTextStyle={{ color: '#92929D', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'right' }}
-								yAxisLabelSuffix="h"
-								yAxisColor="#fff"
-								xAxisColor="#fff"
-								noOfSections={5}
-								maxValue={10}
-								stepValue={2}
-								isAnimated
-								showLine={false}
-								showVerticalLines={false}
-								barStyle={{ alignItems: 'center', justifyContent: 'flex-end'}}
-							/>
-							{/* Tooltip for bar */}
-							{barTooltip && barTooltip.visible && (
-								<View style={{
-									position: 'absolute',
-									left: (barTooltip.index * (BAR_WIDTH + BAR_SPACING)) + BAR_WIDTH/2 + 16, // 16 for left padding
-									top: 30,
-									backgroundColor: '#222',
-									paddingHorizontal: 12,
-									paddingVertical: 6,
-									borderRadius: 8,
-									zIndex: 10,
-								}}>
-									<Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-										{`${Math.floor(barTooltip.hours)}h ${Math.round((barTooltip.hours % 1) * 60)}m`}
-									</Text>
-								</View>
-							)}
-						</View>
+						<ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={{ paddingHorizontal: 0 }}>
+							<View style={{ backgroundColor: '#fff', borderRadius: 0, paddingVertical: 0, alignItems: 'flex-start', minWidth: CHART_WIDTH, paddingBottom: 64 + insets.bottom }}>
+								<BarChart
+									data={weeklyBarChartData.map((bar, idx) => ({
+										...bar,
+										frontColor: '#AE9FFF',
+										topLabelComponent: undefined,
+										onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
+										labelComponent: () => (
+											<Text style={{ textAlign: 'center', fontSize: 13, color: '#92929D', fontFamily: 'PlusJakartaSans_400Regular', marginTop: 6 }}>{bar.label}</Text>
+										)
+									}))}
+									width={Math.max(CHART_WIDTH, (BAR_WIDTH + BAR_SPACING) * 7)}
+									height={300}
+									barWidth={BAR_WIDTH}
+									spacing={BAR_SPACING}
+									roundedTop={false}
+									roundedBottom={false}
+									barBorderRadius={5}
+									hideRules
+									xAxisThickness={0}
+									yAxisThickness={0}
+									yAxisTextStyle={{ color: '#92929D', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'right' }}
+									yAxisLabelSuffix="h"
+									yAxisColor="#fff"
+									xAxisColor="#fff"
+									noOfSections={5}
+									maxValue={10}
+									stepValue={2}
+									isAnimated
+									showLine={false}
+									showVerticalLines={false}
+									barStyle={{ alignItems: 'center', justifyContent: 'flex-end'}}
+								/>
+								{/* Tooltip for bar */}
+								{barTooltip && barTooltip.visible && (
+									<View style={{
+										position: 'absolute',
+										left: (barTooltip.index * (BAR_WIDTH + BAR_SPACING)) + BAR_WIDTH/2 + 16, // 16 for left padding
+										top: 30,
+										backgroundColor: '#222',
+										paddingHorizontal: 12,
+										paddingVertical: 6,
+										borderRadius: 8,
+										zIndex: 10,
+									}}>
+										<Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+											{`${Math.floor(barTooltip.hours)}h ${Math.round((barTooltip.hours % 1) * 60)}m`}
+										</Text>
+									</View>
+								)}
+							</View>
+						</ScrollView>
 					)}
 				</View>
 				<View style={styles.statsContainer}>

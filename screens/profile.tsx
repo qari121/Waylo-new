@@ -204,7 +204,7 @@ export const ProfileScreen = () => {
 			<View style={styles.container}>
 				<View style={styles.header}>
 					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-						<Pressable onPress={() => router.back()} style={{ marginRight: 12 }}>
+						<Pressable onPress={() => router.back()} style={{ marginRight: 12, marginLeft: 12 }}>
 							<ChevronLeftIcon width={24} height={24} />
 						</Pressable>
 						<View style={styles.headerContent}>
