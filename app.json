@@ -39,6 +39,19 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "assetBundlePatterns": ["**/*"]
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "extra": {
+      "router": {
+        "origin": false,
+        "tsconfigPaths": true,
+        "typedRoutes": true
+      },
+      "eas": {
+        "projectId": "f91ffcd5-bc18-477a-a38a-399d9fac54ea"
+      }
+    },
+    "owner": "waylo"
   }
 }

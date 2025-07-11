@@ -41,7 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       typedRoutes: true
     },
     eas: {
-      projectId: 'your-project-id'
+      projectId: 'f91ffcd5-bc18-477a-a38a-399d9fac54ea'
     }
   }
 }); 

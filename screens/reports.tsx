@@ -285,6 +285,20 @@ export const ReportScreen = () => {
 		})
 	}
 
+	// Calculate dynamic y-axis scale based on data
+	const calculateYAxisScale = () => {
+		if (dailyUsageData.length === 0) return { maxValue: 10, stepValue: 2 };
+		
+		const nonZeroValues = dailyUsageData.filter(day => day.hours > 0).map(day => day.hours);
+		if (nonZeroValues.length === 0) return { maxValue: 10, stepValue: 2 };
+		
+		const avgHours = nonZeroValues.reduce((sum, hours) => sum + hours, 0) / nonZeroValues.length;
+		const maxValue = Math.ceil(avgHours) + 1; // 1 hour more than average
+		const stepValue = maxValue <= 4 ? 1 : 2; // Smaller steps for lower values
+		
+		return { maxValue, stepValue };
+	};
+
 	const fetchWeeklyUsageData = async () => {
 		if (!ensureMacAddress(macAddress)) return;
 		setUsageLoading(true);
@@ -651,39 +665,53 @@ export const ReportScreen = () => {
 						</View>
 					) : (
 						<ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={{ paddingHorizontal: 0 }}>
-							<View style={{ backgroundColor: '#fff', borderRadius: 0, paddingVertical: 0, alignItems: 'flex-start', minWidth: CHART_WIDTH, paddingBottom: 64 + insets.bottom }}>
-								<BarChart
-									data={weeklyBarChartData.map((bar, idx) => ({
-										...bar,
-										frontColor: '#AE9FFF',
-										topLabelComponent: undefined,
-										onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
-										labelComponent: () => (
-											<Text style={{ textAlign: 'center', fontSize: 13, color: '#92929D', fontFamily: 'PlusJakartaSans_400Regular', marginTop: 6 }}>{bar.label}</Text>
-										)
-									}))}
-									width={Math.max(CHART_WIDTH, (BAR_WIDTH + BAR_SPACING) * 7)}
-									height={300}
-									barWidth={BAR_WIDTH}
-									spacing={BAR_SPACING}
-									roundedTop={false}
-									roundedBottom={false}
-									barBorderRadius={5}
-									hideRules
-									xAxisThickness={0}
-									yAxisThickness={0}
-									yAxisTextStyle={{ color: '#92929D', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'right' }}
-									yAxisLabelSuffix="h"
-									yAxisColor="#fff"
-									xAxisColor="#fff"
-									noOfSections={5}
-									maxValue={10}
-									stepValue={2}
-									isAnimated
-									showLine={false}
-									showVerticalLines={false}
-									barStyle={{ alignItems: 'center', justifyContent: 'flex-end'}}
-								/>
+							<View style={{ backgroundColor: '#fff', borderRadius: 0, paddingVertical: 0, alignItems: 'flex-start', minWidth: CHART_WIDTH, paddingBottom: 20 + insets.bottom }}>
+								<View style={{ marginBottom: 2 }}>
+									<BarChart
+										data={weeklyBarChartData.map((bar, idx) => ({
+											...bar,
+											frontColor: '#AE9FFF',
+											topLabelComponent: undefined,
+											onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
+											labelComponent: () => (
+												<Text style={{ 
+													textAlign: 'center', 
+													fontSize: 13, 
+													color: '#92929D', 
+													fontFamily: 'PlusJakartaSans_400Regular', 
+													marginTop: 6,
+													paddingBottom: 15,
+													lineHeight: 18
+												}}>
+													{bar.label}
+												</Text>
+											)
+										}))}
+										width={Math.max(CHART_WIDTH, (BAR_WIDTH + BAR_SPACING) * 7)}
+										height={300}
+										barWidth={BAR_WIDTH}
+										spacing={BAR_SPACING}
+										roundedTop={false}
+										roundedBottom={false}
+										barBorderRadius={5}
+										hideRules
+										xAxisThickness={0}
+										yAxisThickness={0}
+										yAxisTextStyle={{ color: '#92929D', fontSize: 13, fontFamily: 'PlusJakartaSans_400Regular', textAlign: 'right' }}
+										yAxisLabelSuffix="h"
+										yAxisColor="#fff"
+										xAxisColor="#fff"
+										noOfSections={5}
+										maxValue={calculateYAxisScale().maxValue}
+										stepValue={calculateYAxisScale().stepValue}
+										isAnimated
+										showLine={false}
+										showVerticalLines={false}
+										barStyle={{ alignItems: 'center', justifyContent: 'flex-end'}}
+										initialSpacing={20}
+										endSpacing={20}
+									/>
+								</View>
 								{/* Tooltip for bar */}
 								{barTooltip && barTooltip.visible && (
 									<View style={{
@@ -845,7 +873,7 @@ const styles = StyleSheet.create({
 	},
 	statsContainer: {
 		marginBottom: 112,
-		marginTop: 24,
+		marginTop: 8, // Reduced from 24 to minimize gap
 		flex: 1,
 		flexDirection: 'column',
 		alignItems: 'stretch',
@@ -965,6 +993,7 @@ const styles = StyleSheet.create({
 	chartContainer: {
 		marginTop: 16,
 		width: '100%',
+		paddingBottom: 0, // Removed padding to minimize gap
 	},
 	chartLegend: {
 		marginTop: 16,

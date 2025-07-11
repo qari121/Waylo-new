@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
 		marginTop: 18,
 		fontSize: 14, // text-sm
 		color: '#6B7280', // text-muted-foreground
+		textAlign: 'center',
 	},
 	formContainer: {
 		marginTop: 50,
