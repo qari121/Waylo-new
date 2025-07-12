@@ -8,6 +8,8 @@ import { auth, db } from '../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ensureMacAddress } from '../utils/ensureMacAddress';
+import { theme } from '../lib/theme';
+import { BackButton } from '../components/ui/back-button';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -145,13 +147,7 @@ const ConnectedDeviceScreen = () => {
 <SafeAreaView style={styles.safeArea} edges={['top','left','right','bottom']}>
   {/* Full-width header */}
   <View style={styles.headerRow}>
-    <TouchableOpacity
-      onPress={() => router.back()}
-      style={styles.backButton}
-      hitSlop={{ left: 20, right: 20, top: 10, bottom: 10 }}
-    >
-      <ChevronLeftIcon width={28} height={28} />
-    </TouchableOpacity>
+    <BackButton onPress={() => router.back()} />
     <View style={styles.headerCenter}>
       <Text style={styles.headerTitle}>Connected Device</Text>
     </View>
@@ -177,8 +173,8 @@ const ConnectedDeviceScreen = () => {
         <Switch
           value={isLocked}
           onValueChange={handleToggleLock}
-          trackColor={{ false: '#E5E1FF', true: '#7F67FF' }}
-          thumbColor={isLocked ? '#fff' : '#7F67FF'}
+          trackColor={{ false: '#FEE2E2', true: theme.colors.primary }}
+          thumbColor={isLocked ? '#fff' : theme.colors.primary}
         />
       </View>
       <View style={styles.schedulingSection}>
@@ -248,38 +244,18 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 16,
     backgroundColor: 'white',
-    width: '100%',
-    zIndex: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-    backButton: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      justifyContent: 'center',
-      paddingLeft: 4,
-      zIndex: 10,
-    },
-    headerCenter: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -301,7 +277,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   deviceIconWrapper: {
-    backgroundColor: '#E5E1FF',
+    backgroundColor: '#FEE2E2',
     borderRadius: 20,
     padding: 12,
     marginBottom: 10,
@@ -309,7 +285,7 @@ const styles = StyleSheet.create({
   deviceTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#7F67FF',
+    color: theme.colors.primary,
     marginBottom: 8,
   },
   deviceInfo: {
@@ -341,7 +317,7 @@ const styles = StyleSheet.create({
   parentalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#7F67FF',
+    color: theme.colors.primary,
     marginBottom: 12,
   },
   toggleRow: {
@@ -352,7 +328,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   toggleLabel: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -379,7 +355,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   pickerLabel: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: 'bold',
     marginBottom: 4,
   },
@@ -393,12 +369,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   pickerButtonText: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: 'bold',
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: '#7F67FF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 40,
@@ -415,7 +391,7 @@ const styles = StyleSheet.create({
   },
   savedText: {
     marginTop: 10,
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
   modalOverlay: {
@@ -437,15 +413,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalItemSelected: {
-    backgroundColor: '#F7F6FF',
+    backgroundColor: '#FEF2F2',
   },
   modalText: {
     fontSize: 16,
-    color: '#7F67FF',
+    color: theme.colors.primary,
   },
   modalSelectedText: {
     fontSize: 16,
-    color: '#3C2FCB',
+    color: theme.colors.primaryDark,
     fontWeight: 'bold',
   },
 });

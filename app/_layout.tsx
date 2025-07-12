@@ -23,6 +23,7 @@ import { NAV_THEME } from 'lib/constants';
 //import { useColorScheme } from 'lib/useColorScheme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import store from '../store';
+import { theme } from '../lib/theme';
 
 // Better navigation perf
 enableScreens(true);
@@ -41,7 +42,7 @@ export { ErrorBoundary } from 'expo-router';
 function LoadingScreen() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-      <ActivityIndicator size="large" color="#0000ff" />
+      <ActivityIndicator size="large" color={theme.colors.primary} />
     </View>
   );
 }

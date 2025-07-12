@@ -14,6 +14,7 @@ import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/
 import { db } from '../firebase'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Circle, G, Path, Text as SvgText, Defs, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg'
+import { theme } from '../lib/theme'
 
 import { fetchSentimentsByDate } from '../slices/sentiments'
 import { useAppDispatch, useAppSelector } from '../hooks'
@@ -240,29 +241,29 @@ export const ReportScreen = () => {
 	// Define a multi-color palette for the pie chart
 	const PIE_COLORS = [
 		'#FF6384', // red/pink
-		'#36A2EB', // blue
+		theme.colors.primary, // red primary
 		'#FFCE56', // yellow
 		'#4BC0C0', // teal
-		'#9966FF', // violet
+		'#FF6B6B', // coral red
 		'#FF9F40', // orange
 		'#C9CBCF', // gray
 		'#2ecc71', // green
 		'#e67e22', // dark orange
-		'#e74c3c', // dark red
-	];
+		'#9b59b6', // purple
+	] as const;
 
 	// Modern gradient color palette for the beautiful pie chart
 	const PIE_GRADIENT_COLORS = [
-		{ start: '#FF6384', end: '#FF6384' }, // Vibrant Red
-		{ start: '#36A2EB', end: '#36A2EB' }, // Bright Blue
-		{ start: '#4BC0C0', end: '#4BC0C0' }, // Teal
+		{ start: '#FF6384', end: '#FF6384' }, // Red
+		{ start: theme.colors.primary, end: theme.colors.primary }, // Red Primary
 		{ start: '#FFCE56', end: '#FFCE56' }, // Yellow
-		{ start: '#9966FF', end: '#9966FF' }, // Purple
+		{ start: '#4BC0C0', end: '#4BC0C0' }, // Teal
+		{ start: '#FF6B6B', end: '#FF6B6B' }, // Coral Red
 		{ start: '#FF9F40', end: '#FF9F40' }, // Orange
+		{ start: '#C9CBCF', end: '#C9CBCF' }, // Gray
 		{ start: '#2ecc71', end: '#2ecc71' }, // Green
 		{ start: '#e67e22', end: '#e67e22' }, // Dark Orange
-		{ start: '#e74c3c', end: '#e74c3c' }, // Dark Red
-		{ start: '#00b894', end: '#00b894' }, // Mint
+		{ start: '#9b59b6', end: '#9b59b6' }, // Purple
 	];
 
 	const generateWeeklyBarChartData = () => {
@@ -274,7 +275,7 @@ export const ReportScreen = () => {
 				value: isZero ? 0 : dayData.hours,
 				label: dayData.day,
 				labelComponent: () => customLabel(dayData.day),
-				frontColor: isZero ? 'transparent' : '#AE9FFF',
+				frontColor: isZero ? 'transparent' : theme.colors.primary,
 				barWidth: BAR_WIDTH,
 				topLabelComponent: !isZero ? () => (
 					<Text style={{ color: '#666666', fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular' }}>
@@ -610,6 +611,8 @@ export const ReportScreen = () => {
 							source={require('../assets/images/avatar.png')}
 							style={styles.connectedDeviceImage}
 							resizeMode="contain"
+							fadeDuration={0}
+							loadingIndicatorSource={require('../assets/images/avatar-2.png')}
 						/>
 						<View style={styles.cardFooter}>
 							<Text style={[styles.cardTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}>Chat Interactions</Text>
@@ -647,19 +650,19 @@ export const ReportScreen = () => {
 				<View style={styles.chartContainer}>
 					{!ensureMacAddress(macAddress) ? (
 						<View style={{ padding: 24, alignItems: 'center' }}>
-							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+							<Text style={{ color: theme.colors.primary, fontSize: 16, textAlign: 'center' }}>
 								Please pair your device and enter a MAC address to view usage reports.
 							</Text>
 						</View>
 					) : usageLoading ? (
 						<View style={{ padding: 24, alignItems: 'center' }}>
-							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+							<Text style={{ color: theme.colors.primary, fontSize: 16, textAlign: 'center' }}>
 								Loading usage data...
 							</Text>
 						</View>
 					) : weeklyBarChartData.length === 0 ? (
 						<View style={{ padding: 24, alignItems: 'center' }}>
-							<Text style={{ color: '#7D65FC', fontSize: 16, textAlign: 'center' }}>
+							<Text style={{ color: theme.colors.primary, fontSize: 16, textAlign: 'center' }}>
 								No usage data available for this week.
 							</Text>
 						</View>
@@ -670,7 +673,7 @@ export const ReportScreen = () => {
 									<BarChart
 										data={weeklyBarChartData.map((bar, idx) => ({
 											...bar,
-											frontColor: '#AE9FFF',
+											frontColor: theme.colors.primary,
 											topLabelComponent: undefined,
 											onPress: () => setBarTooltip({ visible: true, index: idx, hours: bar.value }),
 											labelComponent: () => (
@@ -742,7 +745,7 @@ export const ReportScreen = () => {
 							if (!ensureMacAddress(macAddress)) {
 								return (
 									<View style={{ padding: 12, alignItems: 'center' }}>
-										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
+										<Text style={{ color: theme.colors.primary, fontSize: 14, textAlign: 'center' }}>
 											Please pair your device to view mood reports.
 										</Text>
 									</View>
@@ -758,7 +761,7 @@ export const ReportScreen = () => {
 							if (!hasAnyMood) {
 								return (
 									<View style={{ padding: 12, alignItems: 'center' }}>
-										<Text style={{ color: '#7D65FC', fontSize: 14, textAlign: 'center' }}>
+										<Text style={{ color: theme.colors.primary, fontSize: 14, textAlign: 'center' }}>
 											No mood data for this day.
 										</Text>
 									</View>
@@ -794,11 +797,11 @@ export const ReportScreen = () => {
 						<View style={[styles.moodReportCard, styles.moodReportCardFull, !interestLoading && (!interestBreakdown || interestBreakdown.length===0) && styles.interestCardEmpty]}>
 							<Text style={[styles.moodReportTitle,{marginBottom:8,fontFamily:'PlusJakartaSans_600SemiBold'}]}>Interest breakdown</Text>
 							{!ensureMacAddress(macAddress) ? (
-								<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>Enter device MAC address to view interest data.</Text>
+								<Text style={{textAlign:'center',color:theme.colors.primary,marginTop:20}}>Enter device MAC address to view interest data.</Text>
 							) : interestLoading ? (
 								<Text style={{textAlign:'center'}}>Loading…</Text>
 							) : !interestBreakdown || interestBreakdown.length===0 ? (
-								<Text style={{textAlign:'center',color:'#7D65FC',marginTop:20}}>No interest data for this day.</Text>
+								<Text style={{textAlign:'center',color:theme.colors.primary,marginTop:20}}>No interest data for this day.</Text>
 							) : (
 								<View style={{ alignItems: 'center', justifyContent: 'center', marginVertical: 32 }}>
 									<BeautifulPieChart 
@@ -1006,7 +1009,7 @@ const styles = StyleSheet.create({
 		width: 15,
 		height: 15,
 		borderRadius: 15,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 	},
 	legendText: {
 		fontSize: 14,
@@ -1025,7 +1028,7 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: 245,
 		borderRadius: 32,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 		marginBottom: 14,
 		marginTop: 0,
 		padding: 24,
@@ -1064,15 +1067,15 @@ const styles = StyleSheet.create({
 		zIndex: 40,
 		height: '100%',
 		width: '100%',
-		backgroundColor: '#AE9FFF99',
+		backgroundColor: theme.colors.primary + '99',
 	},
 	connectedDeviceImage: {
 		position: 'absolute',
-		right: 24,
-		bottom: 24,
+		right: -20,
+		bottom: -20,
 		zIndex: 1,
-		width: 140,
-		height: 140,
+		width: 250,
+		height: 250,
 		resizeMode: 'contain',
 	},
 	cardFooter: {
@@ -1080,6 +1083,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
+		paddingVertical: 24,
+		paddingHorizontal: 8,
 	},
 	cardTitle: {
 		width: '50%',
@@ -1151,7 +1156,7 @@ const styles = StyleSheet.create({
 		paddingVertical:4,
 	},
 	interestLabel:{fontSize:16,color:'#515151',textTransform:'capitalize'},
-	interestPct:{fontSize:16,fontWeight:'600',color:'#7D65FC'},
+	interestPct:{fontSize:16,fontWeight:'600',color:theme.colors.primary},
 	interestCardEmpty:{
 		paddingVertical:40,
 	},

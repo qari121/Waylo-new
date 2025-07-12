@@ -18,6 +18,8 @@ import { ensureMacAddress } from '../utils/ensureMacAddress'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import PlayIcon from '../assets/icons/play.svg'
 import WyloIcon from '../assets/icons/wylo.svg'
+import { theme } from '../lib/theme'
+import { BackButton } from '../components/ui/back-button'
 
 interface AudioMessageProps {
 	uri: string;
@@ -295,7 +297,7 @@ export const ToyLogsScreen: React.FC = () => {
 				<View style={styles.container}>
 					{isLoading ? (
 						<View style={styles.loadingContainer}>
-							<Chase size={24} color="#CBC0FE" />
+							<Chase size={24} color={theme.colors.primary} />
 							<Text style={[styles.loadingText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
 								Loading Logs...
 							</Text>
@@ -303,9 +305,7 @@ export const ToyLogsScreen: React.FC = () => {
 					) : (
 						<>
 							<View style={styles.header}>
-								<Pressable onPress={() => router.dismiss()} style={styles.backButton}>
-									<ChevronLeftIcon />
-								</Pressable>
+								<BackButton onPress={() => router.dismiss()} />
 								<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
 									<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Chat Interactions</Text>
 								</View>
@@ -313,8 +313,8 @@ export const ToyLogsScreen: React.FC = () => {
 							</View>
 							{auth.plan === 'freemium' ? (
 								<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-									<Text style={{ fontSize: 16, color: '#7D65FC', textAlign: 'center' }}>
-										Upgrade your plan to access chat logs and summaries.
+									<Text style={{ fontSize: 16, color: theme.colors.primary, textAlign: 'center' }}>
+										Please pair your device and enter a MAC address to view chat interactions.
 									</Text>
 								</View>
 							) : (
@@ -329,11 +329,11 @@ export const ToyLogsScreen: React.FC = () => {
 											paddingHorizontal: 20,
 										}}
 									>
-										<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: '#F4F1FD', borderRadius: 8 }}>
-											<Text style={{ color: '#7D65FC', fontWeight: '600' }}>{selectedTimeSpan}</Text>
+										<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: theme.colors.primary + '10', borderRadius: 8 }}>
+											<Text style={{ color: theme.colors.primary, fontWeight: '600' }}>{selectedTimeSpan}</Text>
 										</TouchableOpacity>
 										{showSummaryButton && (
-											<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: '#7D65FC', borderRadius: 8 }}>
+											<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: theme.colors.primary, borderRadius: 8 }}>
 												<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
 											</TouchableOpacity>
 										)}
@@ -358,7 +358,7 @@ export const ToyLogsScreen: React.FC = () => {
 													)}
 												</ScrollView>
 												<TouchableOpacity onPress={() => setSummaryVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
-													<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+													<Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Close</Text>
 												</TouchableOpacity>
 											</View>
 										</View>
@@ -371,11 +371,11 @@ export const ToyLogsScreen: React.FC = () => {
 												<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Select Time Span</Text>
 												{allowedTimeSpans.map(span => (
 													<TouchableOpacity key={span} onPress={() => { setSelectedTimeSpan(span); setTimeSpanModalVisible(false); }} style={{ paddingVertical: 10 }}>
-														<Text style={{ color: span === selectedTimeSpan ? '#7D65FC' : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
+														<Text style={{ color: span === selectedTimeSpan ? theme.colors.primary : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
 													</TouchableOpacity>
 												))}
 												<TouchableOpacity onPress={() => setTimeSpanModalVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
-													<Text style={{ color: '#7D65FC', fontWeight: 'bold' }}>Close</Text>
+													<Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Close</Text>
 												</TouchableOpacity>
 											</View>
 										</View>
@@ -470,21 +470,17 @@ const styles = StyleSheet.create({
 	},
 	loadingText: {
 		fontSize: 18,
-		color: '#7D65FC',
+		color: theme.colors.primary,
 	},
 	header: {
 		marginTop: 8,
 		flexDirection: 'row',
 		width: '100%',
 		alignItems: 'center',
-		
 		justifyContent: 'space-between',
 		backgroundColor: 'white',
 		paddingHorizontal: 20,
 		paddingVertical: 20,
-	},
-	backButton: {
-		padding: 8,
 	},
 	headerTitle: {
 		textAlign: 'center',
@@ -525,7 +521,7 @@ const styles = StyleSheet.create({
 		width: 32,
 		overflow: 'hidden',
 		borderRadius: 16,
-		backgroundColor: '#F4F1FD',
+		backgroundColor: theme.colors.primary + '20',
 		padding: 6,
 	},
 	messageContainer: {
@@ -542,10 +538,10 @@ const styles = StyleSheet.create({
 		paddingVertical: 12,
 	},
 	messageBubbleUser: {
-		backgroundColor: '#7D65FC',
+		backgroundColor: theme.colors.primary,
 	},
 	messageBubbleWylo: {
-		backgroundColor: '#F4F1FD',
+		backgroundColor: theme.colors.primary + '10',
 	},
 	messageText: {
 		fontSize: 15,

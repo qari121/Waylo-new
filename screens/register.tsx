@@ -12,6 +12,7 @@ import { FormInput } from '../components/ui/input'
 import { cn } from '../lib/utils'
 import { register } from '../slices/auth'
 import { useAppDispatch, useAppSelector } from '../hooks'
+import { theme } from '../lib/theme'
 
 import LockIcon from '../assets/icons/lock.svg'
 import MailIcon from '../assets/icons/mail.svg'
@@ -205,6 +206,7 @@ export const RegisterScreen = () => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+		backgroundColor: theme.colors.background,
 		flexDirection: 'column',
 		alignItems: 'center',
 		paddingBottom: 56,
@@ -238,11 +240,11 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 24,
 		fontWeight: '700',
-		color: 'black',
+		color: theme.colors.textPrimary,
 	},
 	subtitle: {
 		fontSize: 14,
-		color: '#9A9A9A',
+		color: theme.colors.textSecondary,
 	},
 	formContainer: {
 		marginTop: 30,
@@ -265,15 +267,15 @@ const styles = StyleSheet.create({
 	input: {
 		flex: 1,
 		borderWidth: 0,
-		backgroundColor: '#F2F2F2',
+		backgroundColor: theme.colors.inputBackground,
 	},
 	inputWithIcon: {
 		paddingLeft: 56,
 	},
 	inputError: {
-		borderColor: 'red',
+		borderColor: theme.colors.error,
 		...(Platform.OS === 'web' && {
-			ringColor: 'red',
+			ringColor: theme.colors.error,
 		}),
 	},
 	iconContainer: {
@@ -291,7 +293,7 @@ const styles = StyleSheet.create({
 		marginBottom: 20,
 		left: 40,
 		fontSize: 12,
-		color: 'red',
+		color: theme.colors.error,
 	},
 	submitButton: {
 		marginTop: 32,
@@ -299,13 +301,16 @@ const styles = StyleSheet.create({
 		width: '50%',
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		gap: 4,
 		marginLeft: 130,
 		textTransform: 'uppercase',
+		...(Platform.OS === 'web' && {
+			boxShadow: theme.shadows.red,
+		}),
 	},
 	submitButtonText: {
-		color: 'white',
+		color: theme.colors.background,
 		textTransform: 'uppercase',
 	},
 	loginContainer: {
@@ -316,11 +321,11 @@ const styles = StyleSheet.create({
 	},
 	loginText: {
 		fontSize: 16,
-		color: '#222',
+		color: theme.colors.textPrimary,
 		textAlign: 'center',
 	},
 	loginLink: {
 		fontWeight: 'bold',
-		color: '#000',
+		color: theme.colors.primary,
 	},
 })

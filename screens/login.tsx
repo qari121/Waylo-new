@@ -13,6 +13,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import { cn } from '../lib/utils'
 import { login } from '../slices/auth'
 import { useAppDispatch } from '../hooks'
+import { theme } from '../lib/theme'
 
 import LockIcon from '../assets/icons/lock.svg'
 import MailIcon from '../assets/icons/mail.svg'
@@ -73,6 +74,7 @@ export const LoginScreen = () => {
 					<Image
 						source={require('../assets/images/logo-2.png')}
 						style={styles.logo}
+						resizeMode="contain"
 					/>
 					<View style={styles.contentContainer}>
 						<Text style={[styles.welcomeText, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Welcome back!</Text>
@@ -155,6 +157,7 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+		backgroundColor: theme.colors.background,
 		position: 'relative',
 		flexDirection: 'column',
 		alignItems: 'center',
@@ -192,14 +195,14 @@ const styles = StyleSheet.create({
 	},
 	welcomeText: {
 		fontSize: 23, // text-2xl
-		color: '#000000',
+		color: theme.colors.textPrimary,
 		fontWeight: '600',
 		
 	},
 	subtitleText: {
 		marginTop: 18,
 		fontSize: 14, // text-sm
-		color: '#6B7280', // text-muted-foreground
+		color: theme.colors.textSecondary, // text-muted-foreground
 		textAlign: 'center',
 	},
 	formContainer: {
@@ -222,10 +225,10 @@ const styles = StyleSheet.create({
 	input: {
 		paddingLeft: 56, 
 		borderWidth: 0,
-		backgroundColor: '#F2F2F2',
+		backgroundColor: theme.colors.inputBackground,
 	},
 	inputError: {
-		borderColor: '#EF4444', // red-500
+		borderColor: theme.colors.error, // red-500
 		...(Platform.OS === 'web' && {
 			boxShadow: '0 0 0 1px #EF4444',
 		}),
@@ -239,7 +242,7 @@ const styles = StyleSheet.create({
 	errorText: {
 		marginTop: 4,
 		fontSize: 12, // text-xs
-		color: '#EF4444', // text-red-500
+		color: theme.colors.error, // text-red-500
 	},
 	passwordContainer: {
 		marginTop: 25,
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		fontSize: 14, // text-sm
 		fontWeight: '500',
-		color: '#6B7280', // text-muted-foreground
+		color: theme.colors.primary, // text-muted-foreground
 		textAlign: 'right',
 	},
 	loginButton: {
@@ -259,26 +262,26 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		gap: 4,
 		textTransform: 'uppercase',
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		elevation: 5,
 		...(Platform.OS === 'web' && {
-			boxShadow: '0px 5px 7px 0px rgba(0, 0, 0, 0.19)',
+			boxShadow: theme.shadows.red,
 		}),
 	},
 	loginButtonText: {
-		color: '#FFFFFF',
+		color: theme.colors.background,
 		fontWeight: 'bold',
 	},
 	signupText: {
 		marginTop: 48, // mt-12 equivalent
 		fontSize: 14, 
 		fontWeight: '500',
-		color: '#6B7280', // text-muted-foreground
+		color: theme.colors.textSecondary, // text-muted-foreground
 		textAlign: 'center',
 	},
 	signupLink: {
 		fontWeight: 'bold',
-		color: '#000000',
+		color: theme.colors.primary,
 		...(Platform.OS === 'web' && {
 			cursor: 'pointer',
 		}),

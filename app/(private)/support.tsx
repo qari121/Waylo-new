@@ -3,8 +3,9 @@ import { useFonts } from 'expo-font'
 import { useRouter } from 'expo-router'
 import React, { useRef, useState } from 'react'
 import { Animated, Image, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native'
-import ChevronLeftIcon from '../../assets/icons/chevron-left.svg';
 import ChevronDownIcon from '../../assets/icons/chevron_down.svg';
+import { BackButton } from '../../components/ui/back-button';
+import { theme } from '../../lib/theme'
 
 const supportItems = [
   {
@@ -80,9 +81,7 @@ export default function Support() {
       {/* Header without border */}
       <View style={styles.headerWrapper}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.headerBackBtn}>
-            <ChevronLeftIcon width={24} height={24} />
-          </Pressable>
+          <BackButton />
           <Text
             style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_600SemiBold' }]}
           >
@@ -126,7 +125,7 @@ export default function Support() {
 
               {expandedItem === index && item.content && (
                 <View
-                  style={[styles.supportItemContent, { backgroundColor: 'rgba(174, 159, 255, 0.2)' }]}
+                  style={[styles.supportItemContent, { backgroundColor: theme.colors.primary + '20' }]}
                 >
                   <Text
                     style={[styles.supportItemContentText, { fontFamily: 'PlusJakartaSans_400Regular' }]}
@@ -177,9 +176,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, // px-5
     paddingVertical: 20, // py-5
   },
-  headerBackBtn: {
-    padding: 8, // p-2
-  },
   headerTitle: {
     textAlign: 'center',
     fontSize: 20,
@@ -223,7 +219,7 @@ const styles = StyleSheet.create({
   supportItemContentEmail: {
     marginTop: 4, // mt-1
     fontSize: 14, // text-sm
-    color: '#AE9FFF',
+    color: theme.colors.primary,
   },
   bottomImageWrapper: {
     alignItems: 'center',

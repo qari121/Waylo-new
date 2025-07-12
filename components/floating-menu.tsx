@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { G, Path } from 'react-native-svg';
 import ParentIcon from '../assets/icons/parents-icon.svg';
 import ProfileUserIcon from '../assets/icons/profile-user.svg';
+import { theme } from '../lib/theme';
 
 /* ────── SVG icons ────── */
 interface IconProps {
@@ -108,14 +109,14 @@ const MenuItem = memo(
           <ProfileUserIcon
             width={30}
             height={30}
-            fill={isActive ? '#AE9FFF' : '#C5C5C5'}
+            fill={isActive ? theme.colors.primary : theme.colors.textSecondary}
           />
         ) : (
           Icon && (
             <Icon
               width={Icon === ParentalControlsIcon ? 35 : 35}
               height={Icon === ParentalControlsIcon ? 32 : 30}
-              color={isActive ? '#AE9FFF' : '#C5C5C5'}
+              color={isActive ? theme.colors.primary : theme.colors.textSecondary}
             />
           )
         )}
@@ -172,11 +173,6 @@ export const FloatingMenu = memo(() => {
     }
   };
 
-  // Hide menu on toy-logs screen
-  if (pathname.includes('/toy-logs')) {
-    return null;
-  }
-
   /* render */
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom }]}>
@@ -199,7 +195,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 70,
+    height: 80,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -218,9 +214,10 @@ const styles = StyleSheet.create({
   /* each icon wrapper */
   menuItem: {
     width: 40,
-    height: 40,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 8,
     /* allow the indicator to poke outside on Android */
     overflow: 'visible',
   },
@@ -239,7 +236,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#AE9FFF',
+    backgroundColor: theme.colors.primary,
   },
 });
 

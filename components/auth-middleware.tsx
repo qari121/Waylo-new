@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router'
 import { useAppSelector } from 'hooks'
 import React, { useEffect, useState } from 'react'
 import { View, ActivityIndicator } from 'react-native'
+import { theme } from '../lib/theme'
 
 const AuthMiddleware = ({ children }: { children: React.ReactNode }) => {
 	const [isInitialized, setIsInitialized] = useState(false)
@@ -18,7 +19,7 @@ const AuthMiddleware = ({ children }: { children: React.ReactNode }) => {
 	if (!isInitialized) {
 		return (
 			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-				<ActivityIndicator size="large" color="#0000ff" />
+				<ActivityIndicator size="large" color={theme.colors.primary} />
 			</View>
 		)
 	}

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { Pressable, SafeAreaView, StyleSheet, Text, View, Platform, ActivityIndicator, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import { auth, db } from '../firebase'; // adjust path as needed
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -10,6 +9,8 @@ import { useAppDispatch } from '../hooks';
 import { toyLogs } from '../slices/logs';
 import  Toast  from 'react-native-toast-message';
 import { Button } from '../components/ui/button'
+import { BackButton } from '../components/ui/back-button'
+import { theme } from '../lib/theme'
 
 // Helper to check MAC format: XX:XX:XX:XX:XX:XX, only hex and colons
 const isValidMac = (input: string) => {
@@ -95,9 +96,7 @@ export const QRCodeScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
-          <ChevronLeftIcon width={24} height={24} />
-        </Pressable>
+        <BackButton />
         <Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Device Pairing</Text>
         {/* Placeholder for centering */}
         <View style={{ width: 28 }} />
@@ -118,7 +117,7 @@ export const QRCodeScreen = () => {
         {!!success && !error && (
           <Text style={styles.successText}>{success}</Text>
         )}
-        {isSubmitting && <ActivityIndicator style={{ marginTop: 12 }} color="#7F67FF" />}
+        {isSubmitting && <ActivityIndicator style={{ marginTop: 12 }} color={theme.colors.primary} />}
       </View>
 
       {/* Barcode Scanner Overlay */}
@@ -157,7 +156,7 @@ export const QRCodeScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F6FF',
+    backgroundColor: theme.colors.primary + '08',
   },
   headerRow: {
     width: '100%',
@@ -167,12 +166,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 24,
-  },
-  backBtn: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -188,7 +181,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
-    shadowColor: '#AE9FFF',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.10,
     shadowRadius: 16,
     elevation: 2,
@@ -197,16 +190,16 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#7F67FF',
+    color: theme.colors.primary,
     marginBottom: 18,
     textAlign: 'center',
   },
   scanButton: {
-    backgroundColor: '#7F67FF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     alignItems: 'center',
     width: '100%',
-    shadowColor: '#AE9FFF',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 2,
@@ -244,7 +237,7 @@ const styles = StyleSheet.create({
   },
   closeScannerBtn: {
     marginTop: 20,
-    backgroundColor: '#7F67FF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 8,
   },
 });

@@ -14,6 +14,7 @@ import { useFocusEffect } from 'expo-router';
 import { cn } from '../lib/utils';
 import { auth as firebaseAuth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { theme } from '../lib/theme';
 
 import { logout } from '../slices/auth';
 import { fetchSentimentsCount } from '../slices/sentiments';
@@ -437,7 +438,7 @@ export const HomeScreen = () => {
 	if (!pageReady) {
 		return (
 			<SafeAreaView style={{ flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'white' }}>
-				<ActivityIndicator size="large" color="#7F67FF" />
+				<ActivityIndicator size="large" color={theme.colors.primary} />
 			</SafeAreaView>
 		);
 	}
@@ -462,7 +463,13 @@ export const HomeScreen = () => {
 					<View style={styles.connectedDeviceCircle}>
 						<ConnectedDeviceIcon width={26} height={26} />
 					</View>
-					<Image source={require('../assets/images/avatar.png')} style={styles.connectedDeviceImage} resizeMode="contain" />
+					<Image 
+						source={require('../assets/images/avatar.png')} 
+						style={styles.connectedDeviceImage} 
+						resizeMode="contain"
+						fadeDuration={0}
+						loadingIndicatorSource={require('../assets/images/avatar-2.png')}
+					/>
 					<Text style={styles.connectedDeviceTitle}>Connected{"\n"}Device</Text>
 				</TouchableOpacity>
 
@@ -539,7 +546,7 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: 245,
 		borderRadius: 32,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		marginBottom: 14,
 		marginTop: 0,
 		padding: 24,
@@ -592,7 +599,7 @@ const styles = StyleSheet.create({
 		zIndex: 40,
 		height: '100%',
 		width: '100%',
-		backgroundColor: '#AE9FFF99',
+		backgroundColor: theme.colors.buttonPrimary + '99',
 	},
 	avatarImage: {
 		position: 'absolute',
@@ -607,6 +614,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
+		paddingVertical: 24,
+		paddingHorizontal: 8,
 	},
 	cardTitle: {
 		width: '50%',
@@ -693,11 +702,11 @@ const styles = StyleSheet.create({
 	},
 	connectedDeviceImage: {
 		position: 'absolute',
-		right: 24,
-		bottom: 24,
+		right: -20,
+		bottom: -20,
 		zIndex: 1,
-		width: 140,
-		height: 140,
+		width: 250,
+		height: 250,
 		resizeMode: 'contain',
 	},
 	connectedDeviceTitle: {
@@ -738,7 +747,7 @@ const styles = StyleSheet.create({
 		marginHorizontal: 8,
 	},
 	parentalButton: {
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		color: '#fff',
 		paddingVertical: 10,
 		paddingHorizontal: 18,
@@ -766,7 +775,7 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 	},
 	closeModalButton: {
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		padding: 12,
 		borderRadius: 8,
 		marginTop: 12,
@@ -779,7 +788,7 @@ const styles = StyleSheet.create({
 	macPromptBox: {
 		marginTop: 12,
 		width: '100%',
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		borderRadius: 16,
 		padding: 24,
 		alignItems: 'center',
@@ -844,7 +853,7 @@ const styles = StyleSheet.create({
 	},
 	scheduleCard: {
 		width: '100%',
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.buttonPrimary,
 		opacity: 0.8,
 		borderRadius: 20,
 		padding: 24,

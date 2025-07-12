@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { Text } from '../components/ui/text';
 import CalendarIcon from '../assets/icons/calendar.svg';
 import CustomCalendar from '../components/CustomCalendar';
+import { theme } from '../lib/theme';
 
 // Create time options: every 15 minutes, 00:00 to 23:45
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -298,8 +299,8 @@ const ParentalControlsScreen = () => {
             <Switch
               value={isLocked}
               onValueChange={handleToggleLock}
-              trackColor={{ false: '#E5E1FF', true: '#7F67FF' }}
-              thumbColor={isLocked ? '#fff' : '#7F67FF'}
+              trackColor={{ false: '#FEE2E2', true: theme.colors.primary }}
+              thumbColor={isLocked ? '#fff' : theme.colors.primary}
             />
           </View>
           <Text style={styles.lockStateText}>{isLocked ? 'Device is currently locked.' : 'Device is currently unlocked.'}</Text>
@@ -309,7 +310,7 @@ const ParentalControlsScreen = () => {
             Device will be active during the specified time frames. Outside these hours, the device will be locked.
           </Text>
           {schedules.length === 0 && (
-            <Text style={{ color: '#7F67FF', marginBottom: 10 }}>No schedules set.</Text>
+            <Text style={{ color: theme.colors.primary, marginBottom: 10 }}>No schedules set.</Text>
           )}
           {schedules.map((sched, idx) => {
             let dayLabel = 'Any Day';
@@ -318,9 +319,9 @@ const ParentalControlsScreen = () => {
               dayLabel = d.toLocaleDateString(undefined, { weekday: 'long' });
             }
             return (
-              <View key={idx} style={{ backgroundColor: '#F7F6FF', borderRadius: 12, padding: 12, marginBottom: 8, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View key={idx} style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 8, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View>
-                  <Text style={{ color: '#3C2FCB', fontWeight: 'bold' }}>{dayLabel} : {formatTime12h(sched.start)} – {formatTime12h(sched.end)}</Text>
+                  <Text style={{ color: theme.colors.primaryDark, fontWeight: 'bold' }}>{dayLabel} : {formatTime12h(sched.start)} – {formatTime12h(sched.end)}</Text>
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteSchedule(idx)} style={{ marginLeft: 12, padding: 6 }}>
                   <Text style={{ color: '#FF4D4F', fontWeight: 'bold' }}>Delete</Text>
@@ -407,7 +408,7 @@ const ParentalControlsScreen = () => {
                 <CalendarIcon width={20} height={20} style={{ marginRight: 8 }} />
                 <Text style={[
                   styles.datePillText,
-                  { color: modalSelectedDate ? '#7F67FF' : '#A0A0A0' }
+                  { color: modalSelectedDate ? theme.colors.primary : '#A0A0A0' }
                 ]}>
                   {modalSelectedDate
                     ? modalSelectedDate.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
@@ -433,7 +434,7 @@ const ParentalControlsScreen = () => {
               <Text style={styles.saveButtonText}>Save Schedule</Text>
             </Button>
             <Button style={[styles.saveButton, { backgroundColor: '#ccc', marginTop: 8 }]} onPress={() => setShowAddScheduleModal(false)}>
-              <Text style={[styles.saveButtonText, { color: '#7F67FF' }]}>Cancel</Text>
+              <Text style={[styles.saveButtonText, { color: theme.colors.primary }]}>Cancel</Text>
             </Button>
             <OptionModal
               visible={modalPickerType === 'start'}
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
     padding: 28,
     alignItems: 'flex-start',
     marginBottom: 24,
-    shadowColor: '#AE9FFF',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 1,
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timePickerLabel: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: '600',
     marginBottom: 4,
     fontSize: 15,
@@ -567,13 +568,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   timeButtonText: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: '700',
     fontSize: 16,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   saveButton: {
-    backgroundColor: '#7F67FF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 40,
@@ -608,16 +609,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalItemSelected: {
-    backgroundColor: '#F7F6FF',
+    backgroundColor: '#FEF2F2',
   },
   modalText: {
     fontSize: 16,
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontFamily: 'PlusJakartaSans_400Regular',
   },
   modalSelectedText: {
     fontSize: 16,
-    color: '#3C2FCB',
+    color: theme.colors.primaryDark,
     fontWeight: 'bold',
     fontFamily: 'PlusJakartaSans_700Bold',
   },
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
     color: 'black',
     marginTop: 20,
     marginBottom: 10,
-    borderColor: '#E5E1FF',
+    borderColor: '#FEE2E2',
   },
   datePillText: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
@@ -649,7 +650,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   weekDayTextSelected: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: '700',
   },
   weekDayNum: {

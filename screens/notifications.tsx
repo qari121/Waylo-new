@@ -1,10 +1,10 @@
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
-import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
-import { cn } from '../lib/utils';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, Pressable, SafeAreaView, Platform, Image, ImageSourcePropType, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { Image, ImageSourcePropType, Pressable, ScrollView, Text, View, StyleSheet, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppSelector } from '../hooks';
+import { theme } from '../lib/theme';
+import { BackButton } from '../components/ui/back-button';
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold, useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 
 // Fix the import path to use relative path
 import { notificationListener, requestUserPermission, setupNotificationHandlers } from '../services/notifications';
@@ -104,13 +104,7 @@ export const NotificationScreen = () => {
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
 			<View style={styles.container}>
 				<View style={styles.header}>
-					<Pressable
-						onPress={() => router.dismiss()}
-						style={styles.backButton}
-						hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-					>
-						<ChevronLeftIcon width={24} height={24} />
-					</Pressable>
+					<BackButton onPress={() => router.dismiss()} />
 					<View style={styles.headerTitleContainer}>
 						<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 							Notifications
@@ -181,9 +175,6 @@ const styles = StyleSheet.create({
 		paddingVertical: 12,
 		borderBottomWidth: 1,
 		borderBottomColor: '#F3F4F6',
-	},
-	backButton: {
-		padding: 8,
 	},
 	headerTitleContainer: {
 		flex: 1,

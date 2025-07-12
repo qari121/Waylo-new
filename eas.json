@@ -12,10 +12,15 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": false
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "f.marthaler@get-x-done.de",
+        "appleTeamId": "4HT7G77K9R"
+      }
+    }
   }
 }

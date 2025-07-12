@@ -10,6 +10,8 @@ import { useAppDispatch, useAppSelector } from '../hooks'
 import { StorageService, getRealPathFromURI } from '../services/storage-service'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { theme } from '../lib/theme'
+import { BackButton } from '../components/ui/back-button'
 
 import CharacterIcon from '../assets/icons/character.svg'
 import HelpCircleIcon from '../assets/icons/help-circle.svg'
@@ -204,9 +206,7 @@ export const ProfileScreen = () => {
 			<View style={styles.container}>
 				<View style={styles.header}>
 					<View style={{ flexDirection: 'row', alignItems: 'center' }}>
-						<Pressable onPress={() => router.back()} style={{ marginRight: 12, marginLeft: 12 }}>
-							<ChevronLeftIcon width={24} height={24} />
-						</Pressable>
+						<BackButton style={{ marginRight: 12, marginLeft: 12 }} />
 						<View style={styles.headerContent}>
 							<Pressable onPress={() => setModalVisible(true)} style={styles.profileInfo}>
 								<View style={styles.avatarContainer}>
@@ -423,11 +423,11 @@ const styles = StyleSheet.create({
 		gap: 16,
 	},
 	menuIcon: {
-		color: '#344054',
+		color: theme.colors.primary,
 	},
 	menuText: {
 		fontSize: 16,
-		color: '#344054',
+		color: theme.colors.primary,
 	},
 	logoutContainer: {
 		marginTop: 8,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
 		top: 20,
 		right: 12,
 		zIndex: 10,
-		backgroundColor: '#f2f2f2',
+		backgroundColor: theme.colors.primary + '10',
 		borderRadius: 16,
 		width: 32,
 		height: 32,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
 	},
 	saveButton: {
 		width: '85%',
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 		padding: 16,
 		borderRadius: 10,
 		alignItems: 'center',

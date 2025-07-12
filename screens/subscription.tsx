@@ -9,10 +9,10 @@ import { useAppSelector } from '../hooks'
 import Toast from 'react-native-toast-message'
 
 import { Button } from '../components/ui/button'
+import { BackButton } from '../components/ui/back-button'
 
 import ApplePayIcon from '../assets/icons/apple-pay-logo.svg'
 import CheckmarkIcon from '../assets/icons/checkmark.svg'
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import VisaIcon from '../assets/icons/visa.svg'
 
 // Add Plus Jakarta Sans font imports
@@ -23,6 +23,7 @@ import {
 	PlusJakartaSans_700Bold
 } from '@expo-google-fonts/plus-jakarta-sans'
 import { useFonts } from 'expo-font'
+import { theme } from '../lib/theme'
 
 const firestorePlanToIndex: Record<string, number> = {
 	Freemium: 0,
@@ -226,9 +227,7 @@ export const SubscriptionScreen = () => {
 				style={styles.scrollView}
 				showsHorizontalScrollIndicator={false}>
 				<View style={styles.header}>
-					<Pressable onPress={() => router.back()} hitSlop={{top:20,bottom:20,left:20,right:20}} style={styles.backButton}>
-						<ChevronLeftIcon />
-					</Pressable>
+					<BackButton />
 					<Text pointerEvents="none" style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>Subscription Management</Text>
 					<Text />
 				</View>
@@ -292,7 +291,7 @@ export const SubscriptionScreen = () => {
 						</Text>
 					</Button>
 				</View>
-				{loading && <ActivityIndicator style={{ marginTop: 20 }} />}
+				{loading && <ActivityIndicator style={{ marginTop: 20 }} color={theme.colors.primary} />}
 			</ScrollView>
 		</SafeAreaView>
 	)
@@ -341,8 +340,8 @@ const styles = StyleSheet.create({
 	selectedPlanCard: {
 		backgroundColor: 'white',
 		borderWidth: 2,
-		borderColor: '#AE9FFF',
-		shadowColor: '#AE9FFF',
+		borderColor: theme.colors.primary,
+		shadowColor: theme.colors.primary,
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.12,
 		shadowRadius: 12,
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
 		height: 28,
 		borderRadius: 14,
 		borderWidth: 3,
-		borderColor: '#AE9FFF',
+		borderColor: theme.colors.primary,
 		alignItems: 'center',
 		justifyContent: 'center',
 		backgroundColor: 'white',
@@ -392,7 +391,7 @@ const styles = StyleSheet.create({
 		width: 12,
 		height: 12,
 		borderRadius: 6,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 	},
 	priceContainer: {
 		marginTop: 12,
@@ -420,7 +419,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderRadius: 12,
-		backgroundColor: '#0E2C76',
+		backgroundColor: theme.colors.primary,
 	},
 	featureText: {
 		fontSize: 14,
@@ -443,7 +442,7 @@ const styles = StyleSheet.create({
 	addCardText: {
 		fontSize: 12,
 		fontWeight: '600',
-		color: '#0E2C76',
+		color: theme.colors.primary,
 	},
 	cardsContainer: {
 		marginTop: 14,
@@ -454,13 +453,10 @@ const styles = StyleSheet.create({
 		marginHorizontal: 'auto',
 		marginBottom: 20,
 		marginTop: 40,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 		width: '83.333333%',
 	},
 	checkoutButtonText: {
 		color: 'white',
-	},
-	backButton: {
-		padding: 10,
 	},
 })

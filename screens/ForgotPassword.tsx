@@ -7,14 +7,15 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { auth } from '../firebase';
 import { sendPasswordResetEmail, confirmPasswordReset } from 'firebase/auth';
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import MailIcon from '../assets/icons/mail.svg';
 import LockIcon from '../assets/icons/lock.svg';
 import { Eye as EyeIcon } from 'lucide-react-native';
 import { FormInput } from '../components/ui/input';
 import { Button } from '../components/ui/button';
+import { BackButton } from '../components/ui/back-button';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import { theme } from '../lib/theme'
 
 const emailSchema = yup.object().shape({
   email: yup.string().required('Email is required').email('Enter a valid email'),
@@ -132,9 +133,7 @@ const ForgotPasswordScreen = () => {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
           <View style={styles.container}>
             <View style={styles.header}>
-              <Pressable onPress={() => (step === 1 ? router.back() : setStep(step - 1))}>
-                <ChevronLeftIcon width={24} height={24} />
-              </Pressable>
+              <BackButton onPress={() => (step === 1 ? router.back() : setStep(step - 1))} />
             </View>
             {step === 1 && (
               <View style={styles.contentBox}>
@@ -241,6 +240,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     marginTop: 10,
     width: '100%',
+    paddingHorizontal: 4,
   },
   contentBox: {
     backgroundColor: '#fff',
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
-    backgroundColor: '#AE9FFF',
+    backgroundColor: theme.colors.primary,
     borderRadius: 8,
     height: 48,
     justifyContent: 'center',
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   linkText: {
-    color: '#7F67FF',
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
 });

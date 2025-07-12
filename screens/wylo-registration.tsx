@@ -22,6 +22,7 @@ import { cn } from '../lib/utils'
 import { fetchInterestLogs } from '../slices/logs'
 import { useAppDispatch, useAppSelector } from '../hooks'
 import { setUser } from '../slices/auth'
+import { theme } from '../lib/theme'
 
 import PlusIcon from '../assets/icons/add.svg'
 import ArrowDownIcon from '../assets/icons/arrow-down.svg'
@@ -227,7 +228,7 @@ export const WyloRegistrationScreen = () => {
 									<Label style={[styles.label, styles.genderLabel]} nativeID="gender">Gender:</Label>
 									<View style={styles.genderButtonsAligned}>
 										<Pressable style={[styles.genderButton, styles.inputShadow, formValues.gender === 'male' && styles.genderButtonActive]} onPress={() => setFormValues((prev) => ({ ...prev, gender: 'male' }))}>
-											<MaleIcon width={24} height={24} color={formValues.gender === 'male' ? 'white' : '#3664C0'} />
+											<MaleIcon width={24} height={24} color={formValues.gender === 'male' ? 'white' : theme.colors.primary} />
 										</Pressable>
 										<Pressable style={[styles.genderButton, styles.inputShadow, formValues.gender === 'female' && styles.genderButtonActiveFemale]} onPress={() => setFormValues((prev) => ({ ...prev, gender: 'female' }))}>
 											<FemaleIcon width={24} height={24} color={formValues.gender === 'female' ? 'white' : '#FF6AFF'} />
@@ -235,7 +236,7 @@ export const WyloRegistrationScreen = () => {
 									</View>
 								</View>
 								<Button
-									style={{ marginTop: 24, backgroundColor: '#AE9FFF', borderRadius: 8 }}
+									style={{ marginTop: 24, backgroundColor: theme.colors.primary, borderRadius: 8 }}
 									onPress={async () => {
 										try {
 											const ageValue = formValues.age === '45+' ? '45+' : (typeof formValues.age === 'string' ? formValues.age : Number(formValues.age));
@@ -458,7 +459,7 @@ const styles = StyleSheet.create({
 		width: 500,
 		height: 350,
 		borderRadius: 250,
-		backgroundColor: '#E5D8FF',
+		backgroundColor: theme.colors.primary + '10',
 		zIndex: -1,
 	},
 	headerRow: {
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		textAlign: 'center',
 		fontWeight: 'bold',
-		color: '#7F67FF',
+		color: theme.colors.primary,
 		fontSize: 20,
 		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderWidth: 1,
-		borderColor: '#E5D8FF',
+		borderColor: theme.colors.primary + '20',
 		zIndex: 2,
 	},
 	formContainer: {
@@ -544,11 +545,11 @@ const styles = StyleSheet.create({
 		marginHorizontal: 16,
 		borderRadius: 16,
 		borderWidth: 1,
-		borderColor: '#F2F2F2',
+		borderColor: theme.colors.primary + '20',
 		backgroundColor: 'white',
 		padding: 16,
 		paddingTop: 0,
-		shadowColor: '#E5D8FF',
+		shadowColor: theme.colors.primary + '20',
 		shadowOpacity: 0.12,
 		shadowRadius: 12,
 		elevation: 2,
@@ -575,7 +576,7 @@ const styles = StyleSheet.create({
 	},
 	tabTriggerActive: {
 		borderBottomWidth: 2,
-		borderBottomColor: '#0E2C76',
+		borderBottomColor: theme.colors.primary,
 	},
 	tabText: {
 		fontWeight: '600',
@@ -584,7 +585,7 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	tabTextActive: {
-		color: '#0E2C76',
+		color: theme.colors.primary,
 		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
 	tabTextInactive: {
@@ -599,7 +600,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		marginBottom: 16,
-	},
+		gap: 20,
+},
 	label: {
 		width: 90,
 		fontSize: 14,
@@ -672,7 +674,7 @@ const styles = StyleSheet.create({
 		backgroundColor: 'white',
 	},
 	genderButtonActive: {
-		backgroundColor: '#3664C0',
+		backgroundColor: theme.colors.primary,
 	},
 	genderButtonActiveFemale: {
 		backgroundColor: '#FF6AFF',
@@ -736,7 +738,7 @@ const styles = StyleSheet.create({
 		height: 12,
 		width: 12,
 		borderRadius: 6,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 	},
 	languageContainer: {
 		height: 310,
@@ -797,7 +799,7 @@ const styles = StyleSheet.create({
 		height: 12,
 		width: 12,
 		borderRadius: 6,
-		backgroundColor: '#AE9FFF',
+		backgroundColor: theme.colors.primary,
 	},
 	languageName: {
 		fontSize: 14,
@@ -816,23 +818,23 @@ const styles = StyleSheet.create({
 	},
 	noteText: {
 		fontSize: 14,
-		color: '#7F67FF',
+		color: theme.colors.primary,
 		fontFamily: 'PlusJakartaSans_400Regular',
 	},
 	noteBold: {
 		fontWeight: 'bold',
-		color: '#3C2FCB',
+		color: theme.colors.primary,
 		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
 	noteHighlight: {
-		color: '#7F67FF',
+		color: theme.colors.primary,
 		fontFamily: 'PlusJakartaSans_500Medium',
 	},
 	inputAligned: {
-		flex: 1,
+		width: 220,
+		marginLeft: 12,
 		borderRadius: 4,
 		borderWidth: 1,
-		left: -20,
 		borderColor: '#F2F2F2',
 		backgroundColor: 'white',
 		fontFamily: 'PlusJakartaSans_400Regular',
@@ -842,14 +844,14 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		height: 48,
-		width: 104,
-		left: -20,
+		width: 140,
 		borderRadius: 4,
 		backgroundColor: 'white',
 		marginRight: 24,
 	},
 	ageInputAligned: {
-		flex: 1,
+		width: 100,
+		marginLeft: 12,
 		borderWidth: 1,
 		borderRightWidth: 0,
 		borderColor: '#F2F2F2',

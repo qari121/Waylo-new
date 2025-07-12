@@ -11,8 +11,9 @@ import { db } from '../firebase';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ensureMacAddress } from '../utils/ensureMacAddress';
+import { theme } from '../lib/theme'
+import { BackButton } from '../components/ui/back-button'
 
-import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import GalleryExportIcon from '../assets/icons/gallery-export.svg'
 import TierLockIcon from '../assets/icons/tier-lock.svg'
 import TripleArrowsIcon from '../assets/icons/triple-arrows.svg'
@@ -141,17 +142,15 @@ export const CharacterManagementScreen = () => {
 		return (
 			<SafeAreaView style={{ flex:1, backgroundColor:'white' }}>
 				<View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:20, paddingVertical:16 }}>
-					<Pressable onPress={() => router.back()} hitSlop={10}>
-						<ChevronLeftIcon width={28} height={28} />
-					</Pressable>
+					<BackButton />
 					<Text style={{ fontSize:18, fontWeight:'bold', color:'black' }}>Character Management</Text>
 					<View style={{ width:28 }} />
 				</View>
 				<View style={{ flex:1, justifyContent:'center', alignItems:'center', paddingHorizontal:24 }}>
-					<Text style={{ fontSize:16, color:'#7D65FC', textAlign:'center', marginBottom:20 }}>
+					<Text style={{ fontSize:16, color: theme.colors.primary, textAlign:'center', marginBottom:20 }}>
 						Please pair your device by scanning its QR code to manage characters.
 					</Text>
-					<TouchableOpacity onPress={() => router.push('/(private)/qr-code')} style={{ backgroundColor:'#7D65FC', borderRadius:12, paddingVertical:12, paddingHorizontal:32 }}>
+					<TouchableOpacity onPress={() => router.push('/(private)/qr-code')} style={{ backgroundColor: theme.colors.primary, borderRadius:12, paddingVertical:12, paddingHorizontal:32 }}>
 						<Text style={{ color:'white', fontWeight:'700', fontSize:16 }}>Scan QR Code</Text>
 					</TouchableOpacity>
 				</View>
@@ -188,9 +187,7 @@ export const CharacterManagementScreen = () => {
 		<SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
 			<View style={{ flex: 1, backgroundColor: 'white' }}>
 				<View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: 'white' }}>
-					<Pressable onPress={() => router.back()}>
-						<ChevronLeftIcon />
-					</Pressable>
+					<BackButton />
 					<Text style={[styles.headerTitle, { fontFamily: 'PlusJakartaSans_700Bold' }]}>
 						Character Management
 					</Text>
@@ -252,14 +249,14 @@ export const CharacterManagementScreen = () => {
 										marginBottom: 0,
 									},
 									(selectedCharacterIndex === activeIndex)
-										? { backgroundColor: '#F1EDFF', borderWidth: 1, borderColor: '#7D65FC' }
-										: { backgroundColor: '#7D65FC' }
+										? { backgroundColor: theme.colors.primary + '10', borderWidth: 1, borderColor: theme.colors.primary }
+										: { backgroundColor: theme.colors.primary }
 								]}
 							>
 								<Text style={[
 									{ fontWeight: '700', fontSize: 16 },
 									(selectedCharacterIndex === activeIndex)
-										? { color: '#7D65FC' }
+										? { color: theme.colors.primary }
 										: { color: 'white' }
 								]}>
 									{selectedCharacterIndex === activeIndex ? 'Selected' : 'Select'}
@@ -268,7 +265,7 @@ export const CharacterManagementScreen = () => {
 						</View>
 
 						<View style={{
-							backgroundColor: '#7D65FC',
+							backgroundColor: theme.colors.primary,
 							borderRadius: 16,
 							padding: 18,
 							marginTop: 70,
@@ -335,7 +332,7 @@ const styles = StyleSheet.create({
 		width: 8,
 		height: 8,
 		borderRadius: 4,
-		backgroundColor: '#0E2C76',
+		backgroundColor: theme.colors.primary,
 	},
 	paginationDotInactive: {
 		backgroundColor: '#D9D9D9',
@@ -391,7 +388,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
-		backgroundColor: '#0E2C76',
+		backgroundColor: theme.colors.primary,
 		borderRadius: 32,
 		paddingVertical: 16,
 	},
@@ -422,7 +419,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	lockIcon: {
-		shadowColor: '#AE9FFF',
+		shadowColor: theme.colors.primary,
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.7,
 		shadowRadius: 6,
@@ -437,15 +434,15 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		borderWidth: 1,
 		borderStyle: 'dashed',
-		borderColor: '#AE9FFF',
-		backgroundColor: '#AE9FFF1C',
+		borderColor: theme.colors.primary,
+		backgroundColor: theme.colors.primary + '1C',
 		padding: 12,
 		paddingRight: 16,
 	},
 	upgradePromptText: {
 		flex: 1,
 		fontSize: 14,
-		color: '#7D65FC',
+		color: theme.colors.primary,
 		...(Platform.OS === 'web' && {
 			maxWidth: '83.333333%',
 		}),

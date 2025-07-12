@@ -1,6 +1,7 @@
 import { TextClassContext } from 'components/ui/text'
 import * as React from 'react'
 import { Pressable, StyleSheet, ViewStyle, TextStyle, Platform, StyleProp } from 'react-native'
+import { theme } from '../../lib/theme'
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon'
@@ -10,61 +11,64 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'center',
-		borderRadius: 8,
+		borderRadius: theme.borderRadius.md,
 	},
 	baseText: {
 		fontSize: Platform.select({ native: 16, default: 14 }),
 		fontWeight: '500',
 	},
 	default: {
-		backgroundColor: 'var(--primary)',
+		backgroundColor: theme.colors.buttonPrimary,
+		...(Platform.OS === 'web' && {
+			boxShadow: theme.shadows.red,
+		}),
 	},
 	destructive: {
-		backgroundColor: 'var(--destructive)',
+		backgroundColor: theme.colors.error,
 	},
 	outline: {
 		borderWidth: 1,
-		borderColor: 'var(--input)',
-		backgroundColor: 'var(--background)',
+		borderColor: theme.colors.inputBorder,
+		backgroundColor: theme.colors.background,
 	},
 	secondary: {
-		backgroundColor: 'var(--secondary)',
+		backgroundColor: theme.colors.buttonSecondary,
 	},
 	ghost: {},
 	link: {},
 	defaultText: {
-		color: 'var(--primary-foreground)',
+		color: theme.colors.background,
 	},
 	destructiveText: {
-		color: 'var(--destructive-foreground)',
+		color: theme.colors.background,
 	},
 	outlineText: {
-		color: 'var(--foreground)',
+		color: theme.colors.textPrimary,
 	},
 	secondaryText: {
-		color: 'var(--secondary-foreground)',
+		color: theme.colors.textPrimary,
 	},
 	ghostText: {
-		color: 'var(--foreground)',
+		color: theme.colors.textPrimary,
 	},
 	linkText: {
-		color: 'var(--primary)',
+		color: theme.colors.primary,
 	},
 	sizeDefault: {
 		height: 56,
 		paddingHorizontal: 24,
 		paddingVertical: 14,
-		borderRadius: 8,
+		borderRadius: theme.borderRadius.md,
 	},
 	sizeSm: {
 		height: 36,
 		paddingHorizontal: 12,
-		borderRadius: 6,
+		borderRadius: theme.borderRadius.sm,
 	},
 	sizeLg: {
 		height: 56,
 		paddingHorizontal: 24,
-		borderRadius: 8,
+		borderRadius: theme.borderRadius.md,
 	},
 	sizeIcon: {
 		height: 40,

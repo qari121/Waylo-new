@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router'
 import { useAppSelector } from 'hooks'
 import { View, ActivityIndicator } from 'react-native'
 import { useEffect, useState } from 'react'
+import { theme } from '../lib/theme'
 
 export default function Page() {
 	const [isInitialized, setIsInitialized] = useState(false)
@@ -18,7 +19,7 @@ export default function Page() {
 	if (!isInitialized) {
 		return (
 			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-				<ActivityIndicator size="large" color="#0000ff" />
+				<ActivityIndicator size="large" color={theme.colors.primary} />
 			</View>
 		)
 	}
