@@ -53,6 +53,12 @@ export const register = createAsyncThunk('auth/register', async (data: SignupFor
 		}
 
 		await setDoc(doc(db, 'users', user.uid), userData)
+        // Also create a toy document for this user (with empty mac_address for now)
+        await setDoc(doc(db, 'toy', user.uid), {
+          user_uid: user.uid,
+          mac_address: '',
+          createdAt: new Date().toISOString(),
+        });
 		return thunkAPI.fulfillWithValue(userData)
 	} catch (error: any) {
 		return thunkAPI.rejectWithValue(error?.message)

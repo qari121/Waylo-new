@@ -71,7 +71,7 @@ const ParentalControlsScreen = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [schedules, setSchedules] = useState<Array<{ start: string; end: string; date: string | null }>>([]);
+  const [schedules, setSchedules] = useState<Array<{ startTime: string; endTime: string }>>([]);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [modalStartTime, setModalStartTime] = useState<string>('08:00');
   const [modalEndTime, setModalEndTime] = useState<string>('20:00');
@@ -98,29 +98,37 @@ const ParentalControlsScreen = () => {
       if (docSnap.exists()) {
         const controls = docSnap.data();
         setIsLocked(!!controls.DND);
-        if (controls.playRestriction && controls.playRestriction.startHour && controls.playRestriction.endHour) {
-          setStartTime(`${controls.playRestriction.startHour.padStart(2, '0')}:${controls.playRestriction.startMinute.padStart(2, '0')}`);
-          setEndTime(`${controls.playRestriction.endHour.padStart(2, '0')}:${controls.playRestriction.endMinute.padStart(2, '0')}`);
-        }
+        
+        // Load time limits
         if (controls.timeLimit && controls.timeLimit.startHour && controls.timeLimit.endHour) {
           setTimeLimitStart(`${controls.timeLimit.startHour.padStart(2, '0')}:${controls.timeLimit.startMinute.padStart(2, '0')}`);
           setTimeLimitEnd(`${controls.timeLimit.endHour.padStart(2, '0')}:${controls.timeLimit.endMinute.padStart(2, '0')}`);
+        }
+        
+        // Load schedules from Firestore
+        if (controls.schedule && Array.isArray(controls.schedule)) {
+          setSchedules(controls.schedule);
         }
       }
     };
     fetchDND();
   }, [macAddress]);
 
-  // Load saved schedule from AsyncStorage when screen is focused
+  // Load saved schedule from Firestore when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       const loadSavedSchedules = async () => {
         try {
-          const val = await AsyncStorage.getItem('schedules-downtime');
-          if (val) {
-            const arr = JSON.parse(val);
-            if (Array.isArray(arr)) {
-              setSchedules(arr);
+          if (!macAddress) return;
+          const user = auth.currentUser;
+          if (!user) return;
+          
+          const userDocRef = doc(db, 'parental_controls', user.uid);
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            const controls = docSnap.data();
+            if (controls.schedule && Array.isArray(controls.schedule)) {
+              setSchedules(controls.schedule);
             } else {
               setSchedules([]);
             }
@@ -128,12 +136,12 @@ const ParentalControlsScreen = () => {
             setSchedules([]);
           }
         } catch (error) {
+          console.error('ParentalControls - Error loading schedules:', error);
           setSchedules([]);
-          try { await AsyncStorage.removeItem('schedules-downtime'); } catch {}
         }
       };
       loadSavedSchedules();
-    }, [])
+    }, [macAddress])
   );
 
   // Debug function to check AsyncStorage
@@ -174,17 +182,88 @@ const ParentalControlsScreen = () => {
       if (!macAddress || !ensureMacAddress(macAddress)) return;
       const user = auth.currentUser;
       if (!user) return;
-      const newSchedule = {
-        start: modalStartTime,
-        end: modalEndTime,
-        date: modalSelectedDate ? modalSelectedDate.toISOString() : null,
+      
+      // Check if a schedule already exists for the selected date
+      const isDuplicateSchedule = schedules.some(existingSchedule => {
+        // Parse existing schedule to get date info
+        const existingStartParts = existingSchedule.startTime.split(' ');
+        const existingDateParts = existingStartParts.slice(2, -1); // Get date parts
+        const existingDateStr = existingDateParts.join(' ');
+        
+        // Parse new schedule date
+        const newDateStr = modalSelectedDate ? 
+          modalSelectedDate.toLocaleDateString(undefined, { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          }) : '';
+        
+        return existingDateStr === newDateStr;
+      });
+      
+      if (isDuplicateSchedule) {
+        Alert.alert(
+          'Schedule Already Exists',
+          'A schedule already exists for this date. Please select a different date or delete the existing schedule first.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Format the schedule data to match Firestore structure
+      const formatTimeForFirestore = (time: string, date: Date | null) => {
+        const [hour, minute] = time.split(':').map(Number);
+        const timeDate = new Date();
+        timeDate.setHours(hour, minute, 0, 0);
+        const timeStr = timeDate.toLocaleTimeString([], { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        }).replace('AM', 'am').replace('PM', 'pm');
+        
+        if (date) {
+          const dayName = date.toLocaleDateString(undefined, { weekday: 'long' }).toLowerCase();
+          const dateStr = date.toLocaleDateString(undefined, { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          });
+          return `${timeStr} ${dateStr} ${dayName}`;
+        } else {
+          return timeStr;
+        }
       };
+
+      const startTimeFormatted = formatTimeForFirestore(modalStartTime, modalSelectedDate);
+      const endTimeFormatted = formatTimeForFirestore(modalEndTime, modalSelectedDate);
+      
+      const newSchedule = {
+        startTime: startTimeFormatted,
+        endTime: endTimeFormatted,
+      };
+      
       const updatedSchedules = [...schedules, newSchedule];
       setSchedules(updatedSchedules);
+      
+      // Save to AsyncStorage for local use
       await AsyncStorage.setItem('schedules-downtime', JSON.stringify(updatedSchedules));
+      
+      // Save to Firestore
+      const userDocRef = doc(db, 'parental_controls', user.uid);
+      await setDoc(
+        userDocRef,
+        { 
+          mac_address: macAddress,
+          schedule: updatedSchedules,
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+      
       setShowAddScheduleModal(false);
       Alert.alert('Schedule Saved', `Restriction set from ${modalStartTime} to ${modalEndTime}`);
     } catch (error) {
+      console.error('ParentalControls - Error in handleSave:', error);
       Alert.alert('Error', 'Failed to save schedule. Please try again.');
     }
   };
@@ -218,7 +297,12 @@ const ParentalControlsScreen = () => {
         userDocRef,
         { 
           mac_address: mac, 
-          timeLimit: { startHour, startMinute, endHour, endMinute }, 
+          timeLimit: { 
+            startHour: startHour.toString(), 
+            startMinute: startMinute.toString(), 
+            endHour: endHour.toString(), 
+            endMinute: endMinute.toString() 
+          }, 
           updatedAt: new Date().toISOString()
         },
         { merge: true }
@@ -243,13 +327,35 @@ const ParentalControlsScreen = () => {
     }
   };
 
-  const handleToggleLock = () => {
-    const newLockState = !isLocked;
-    setIsLocked(newLockState);
-    Alert.alert(
-      newLockState ? 'Device Locked' : 'Device Unlocked',
-      newLockState ? 'Your device is now locked.' : 'Your device is now unlocked.'
-    );
+  const handleToggleLock = async () => {
+    try {
+      if (!macAddress || !ensureMacAddress(macAddress)) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const newLockState = !isLocked;
+      setIsLocked(newLockState);
+      
+      // Save DND state to Firestore
+      const userDocRef = doc(db, 'parental_controls', user.uid);
+      await setDoc(
+        userDocRef,
+        { 
+          mac_address: macAddress,
+          DND: newLockState,
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+      
+      Alert.alert(
+        newLockState ? 'Device Locked' : 'Device Unlocked',
+        newLockState ? 'Your device is now locked.' : 'Your device is now unlocked.'
+      );
+    } catch (error) {
+      console.error('ParentalControls - Error in handleToggleLock:', error);
+      Alert.alert('Error', 'Failed to update device lock state. Please try again.');
+    }
   };
 
   const openAddScheduleModal = () => {
@@ -270,9 +376,32 @@ const ParentalControlsScreen = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete', style: 'destructive', onPress: async () => {
-            const updated = schedules.filter((_, i) => i !== idx);
-            setSchedules(updated);
-            await AsyncStorage.setItem('schedules-downtime', JSON.stringify(updated));
+            try {
+              if (!macAddress || !ensureMacAddress(macAddress)) return;
+              const user = auth.currentUser;
+              if (!user) return;
+              
+              const updated = schedules.filter((_, i) => i !== idx);
+              setSchedules(updated);
+              
+              // Update AsyncStorage
+              await AsyncStorage.setItem('schedules-downtime', JSON.stringify(updated));
+              
+              // Update Firestore
+              const userDocRef = doc(db, 'parental_controls', user.uid);
+              await setDoc(
+                userDocRef,
+                { 
+                  mac_address: macAddress,
+                  schedule: updated,
+                  updatedAt: new Date().toISOString()
+                },
+                { merge: true }
+              );
+            } catch (error) {
+              console.error('ParentalControls - Error in handleDeleteSchedule:', error);
+              Alert.alert('Error', 'Failed to delete schedule. Please try again.');
+            }
           }
         }
       ]
@@ -303,29 +432,90 @@ const ParentalControlsScreen = () => {
               thumbColor={isLocked ? '#fff' : theme.colors.primary}
             />
           </View>
-          <Text style={styles.lockStateText}>{isLocked ? 'Device is currently locked.' : 'Device is currently unlocked.'}</Text>
+          <View style={{ 
+            backgroundColor: isLocked ? '#FEF2F2' : '#F0F9FF', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginTop: 8 
+          }}>
+            <Text style={{ 
+              color: isLocked ? '#DC2626' : '#2563EB', 
+              fontSize: 14, 
+              fontWeight: '600',
+              textAlign: 'center'
+            }}>
+              {isLocked ? '🔒 Device is currently locked' : '🔓 Device is currently unlocked'}
+            </Text>
+          </View>
           <View style={styles.divider} />
           <Text style={styles.sectionTitle}>Device Usage Hours</Text>
           <Text style={styles.sectionDescription}>
             Device will be active during the specified time frames. Outside these hours, the device will be locked.
           </Text>
           {schedules.length === 0 && (
-            <Text style={{ color: theme.colors.primary, marginBottom: 10 }}>No schedules set.</Text>
+            <View style={{ 
+              backgroundColor: '#F8F9FA', 
+              borderRadius: 12, 
+              padding: 20, 
+              marginBottom: 16, 
+              alignItems: 'center' 
+            }}>
+              <Text style={{ color: '#666', fontSize: 14, textAlign: 'center' }}>
+                No schedules set. Add a schedule to restrict device usage during specific times.
+              </Text>
+            </View>
           )}
           {schedules.map((sched, idx) => {
-            let dayLabel = 'Any Day';
-            if (sched.date) {
-              const d = new Date(sched.date);
-              dayLabel = d.toLocaleDateString(undefined, { weekday: 'long' });
-            }
+            // Parse the schedule data to extract day, date, and times
+            const parseScheduleData = (startTime: string, endTime: string) => {
+              // Format: "10:30 am 22 July 2025 tuesday"
+              const startParts = startTime.split(' ');
+              const endParts = endTime.split(' ');
+              
+              // Find the day name (last part)
+              const dayName = startParts[startParts.length - 1];
+              const dayNameCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+              
+              // Extract date parts (day, month, year) - skip time and day name
+              const dateParts = startParts.slice(2, -1); // Skip time and am/pm, remove day name
+              const dateStr = dateParts.join(' ');
+              
+              // Extract times with am/pm (first two parts: "10:30" and "am")
+              const startTimeOnly = startParts[0] + ' ' + startParts[1];
+              const endTimeOnly = endParts[0] + ' ' + endParts[1];
+              
+              return {
+                day: dayNameCapitalized,
+                date: dateStr,
+                startTime: startTimeOnly,
+                endTime: endTimeOnly
+              };
+            };
+            
+            const scheduleInfo = parseScheduleData(sched.startTime, sched.endTime);
+            
             return (
-              <View key={idx} style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 8, width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View>
-                  <Text style={{ color: theme.colors.primaryDark, fontWeight: 'bold' }}>{dayLabel} : {formatTime12h(sched.start)} – {formatTime12h(sched.end)}</Text>
+              <View key={idx} style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 16, marginBottom: 12, width: '100%' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ color: theme.colors.primaryDark, fontWeight: 'bold', fontSize: 16 }}>
+                    {scheduleInfo.day}, {scheduleInfo.date}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteSchedule(idx)} 
+                    style={{ 
+                      backgroundColor: '#FF4D4F', 
+                      paddingHorizontal: 12, 
+                      paddingVertical: 6, 
+                      borderRadius: 6,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => handleDeleteSchedule(idx)} style={{ marginLeft: 12, padding: 6 }}>
-                  <Text style={{ color: '#FF4D4F', fontWeight: 'bold' }}>Delete</Text>
-                </TouchableOpacity>
+                <Text style={{ color: '#666', fontSize: 14 }}>
+                  {scheduleInfo.startTime} to {scheduleInfo.endTime}
+                </Text>
               </View>
             );
           })}

@@ -59,6 +59,14 @@ const OptionModal: React.FC<OptionModalProps> = ({ visible, options, selectedVal
   </Modal>
 );
 
+interface ToyData {
+  boardName?: string;
+  connectionStatus?: string;
+  Battery?: string;
+  mac_address?: string;
+  user_uid?: string;
+}
+
 const ConnectedDeviceScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -73,14 +81,94 @@ const ConnectedDeviceScreen = () => {
 
   const [macAddress, setMacAddress] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false); // Track DND/Lock state
+  
+  // Toy data state
+  const [toyData, setToyData] = useState<ToyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [macLoaded, setMacLoaded] = useState(false);
 
   useEffect(() => {
     const fetchMac = async () => {
-      const mac = await AsyncStorage.getItem('macAddress');
-      setMacAddress(mac);
+      try {
+        const mac = await AsyncStorage.getItem('macAddress');
+        
+        // If MAC is null, try to get it from the user's Firestore document
+        if (!mac) {
+          const user = auth.currentUser;
+          if (user) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              const userMac = userData.mac_address;
+              if (userMac) {
+                // Save it to AsyncStorage for future use
+                await AsyncStorage.setItem('macAddress', userMac);
+                await AsyncStorage.setItem('macAddressEntered', 'true');
+                setMacAddress(userMac);
+              } else {
+                setMacAddress(null);
+              }
+            } else {
+              setMacAddress(null);
+            }
+          } else {
+            setMacAddress(null);
+          }
+        } else {
+          setMacAddress(mac);
+        }
+      } catch (error) {
+        console.error('Error fetching MAC address:', error);
+        setMacAddress(null);
+      } finally {
+        setMacLoaded(true);
+      }
     };
     fetchMac();
   }, []);
+
+  // Fetch toy data when MAC address is available
+  useEffect(() => {
+    const fetchToyData = async () => {
+      if (!macLoaded || !macAddress) {
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        console.log('Attempting to fetch toy data for MAC:', macAddress);
+        
+        // The toy document is stored with document ID "DONT DELETE"
+        const docRef = doc(db, 'toy', 'DONT DELETE');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as ToyData;
+          console.log('Found toy data:', data);
+          
+          // Verify this is the correct device by checking MAC address
+          if (data.mac_address === macAddress) {
+            console.log('MAC address matches, displaying data');
+            setToyData(data);
+          } else {
+            console.log('MAC address mismatch. Expected:', macAddress, 'Got:', data.mac_address);
+            setToyData(null);
+          }
+        } else {
+          console.log('No toy document found with ID "DONT DELETE"');
+          setToyData(null);
+        }
+      } catch (error) {
+        console.error('Error fetching toy data:', error);
+        setToyData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchToyData();
+  }, [macLoaded, macAddress]);
 
   // Optionally, fetch DND state from Firestore on mount
   useEffect(() => {
@@ -97,24 +185,6 @@ const ConnectedDeviceScreen = () => {
     fetchDND();
   }, [macAddress]);
 
-  const handleSave = async () => {
-    if (!ensureMacAddress(macAddress)) return;
-    setSavedWindow({ start: startTime, end: endTime });
-    const user = auth.currentUser;
-    if (!user) return;
-    // Split time into hour and minute
-    const [startHour, startMinute] = startTime.split(':');
-    const [endHour, endMinute] = endTime.split(':');
-    const mac = macAddress as string;
-    await setDoc(
-      doc(db, 'parental_controls', mac),
-      { mac_address: mac, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
-      { merge: true }
-    );
-    // Optionally show a message
-    // Alert.alert('Saved', `Restriction will be active from ${startTime} to ${endTime}`);
-  };
-
   // Toggle Lock/Unlock (DND)
   const handleToggleLock = async () => {
     if (!ensureMacAddress(macAddress)) return;
@@ -128,19 +198,6 @@ const ConnectedDeviceScreen = () => {
       { mac_address: mac, playRestriction: { startHour: '', startMinute: '', endHour: '', endMinute: '' }, DND: newLockState },
       { merge: true }
     );
-    // Optionally show a message
-    // Alert.alert(newLockState ? 'Device Locked' : 'Device Unlocked');
-  };
-
-  const getControls = async () => {
-    if (!ensureMacAddress(macAddress)) return;
-    const mac = macAddress as string;
-    const docRef = doc(db, 'parental_controls', mac);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const controls = docSnap.data();
-      // use controls.playRestriction, controls.DND, etc.
-    }
   };
 
   return (
@@ -161,10 +218,29 @@ const ConnectedDeviceScreen = () => {
         <ConnectedDeviceIcon width={40} height={40} />
       </View>
       <Text style={styles.deviceTitle}>Connected Device Info</Text>
-      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Device Name: </Text><Text style={styles.deviceInfoValue}>TeddyBot</Text></Text>
-      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Status: </Text><Text style={styles.deviceInfoValue}>Connected</Text></Text>
-      <Text style={styles.deviceInfo}><Text style={styles.deviceInfoLabel}>Battery: </Text><Text style={styles.deviceInfoValue}>85%</Text></Text>
+      
+      {loading ? (
+        <Text style={styles.loadingText}>Loading device information...</Text>
+      ) : toyData ? (
+        <>
+          <Text style={styles.deviceInfo}>
+            <Text style={styles.deviceInfoLabel}>Board Name: </Text>
+            <Text style={styles.deviceInfoValue}>{toyData.boardName || 'Unknown'}</Text>
+          </Text>
+          <Text style={styles.deviceInfo}>
+            <Text style={styles.deviceInfoLabel}>Connection Status: </Text>
+            <Text style={styles.deviceInfoValue}>{toyData.connectionStatus || 'Unknown'}</Text>
+          </Text>
+          <Text style={styles.deviceInfo}>
+            <Text style={styles.deviceInfoLabel}>Battery: </Text>
+            <Text style={styles.deviceInfoValue}>{toyData.Battery || 'Unknown'}</Text>
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.errorText}>No device data found</Text>
+      )}
     </View>
+    
     {/* PARENTAL CONTROLS */}
     <View style={styles.parentalCard}>
       <Text style={styles.parentalTitle}>Parental Controls</Text>
@@ -201,7 +277,21 @@ const ConnectedDeviceScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity style={styles.saveButton} onPress={() => {
+          if (!ensureMacAddress(macAddress)) return;
+          setSavedWindow({ start: startTime, end: endTime });
+          const user = auth.currentUser;
+          if (!user) return;
+          // Split time into hour and minute
+          const [startHour, startMinute] = startTime.split(':');
+          const [endHour, endMinute] = endTime.split(':');
+          const mac = macAddress as string;
+          setDoc(
+            doc(db, 'parental_controls', mac),
+            { mac_address: mac, playRestriction: { startHour, startMinute, endHour, endMinute }, DND: false },
+            { merge: true }
+          );
+        }}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
         {savedWindow && (
@@ -260,6 +350,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: 'black',
+    marginRight: 40,
     textAlign: 'center',
   },
   deviceCard: {
@@ -301,6 +392,16 @@ const styles = StyleSheet.create({
   deviceInfoValue: {
     fontSize: 15,
     color: '#444',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#E53E3E',
+    fontStyle: 'italic',
   },
   parentalCard: {
     width: '100%',

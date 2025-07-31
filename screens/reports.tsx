@@ -176,11 +176,13 @@ const emojiIcons = {
 	neutral: NeutralEmoji,
 	angry: AngryEmoji,
 	anxious: CryingEmoji,
-	sad: SadEmoji
+	sad: SadEmoji,
+	negative: AngryEmoji, // Map negative to angry emoji
+	positive: HappyEmoji  // Map positive to happy emoji
 } as { [mood: string]: React.ElementType }
 
 type TimeSpan = 'morning' | 'afternoon' | 'evening' | 'night';
-type MoodType = 'happy' | 'sad' | 'anxious' | 'neutral';
+type MoodType = 'happy' | 'sad' | 'anxious' | 'neutral' | 'excited' | 'angry' | 'negative' | 'positive';
 
 interface TimeSpanMoods {
 	morning: MoodType | null;
@@ -447,58 +449,244 @@ export const ReportScreen = () => {
 	}
 
 	const fetchMoodsByDate = async (date: Date) => {
-		if (!macAddress) return;
+		if (!ensureMacAddress(macAddress)) {
+			console.log('❌ MAC address validation failed:', macAddress);
+			return;
+		}
+		
 		try {
-			const startDate = new Date(date); startDate.setHours(0, 0, 0, 0);
-			const endDate = new Date(date); endDate.setHours(23, 59, 59, 999);
+			const startDate = new Date(date); 
+			startDate.setHours(0, 0, 0, 0);
+			const endDate = new Date(date); 
+			endDate.setHours(23, 59, 59, 999);
 			const tsStart = Timestamp.fromDate(startDate);
-			const tsEnd   = Timestamp.fromDate(endDate);
+			const tsEnd = Timestamp.fromDate(endDate);
+			
 			const moodsRef = collection(db, 'sentiment_logs');
+			const cleanMacAddress = ensureMacAddress(macAddress);
+			
+			console.log('🔍 DEBUGGING SENTIMENT LOGS:');
+			console.log('📅 Selected date:', date.toISOString().split('T')[0]);
+			console.log('🕐 Date range:', startDate.toISOString(), 'to', endDate.toISOString());
+			console.log('🔑 MAC address:', cleanMacAddress);
+			console.log('📊 Timestamp range:', tsStart.toDate().toISOString(), 'to', tsEnd.toDate().toISOString());
+			
+			// First, let's query ALL sentiment logs to see what exists
+			console.log('🔎 Querying ALL sentiment logs...');
+			const allSentimentQuery = query(
+				collection(db, 'sentiment_logs'),
+				orderBy('time', 'asc')
+			);
+			
+			const allSentimentSnapshot = await getDocs(allSentimentQuery);
+			console.log('📈 Total sentiment logs in collection:', allSentimentSnapshot.size);
+			
+			// Log all sentiment logs to see the data structure
+			console.log('📋 ALL SENTIMENT LOGS:');
+			let docIndex = 0;
+			allSentimentSnapshot.forEach((doc) => {
+				const data = doc.data();
+				console.log(`📄 Document ${docIndex + 1}:`, {
+					id: doc.id,
+					sentiment: data.sentiment,
+					intensity: data.intensity,
+					time: data.time,
+					toy_mac_address: data.toy_mac_address,
+					allFields: Object.keys(data)
+				});
+				docIndex++;
+			});
+			
+			// Now query by MAC address only
+			console.log('🔎 Querying sentiment logs by MAC address...');
+			const macQuery = query(
+				moodsRef,
+				where('toy_mac_address', '==', cleanMacAddress),
+				orderBy('time', 'asc')
+			);
+			
+			const macQuerySnapshot = await getDocs(macQuery);
+			console.log('📊 Sentiment logs found for MAC:', macQuerySnapshot.size);
+			
+			// Log sentiment logs for this MAC
+			console.log('📋 SENTIMENT LOGS FOR MAC:', cleanMacAddress);
+			let macDocIndex = 0;
+			macQuerySnapshot.forEach((doc) => {
+				const data = doc.data();
+				console.log(`📄 MAC Document ${macDocIndex + 1}:`, {
+					id: doc.id,
+					sentiment: data.sentiment,
+					intensity: data.intensity,
+					time: data.time,
+					toy_mac_address: data.toy_mac_address,
+					timeType: typeof data.time,
+					hasToDate: !!data.time?.toDate,
+					hasSeconds: !!data.time?.seconds,
+					hasToMillis: !!data.time?.toMillis
+				});
+				macDocIndex++;
+			});
+			
+			// Now query with date filters
+			console.log('🔎 Querying sentiment logs with date filters...');
 			const q = query(
 				moodsRef,
-				where('toy_mac_address', '==', macAddress),
+				where('toy_mac_address', '==', cleanMacAddress),
 				where('time', '>=', tsStart),
-				where('time', '<=', tsEnd)
+				where('time', '<=', tsEnd),
+				orderBy('time', 'asc')
 			);
+			
 			const querySnapshot = await getDocs(q);
+			console.log('📊 Sentiment logs found for date range:', querySnapshot.size);
+			
 			const moods: TimeSpanMoods = {
 				morning: null,
 				afternoon: null,
 				evening: null,
 				night: null
 			};
+			
+			// Group sentiments by time span with intensity data
+			const timeSpanSentiments: { [key in TimeSpan]: { sentiment: MoodType; intensity: number }[] } = {
+				morning: [],
+				afternoon: [],
+				evening: [],
+				night: []
+			};
+			
+			// Process the query results
+			console.log('🔄 Processing sentiment logs...');
+			let processIndex = 0;
 			querySnapshot.forEach((doc) => {
 				const data = doc.data();
-				const sentiment = data.sentiment as MoodType;
+				console.log(`📄 Processing document ${processIndex + 1}:`, { 
+					id: doc.id,
+					sentiment: data.sentiment, 
+					intensity: data.intensity,
+					time: data.time, 
+					toy_mac_address: data.toy_mac_address 
+				});
+				processIndex++;
+				
+				const sentiment = data.sentiment as string;
+				const intensity = Number(data.intensity) || 0;
+				const validatedSentiment = sentiment as MoodType;
+				
+				console.log(`✅ Extracted: sentiment=${validatedSentiment}, intensity=${intensity}`);
+				
+				// Improved time parsing with better error handling
 				let time: Date;
-				if (data.time?.toDate) {
-					time = data.time.toDate();
-				} else if (data.time?.seconds) {
-					time = new Date(data.time.seconds * 1000);
-				} else {
-					time = new Date();
+				try {
+					if (data.time?.toDate) {
+						time = data.time.toDate();
+						console.log('⏰ Parsed time using toDate():', time.toISOString());
+					} else if (data.time?.seconds) {
+						time = new Date(data.time.seconds * 1000);
+						console.log('⏰ Parsed time using seconds:', time.toISOString());
+					} else if (data.time?.toMillis) {
+						time = new Date(data.time.toMillis());
+						console.log('⏰ Parsed time using toMillis():', time.toISOString());
+					} else if (data.time instanceof Date) {
+						time = data.time;
+						console.log('⏰ Parsed time as Date object:', time.toISOString());
+					} else if (typeof data.time === 'string') {
+						time = new Date(data.time);
+						console.log('⏰ Parsed time as string:', time.toISOString());
+					} else if (typeof data.time === 'number') {
+						time = new Date(data.time);
+						console.log('⏰ Parsed time as number:', time.toISOString());
+					} else {
+						console.warn('❌ Invalid time format in sentiment log:', data.time);
+						return; // Skip this document
+					}
+				} catch (error) {
+					console.warn('❌ Error parsing time:', error, 'for data:', data.time);
+					return; // Skip this document
 				}
+				
+				console.log('⏰ Parsed time:', time.toISOString());
+				console.log('📅 Time is within range?', time >= startDate && time <= endDate);
+				
+				// Validate time is within the selected date
 				if (time >= startDate && time <= endDate) {
 					const hour = time.getHours();
-					let span: TimeSpan | null = null;
-					if (hour >= 5 && hour < 12) span = 'morning';
-					else if (hour >= 12 && hour < 17) span = 'afternoon';
-					else if (hour >= 17 && hour < 21) span = 'evening';
-					else span = 'night';
-					if (!moods[span]) {
-						moods[span] = sentiment;
+					let span: TimeSpan;
+					
+					if (hour >= 5 && hour < 12) {
+						span = 'morning';
+					} else if (hour >= 12 && hour < 17) {
+						span = 'afternoon';
+					} else if (hour >= 17 && hour < 21) {
+						span = 'evening';
+					} else {
+						span = 'night';
 					}
+					
+					console.log(`✅ Adding sentiment ${validatedSentiment} with intensity ${intensity} to ${span} (hour: ${hour})`);
+					timeSpanSentiments[span as TimeSpan].push({ sentiment: validatedSentiment, intensity });
+				} else {
+					console.log(`❌ Skipping sentiment ${validatedSentiment} - outside date range`);
 				}
 			});
+			
+			// Calculate average intensity for each sentiment type in each time span
+			console.log('📊 Calculating average intensities...');
+			Object.keys(timeSpanSentiments).forEach((span) => {
+				const sentiments = timeSpanSentiments[span as TimeSpan];
+				console.log(`📈 Time span ${span} has ${sentiments.length} sentiments:`, sentiments);
+				
+				if (sentiments.length > 0) {
+					// Group by sentiment type and calculate average intensity
+					const sentimentAverages: { [key in MoodType]?: { totalIntensity: number; count: number } } = {};
+					sentiments.forEach(({ sentiment, intensity }) => {
+						if (!sentimentAverages[sentiment]) {
+							sentimentAverages[sentiment] = { totalIntensity: 0, count: 0 };
+						}
+						sentimentAverages[sentiment]!.totalIntensity += intensity;
+						sentimentAverages[sentiment]!.count += 1;
+					});
+					
+					// Calculate average intensity for each sentiment
+					const sentimentAvgIntensities: { [key in MoodType]?: number } = {};
+					Object.entries(sentimentAverages).forEach(([sentiment, data]) => {
+						sentimentAvgIntensities[sentiment as MoodType] = data.totalIntensity / data.count;
+					});
+					
+					console.log(`📊 Average intensities for ${span}:`, sentimentAvgIntensities);
+					
+					// Find the sentiment with the highest average intensity
+					let maxAvgIntensity = 0;
+					let dominantSentiment: MoodType | null = null;
+					Object.entries(sentimentAvgIntensities).forEach(([sentiment, avgIntensity]) => {
+						if (avgIntensity > maxAvgIntensity) {
+							maxAvgIntensity = avgIntensity;
+							dominantSentiment = sentiment as MoodType;
+						}
+					});
+					
+					moods[span as TimeSpan] = dominantSentiment;
+					console.log(`✅ Selected ${dominantSentiment} as dominant for ${span} (avg intensity: ${maxAvgIntensity})`);
+				} else {
+					console.log(`❌ Time span ${span} has no sentiments`);
+				}
+			});
+			
+			console.log('🎯 Final moods object:', moods);
 			setTimeSpanMoods(moods);
 		} catch (error) {
+			console.error('❌ Error fetching mood data:', error);
 			Toast.show({ type: 'error', text1: 'Failed to fetch mood data' });
 		}
 	}
 
 	useEffect(() => {
-		if (macAddress) {
-			fetchMoodsByDate(selectedDate)
+		if (macAddress && ensureMacAddress(macAddress)) {
+			console.log('Fetching moods for date:', selectedDate.toISOString().split('T')[0]);
+			console.log('Using MAC address:', ensureMacAddress(macAddress));
+			fetchMoodsByDate(selectedDate);
+		} else {
+			console.log('MAC address not available or invalid:', macAddress);
 		}
 	}, [selectedDate, macAddress])
 

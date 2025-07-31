@@ -66,6 +66,12 @@ export const QRCodeScreen = () => {
           }
         }
         await setDoc(doc(db, 'users', user.uid), { mac_address: mac }, { merge: true });
+        // Update the toy document for this user with the new MAC address
+        await setDoc(doc(db, 'toy', user.uid), {
+          user_uid: user.uid,
+          mac_address: mac,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
         await AsyncStorage.setItem('macAddress', mac);
         await AsyncStorage.setItem('macAddressEntered', 'true');
         setError('');

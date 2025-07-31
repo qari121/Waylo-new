@@ -12,6 +12,7 @@ interface AuthState {
 	name?: string
 	age?: number
 	gender?: string
+	language?: string
 }
 
 interface ToyLogs {

@@ -11,9 +11,11 @@ const AuthRealtimeListener = () => {
 
   useEffect(() => {
     if (!auth.uid) return;
+    console.log('AuthRealtimeListener - User UID:', auth.uid);
     const unsubscribe = onSnapshot(doc(db, 'users', auth.uid), (docSnap) => {
       if (docSnap.exists()) {
         const rawData = docSnap.data();
+        console.log('AuthRealtimeListener - User document data:', rawData);
         
         // Convert Firestore timestamps to serializable strings
         const data = {
@@ -29,10 +31,16 @@ const AuthRealtimeListener = () => {
         // Keep MAC address in local storage in sync
         // ────────────────────────────────────────────────
         const mac = (data as any).mac_address as string | undefined;
+        console.log('AuthRealtimeListener - MAC from user data:', mac);
         if (mac) {
+          console.log('AuthRealtimeListener - Setting MAC in AsyncStorage:', mac);
           AsyncStorage.setItem('macAddress', mac);
           AsyncStorage.setItem('macAddressEntered', 'true');
+        } else {
+          console.log('AuthRealtimeListener - No MAC address in user data');
         }
+      } else {
+        console.log('AuthRealtimeListener - User document does not exist');
       }
     });
     return () => unsubscribe();
