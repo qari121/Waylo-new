@@ -62,8 +62,8 @@ const LANGUAGE_DISPLAY_MAP: Record<string, string> = {
 
 type AgeType = number | '45+' | null;
 interface FormValues {
-	name: string
-	username: string
+	childname: string
+	toyname: string
 	age: AgeType
 	gender: string
 	interests: string[]
@@ -87,13 +87,50 @@ export const WyloRegistrationScreen = () => {
 	const [isLoading, setIsLoading] = useState(false)
 	const [isLanguageUpdating, setIsLanguageUpdating] = useState(false)
 	const [formValues, setFormValues] = useState<FormValues>({
-		name: '',
-		username: '',
+		childname: '',
+		toyname: '',
 		age: null,
 		gender: '',
 		interests: [],
 		language: 'German'
 	})
+
+	// Load current user data from Firestore
+	useEffect(() => {
+		const loadUserData = async () => {
+			if (auth.uid) {
+				try {
+					console.log('[WyloRegistration] Loading user data for UID:', auth.uid);
+					const userDoc = await getDoc(doc(db, 'users', auth.uid));
+					if (userDoc.exists()) {
+						const userData = userDoc.data();
+						console.log('[WyloRegistration] Loaded user data from Firestore:', userData);
+						
+						// Update form values with fetched data
+						const updatedFormValues = {
+							childname: userData.childname || userData.name || '',
+							toyname: userData.toyname || userData.username || '',
+							age: userData.age || null,
+							gender: userData.gender || '',
+							interests: formValues.interests,
+							language: formValues.language
+						};
+						
+						setFormValues(updatedFormValues);
+						console.log('[WyloRegistration] Updated form values:', updatedFormValues);
+					} else {
+						console.log('[WyloRegistration] No user document found for UID:', auth.uid);
+					}
+				} catch (error) {
+					console.error('[WyloRegistration] Error loading user data:', error);
+				}
+			} else {
+				console.log('[WyloRegistration] No auth.uid available yet');
+			}
+		};
+
+		loadUserData();
+	}, [auth.uid]);
 	const [agePickerVisible, setAgePickerVisible] = useState(false)
 
 	// Load current language from user data
@@ -257,6 +294,9 @@ export const WyloRegistrationScreen = () => {
 	)
 
 	if (!fontsLoaded) return null;
+	
+	console.log('[WyloRegistration] Current form values:', formValues);
+	console.log('[WyloRegistration] Auth state:', { uid: auth.uid, name: auth.name, username: auth.username, age: auth.age, gender: auth.gender });
 
 	const ageOptions = Array.from({ length: 45 }, (_, i) => (i + 1).toString()).concat('45+');
 
@@ -264,8 +304,8 @@ export const WyloRegistrationScreen = () => {
 		if (!auth.uid) return;
 		try {
 			await updateDoc(doc(db, 'users', auth.uid), {
-				name: formValues.name,
-				username: formValues.username,
+				childname: formValues.childname,
+				toyname: formValues.toyname,
 				age: formValues.age,
 				gender: formValues.gender,
 				updatedAt: new Date().toISOString(),
@@ -339,21 +379,21 @@ export const WyloRegistrationScreen = () => {
 						<TabsContent value="info">
 							<View style={styles.infoForm}>
 								<View style={styles.formRowAligned}>
-									<Label style={styles.label} nativeID="name">Name:</Label>
+									<Label style={styles.label} nativeID="childname">Child Name:</Label>
 									<Input
-										value={formValues.name}
-										nativeID="name"
+										value={formValues.childname}
+										nativeID="childname"
 										style={[styles.inputAligned, styles.inputShadow]}
-										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, name: text }))}
+										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, childname: text }))}
 									/>
 								</View>
 								<View style={styles.formRowAligned}>
-									<Label style={styles.label} nativeID="username">Username:</Label>
+									<Label style={styles.label} nativeID="toyname">Toy Name:</Label>
 									<Input
-										value={formValues.username}
-										nativeID="username"
+										value={formValues.toyname}
+										nativeID="toyname"
 										style={[styles.inputAligned, styles.inputShadow]}
-										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, username: text }))}
+										onChangeText={(text: string) => setFormValues((prev) => ({ ...prev, toyname: text }))}
 									/>
 								</View>
 								<View style={styles.formRowAligned}>
@@ -397,18 +437,18 @@ export const WyloRegistrationScreen = () => {
 									onPress={async () => {
 										try {
 											const ageValue = formValues.age === '45+' ? '45+' : (typeof formValues.age === 'string' ? formValues.age : Number(formValues.age));
-											const nameValid = typeof formValues.name === 'string' && formValues.name.trim().length > 0;
-											const usernameValid = typeof formValues.username === 'string' && formValues.username.trim().length > 0;
+											const childnameValid = typeof formValues.childname === 'string' && formValues.childname.trim().length > 0;
+											const toynameValid = typeof formValues.toyname === 'string' && formValues.toyname.trim().length > 0;
 											const ageValid = (typeof ageValue === 'string' && ageValue === '45+') || (typeof ageValue === 'number' && !isNaN(ageValue) && ageValue > 0);
 											const genderValid = typeof formValues.gender === 'string' && formValues.gender.trim().length > 0;
-											if (!nameValid || !usernameValid || !ageValid || !genderValid) {
+											if (!childnameValid || !toynameValid || !ageValid || !genderValid) {
 												Alert.alert('Error', 'Please fill in all fields.');
 												return;
 											}
 											const updatedUserData = {
 												...auth,
-												name: formValues.name.trim(),
-												username: formValues.username.trim(),
+												childname: formValues.childname.trim(),
+												toyname: formValues.toyname.trim(),
 												gender: formValues.gender.trim(),
 												updatedAt: new Date().toISOString(),
 											};
@@ -417,8 +457,8 @@ export const WyloRegistrationScreen = () => {
 												(updatedUserData as any).age = ageValue;
 											}
 											await updateDoc(doc(db, 'users', auth.uid), {
-												name: formValues.name.trim(),
-												username: formValues.username.trim(),
+												childname: formValues.childname.trim(),
+												toyname: formValues.toyname.trim(),
 												age: ageValue,
 												gender: formValues.gender.trim(),
 												updatedAt: new Date().toISOString(),

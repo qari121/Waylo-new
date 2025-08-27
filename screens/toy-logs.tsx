@@ -7,7 +7,7 @@ import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore'
 import { db } from '../firebase'
 
 import { toyLogs } from '../slices/logs'
@@ -104,7 +104,7 @@ export const ToyLogsScreen: React.FC = () => {
 	const scrollViewRef = useRef<ScrollView>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [summaryVisible, setSummaryVisible] = useState(false);
-	const [selectedTimeSpan, setSelectedTimeSpan] = useState(timeSpans[0]);
+	const [selectedTimeSpan, setSelectedTimeSpan] = useState('All Time');
 	const [timeSpanModalVisible, setTimeSpanModalVisible] = useState(false);
 	const auth = useAppSelector(state => state.auth)
 
@@ -114,6 +114,7 @@ export const ToyLogsScreen: React.FC = () => {
 
 	const [macAddress, setMacAddress] = useState<string | null>(null);
 	const [macLoaded, setMacLoaded] = useState<boolean>(false);
+	const [directLogs, setDirectLogs] = useState<any[]>([]);
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -140,15 +141,200 @@ export const ToyLogsScreen: React.FC = () => {
 		AsyncStorage.getItem('macAddress').then(setMacAddress).finally(() => setMacLoaded(true));
 	}, []);
 
-	// 2) Fetch logs once MAC is available
+	// Direct fetch function - fetch ALL toy logs without any filtering
+	const fetchDirectLogs = async (mac: string) => {
+		try {
+			console.log('[ToyLogs] Fetching ALL toy logs for MAC:', mac);
+			
+			// Now fetch logs for specific MAC address
+			const directQuery = query(
+				collection(db, 'toy_logs'),
+				where('toy_mac_address', '==', mac)
+			);
+			const directSnapshot = await getDocs(directQuery);
+			console.log('[ToyLogs] MAC-specific query found', directSnapshot.size, 'documents');
+			
+			let directLogsData: any[] = [];
+			
+			// If MAC-specific query returns no results, try to get ALL logs as fallback
+			if (directSnapshot.size === 0) {
+				console.log('[ToyLogs] No logs for specific MAC, trying to fetch ALL logs...');
+				try {
+					const allLogsQuery = query(collection(db, 'toy_logs'), limit(100));
+					const allLogsSnapshot = await getDocs(allLogsQuery);
+					console.log('[ToyLogs] All logs query found', allLogsSnapshot.size, 'documents');
+					
+					allLogsSnapshot.forEach((doc) => {
+						const data = doc.data();
+						
+						// Keep the original Firestore timestamp - NO conversion
+						directLogsData.push({ 
+							id: doc.id, 
+							...data
+							// Keep original time field as is
+						});
+					});
+				} catch (allLogsErr) {
+					console.error('[ToyLogs] All logs fallback failed:', allLogsErr);
+				}
+			} else {
+				// Process MAC-specific logs
+				directSnapshot.forEach((doc) => {
+					const data = doc.data();
+					
+					// Keep the original Firestore timestamp - NO conversion
+					directLogsData.push({ 
+						id: doc.id, 
+						...data
+						// Keep original time field as is
+					});
+				});
+			}
+			
+			// Sort by time using original Firestore timestamp with error handling
+			directLogsData.sort((a, b) => {
+				try {
+					let timeA: number;
+					if (a.time?.toDate && typeof a.time.toDate === 'function') {
+						timeA = a.time.toDate().getTime();
+					} else if (a.time?.seconds && typeof a.time.seconds === 'number') {
+						timeA = a.time.seconds * 1000;
+					} else if (a.time) {
+						timeA = new Date(a.time).getTime();
+					} else {
+						timeA = 0; // Default to epoch time for logs without time
+					}
+					
+					let timeB: number;
+					if (b.time?.toDate && typeof b.time.toDate === 'function') {
+						timeB = b.time.toDate().getTime();
+					} else if (b.time?.seconds && typeof b.time.seconds === 'number') {
+						timeB = b.time.seconds * 1000;
+					} else if (b.time) {
+						timeB = new Date(b.time).getTime();
+					} else {
+						timeB = 0; // Default to epoch time for logs without time
+					}
+					
+					// Validate timestamps
+					if (isNaN(timeA)) timeA = 0;
+					if (isNaN(timeB)) timeB = 0;
+					
+					return timeA - timeB; // earliest first
+				} catch (error) {
+					console.error('[ToyLogs] Error sorting logs:', error, 'log A:', a.id, 'log B:', b.id);
+					return 0; // Keep original order if sorting fails
+				}
+			});
+			
+			console.log('[ToyLogs] Processed', directLogsData.length, 'logs with original Firestore timestamps');
+			
+			// Log sample timestamps for debugging
+			if (directLogsData.length > 0) {
+				console.log('[ToyLogs] Sample original timestamps:');
+				directLogsData.slice(0, 5).forEach((log, index) => {
+					let parsedTime: Date | null = null;
+					if (log.time?.toDate && typeof log.time.toDate === 'function') {
+						parsedTime = log.time.toDate();
+					} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+						parsedTime = new Date(log.time.seconds * 1000);
+					} else if (log.time) {
+						parsedTime = new Date(log.time);
+					}
+					
+					console.log(`  Log ${index + 1}:`, {
+						id: log.id,
+						originalTime: log.time,
+						timeType: typeof log.time,
+						timeConstructor: log.time?.constructor?.name,
+						hasToDate: !!log.time?.toDate,
+						hasSeconds: !!log.time?.seconds,
+						parsedTime: parsedTime?.toLocaleString(),
+						parsedTimeISO: parsedTime?.toISOString(),
+						parsedTimeLocal: parsedTime ? new Date(parsedTime.getFullYear(), parsedTime.getMonth(), parsedTime.getDate()).toLocaleDateString() : 'N/A'
+					});
+				});
+			}
+			
+			setDirectLogs(directLogsData);
+			return directLogsData;
+		} catch (error) {
+			console.error('[ToyLogs] Direct fetch error:', error);
+			return [];
+		}
+	};
+
+	// Log when time span changes
+	useEffect(() => {
+		console.log('[ToyLogs] Time span changed to:', selectedTimeSpan);
+	}, [selectedTimeSpan]);
+
+	// 2) Fetch logs once MAC is available - ALWAYS use direct fetch for complete data
 	useEffect(() => {
 		const run = async () => {
 			if (!macLoaded) return;
 			if (!ensureMacAddress(macAddress, true)) { setIsLoading(false); return; }
+			
 			try {
-				const list = await dispatch(toyLogs(macAddress!)).unwrap();
-				console.log('[ToyLogs] fetched', list.length, 'logs for', macAddress);
+				console.log('[ToyLogs] Starting data fetch for MAC:', macAddress);
+				
+				// ALWAYS fetch directly from Firestore to get COMPLETE dataset
+				const directList = await fetchDirectLogs(macAddress!);
+				console.log('[ToyLogs] Direct fetch completed, got', directList.length, 'logs');
+				
+				// If we still have no logs, try fetching ALL logs without MAC filtering
+				if (directList.length === 0) {
+					console.warn('[ToyLogs] No logs found for MAC. Trying to fetch ALL logs without MAC filtering...');
+					try {
+						const allLogsQuery = query(collection(db, 'toy_logs'), limit(100));
+						const allLogsSnapshot = await getDocs(allLogsQuery);
+						console.log('[ToyLogs] All logs without MAC filter: found', allLogsSnapshot.size, 'documents');
+						
+						if (allLogsSnapshot.size > 0) {
+							const allLogsData: any[] = [];
+							allLogsSnapshot.forEach((doc) => {
+								const data = doc.data();
+								let timeValue: string;
+								
+								// Enhanced timestamp handling
+								if (data.time?.toDate && typeof data.time.toDate === 'function') {
+									timeValue = data.time.toDate().toISOString();
+								} else if (data.time?.seconds && typeof data.time.seconds === 'number') {
+									timeValue = new Date(data.time.seconds * 1000).toISOString();
+								} else if (data.time) {
+									timeValue = new Date(data.time).toISOString();
+								} else {
+									console.warn('[ToyLogs] Log without time field:', doc.id);
+									return;
+								}
+								
+								allLogsData.push({ 
+									id: doc.id, 
+									...data, 
+									time: timeValue 
+								});
+							});
+							
+							// Sort and set the data
+							allLogsData.sort((a, b) => new Date(a.time).getTime() - new Date(a.time).getTime());
+							setDirectLogs(allLogsData);
+							console.log('[ToyLogs] Set all logs data:', allLogsData.length, 'logs');
+						}
+					} catch (allLogsErr) {
+						console.error('[ToyLogs] All logs fetch failed:', allLogsErr);
+					}
+				}
+				
+				// Also try Redux for comparison (but don't rely on it)
+				try {
+					const reduxList = await dispatch(toyLogs(macAddress!)).unwrap();
+					console.log('[ToyLogs] Redux fetch got', reduxList.length, 'logs');
+				} catch (reduxErr) {
+					console.log('[ToyLogs] Redux fetch failed, using direct data only');
+				}
+				
 			} catch (err: any) {
+				console.error('[ToyLogs] Error fetching logs:', err);
 				Toast.show({ type: 'error', text1: err ?? 'Failed to fetch toy logs' });
 			} finally {
 				setIsLoading(false);
@@ -160,30 +346,118 @@ export const ToyLogsScreen: React.FC = () => {
 	// Helper: filter logs for the selected time span
 	const getLogsForSelectedTimeSpan = () => {
 		const now = new Date();
-		if (selectedTimeSpan === 'Today') {
-			const today = now.toISOString().split('T')[0];
-			return logs.filter(log => {
-				const logDate = new Date(log.time).toISOString().split('T')[0];
-				return logDate === today;
-			});
+		console.log('[ToyLogs] Filtering logs for time span:', selectedTimeSpan, 'Total logs available:', effectiveLogs.length);
+		console.log('[ToyLogs] Current local time:', now.toLocaleString());
+		console.log('[ToyLogs] Current UTC time:', now.toISOString());
+		console.log('[ToyLogs] Timezone offset (minutes):', now.getTimezoneOffset());
+		console.log('[ToyLogs] Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+		
+		// If "All Time" is selected, return all logs without filtering
+		if (selectedTimeSpan === 'All Time') {
+			console.log('[ToyLogs] All Time selected - returning all', effectiveLogs.length, 'logs without filtering');
+			return effectiveLogs;
 		}
+		
+		if (selectedTimeSpan === 'Today') {
+			// Get today's date boundaries in local timezone
+			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const todayEnd = new Date(todayStart);
+			todayEnd.setDate(todayEnd.getDate() + 1);
+			
+			console.log('[ToyLogs] Today boundaries:', {
+				start: todayStart.toLocaleString(),
+				end: todayEnd.toLocaleString(),
+				startISO: todayStart.toISOString(),
+				endISO: todayEnd.toISOString()
+			});
+			
+			// Log what today should be
+			console.log('[ToyLogs] Today should be:', {
+				year: now.getFullYear(),
+				month: now.getMonth() + 1, // +1 because getMonth() is 0-indexed
+				day: now.getDate(),
+				fullDate: now.toDateString()
+			});
+			
+			const filteredLogs = effectiveLogs.filter(log => {
+				// Use original Firestore timestamp directly
+				let logTime: Date;
+				if (log.time?.toDate && typeof log.time.toDate === 'function') {
+					logTime = log.time.toDate();
+				} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+					logTime = new Date(log.time.seconds * 1000);
+				} else if (log.time) {
+					logTime = new Date(log.time);
+				} else {
+					return false; // Skip logs without time
+				}
+				
+				// Convert log time to local date for comparison
+				const logLocalDate = new Date(logTime.getFullYear(), logTime.getMonth(), logTime.getDate());
+				const isToday = logLocalDate >= todayStart && logLocalDate < todayEnd;
+				
+				// Only log logs that are actually today for debugging
+				if (isToday) {
+					console.log('[ToyLogs] Log is today:', {
+						logId: log.id,
+						logTime: logTime.toLocaleString(),
+						logLocalDate: logLocalDate.toLocaleDateString()
+					});
+				}
+				
+				return isToday;
+			});
+			console.log('[ToyLogs] Today filter: found', filteredLogs.length, 'logs for', todayStart.toLocaleDateString());
+			return filteredLogs;
+		}
+		
 		if (selectedTimeSpan === 'Last 7 days') {
 			const weekAgo = new Date(now);
 			weekAgo.setDate(now.getDate() - 6);
-			return logs.filter(log => {
-				const logDate = new Date(log.time);
-				return logDate >= weekAgo && logDate <= now;
+			weekAgo.setHours(0, 0, 0, 0);
+			const endOfToday = new Date(now);
+			endOfToday.setHours(23, 59, 59, 999);
+			
+			const filteredLogs = effectiveLogs.filter(log => {
+				let logDate: Date;
+				if (log.time?.toDate && typeof log.time.toDate === 'function') {
+					logDate = log.time.toDate();
+				} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+					logDate = new Date(log.time.seconds * 1000);
+				} else if (log.time) {
+					logDate = new Date(log.time);
+				} else {
+					return false;
+				}
+				return logDate >= weekAgo && logDate <= endOfToday;
 			});
+			console.log('[ToyLogs] 7 days filter: found', filteredLogs.length, 'logs from', weekAgo.toLocaleDateString(), 'to', endOfToday.toLocaleDateString());
+			return filteredLogs;
 		}
+		
 		if (selectedTimeSpan === 'This Month') {
 			const month = now.getMonth();
 			const year = now.getFullYear();
-			return logs.filter(log => {
-				const logDate = new Date(log.time);
+			const filteredLogs = effectiveLogs.filter(log => {
+				let logDate: Date;
+				if (log.time?.toDate && typeof log.time.toDate === 'function') {
+					logDate = log.time.toDate();
+				} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+					logDate = new Date(log.time.seconds * 1000);
+				} else if (log.time) {
+					logDate = new Date(log.time);
+				} else {
+					return false;
+				}
 				return logDate.getMonth() === month && logDate.getFullYear() === year;
 			});
+			console.log('[ToyLogs] This month filter: found', filteredLogs.length, 'logs for', month + 1, year);
+			return filteredLogs;
 		}
-		return logs;
+		
+		// For 'All Time' or any other case, return ALL logs
+		console.log('[ToyLogs] All Time: returning all', effectiveLogs.length, 'logs');
+		return effectiveLogs;
 	}
 
 	// NEW: Fetch summary from OpenAI via Firebase Function
@@ -221,11 +495,56 @@ export const ToyLogsScreen: React.FC = () => {
 	}
 
 	const isFreemium = (auth.plan ?? '').toLowerCase() === 'freemium';
+	
+	// ALWAYS use direct logs as the source of truth (complete dataset)
+	const effectiveLogs = directLogs;
+	
 	const logsToDisplay = isFreemium
-		? logs.filter(log => {
-			const today = new Date().toISOString().split('T')[0];
-			const logDate = new Date(log.time).toISOString().split('T')[0];
-			return logDate === today;
+		? effectiveLogs.filter(log => {
+			// Get today's date boundaries in local timezone (same logic as above)
+			const now = new Date();
+			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const todayEnd = new Date(todayStart);
+			todayEnd.setDate(todayEnd.getDate() + 1);
+			
+			console.log('[ToyLogs] Freemium filter - Today boundaries:', {
+				start: todayStart.toLocaleString(),
+				end: todayEnd.toLocaleString()
+			});
+			
+			console.log('[ToyLogs] Freemium filter - Today should be:', {
+				year: now.getFullYear(),
+				month: now.getMonth() + 1,
+				day: now.getDate(),
+				fullDate: now.toDateString()
+			});
+			
+			// Use original Firestore timestamp directly
+			let logTime: Date;
+			if (log.time?.toDate && typeof log.time.toDate === 'function') {
+				logTime = log.time.toDate();
+			} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+				logTime = new Date(log.time.seconds * 1000);
+			} else if (log.time) {
+				logTime = new Date(log.time);
+			} else {
+				return false; // Skip logs without time
+			}
+			
+			// Convert log time to local date for comparison
+			const logLocalDate = new Date(logTime.getFullYear(), logTime.getMonth(), logTime.getDate());
+			const isToday = logLocalDate >= todayStart && logLocalDate < todayEnd;
+			
+			// Only log logs that are actually today for debugging
+			if (isToday) {
+				console.log('[ToyLogs] Freemium filter - Log is today:', {
+					logId: log.id,
+					logTime: logTime.toLocaleString(),
+					logLocalDate: logLocalDate.toLocaleDateString()
+				});
+			}
+			
+			return isToday;
 		})
 		: getLogsForSelectedTimeSpan();
 
@@ -233,24 +552,98 @@ export const ToyLogsScreen: React.FC = () => {
 	const plan = (auth.plan ?? '').toLowerCase();
 	const showSummaryButton = plan === 'standard' || plan === 'pro' || plan === 'premium';
 
-	// Fetch last 10 messages (adjust collection path as needed)
-	const fetchLast10Messages = async () => {
-		const q = query(
-			collection(db, 'messages'), // replace 'messages' with your collection name
-			orderBy('createdAt', 'desc'),
-			limit(10)
-		);
-		const querySnapshot = await getDocs(q);
-		const docIds: string[] = [];
-		querySnapshot.forEach(doc => {
-			docIds.push(doc.id);
+
+
+	// Removed unused fetchLast10Messages function
+
+	// Helper: Group logs by date for better display
+	const groupLogsByDate = (logsToGroup: any[]) => {
+		const grouped: { [key: string]: any[] } = {};
+		
+		console.log('[ToyLogs] Grouping', logsToGroup.length, 'logs by date...');
+		
+		logsToGroup.forEach(log => {
+			try {
+				// Use original Firestore timestamp directly for proper grouping
+				let logTime: Date;
+				if (log.time?.toDate && typeof log.time.toDate === 'function') {
+					logTime = log.time.toDate();
+				} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+					logTime = new Date(log.time.seconds * 1000);
+				} else if (log.time) {
+					logTime = new Date(log.time);
+				} else {
+					console.warn('[ToyLogs] Log without time field, skipping:', log.id);
+					return;
+				}
+				
+				// Validate that the date is valid
+				if (isNaN(logTime.getTime())) {
+					console.warn('[ToyLogs] Invalid timestamp, skipping log:', log.id, 'time:', log.time);
+					return;
+				}
+				
+				// Create a local date object for consistent grouping
+				const localDate = new Date(logTime.getFullYear(), logTime.getMonth(), logTime.getDate());
+				// Use local date string for grouping to avoid timezone issues
+				const dateKey = localDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+				
+				if (!grouped[dateKey]) {
+					grouped[dateKey] = [];
+				}
+				grouped[dateKey].push(log);
+			} catch (error) {
+				console.error('[ToyLogs] Error processing log timestamp:', error, 'log:', log.id, 'time field:', log.time);
+				// Skip this log if there's an error
+				return;
+			}
 		});
-		console.log('Last 10 message document IDs:', docIds);
+		
+		console.log('[ToyLogs] Date groups found:', Object.keys(grouped));
+		
+		// Sort dates in ascending order (earliest first)
+		return Object.keys(grouped)
+			.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+			.reduce((result, date) => {
+				result[date] = grouped[date];
+				return result;
+			}, {} as { [key: string]: any[] });
 	};
 
-	useEffect(() => {
-		fetchLast10Messages();
-	}, []);
+	// Group logs by date for better display
+	const groupedLogs = groupLogsByDate(logsToDisplay);
+	
+	// Debug: Log the final grouped logs and show what was filtered out
+	console.log('[ToyLogs] Final grouped logs:', {
+		totalLogs: logsToDisplay.length,
+		dateGroups: Object.keys(groupedLogs),
+		groupedLogsCount: Object.entries(groupedLogs).map(([date, logs]) => ({ date, count: logs.length })),
+		selectedTimeSpan: selectedTimeSpan,
+		totalAvailableLogs: effectiveLogs.length
+	});
+	
+	// Show what logs were filtered out for debugging
+	if (effectiveLogs.length > logsToDisplay.length) {
+		const filteredOutLogs = effectiveLogs.filter(log => !logsToDisplay.includes(log));
+		console.log('[ToyLogs] Filtered out logs:', filteredOutLogs.length, 'logs due to time span filter:', selectedTimeSpan);
+		if (filteredOutLogs.length > 0) {
+			console.log('[ToyLogs] Sample filtered out log:', {
+				id: filteredOutLogs[0].id,
+				time: filteredOutLogs[0].time,
+				parsedTime: (() => {
+					const log = filteredOutLogs[0];
+					if (log.time?.toDate && typeof log.time.toDate === 'function') {
+						return log.time.toDate().toLocaleString();
+					} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+						return new Date(log.time.seconds * 1000).toLocaleString();
+					} else if (log.time) {
+						return new Date(log.time).toLocaleString();
+					}
+					return 'No time';
+				})()
+			});
+		}
+	}
 
 	// Helper: Beautify summary by bolding and enlarging headings
 	function renderBeautifiedSummary(summary: string) {
@@ -322,21 +715,71 @@ export const ToyLogsScreen: React.FC = () => {
 									<View
 										style={{
 											flexDirection: 'row',
-											justifyContent: 'flex-end',
+											justifyContent: 'space-between',
 											alignItems: 'center',
-											gap: 8,
 											marginBottom: 8,
 											paddingHorizontal: 20,
 										}}
 									>
-										<TouchableOpacity onPress={() => setTimeSpanModalVisible(true)} style={{ padding: 8, backgroundColor: theme.colors.primary + '10', borderRadius: 8 }}>
-											<Text style={{ color: theme.colors.primary, fontWeight: '600' }}>{selectedTimeSpan}</Text>
-										</TouchableOpacity>
-										{showSummaryButton && (
-											<TouchableOpacity onPress={handleOpenSummary} style={{ padding: 8, backgroundColor: theme.colors.primary, borderRadius: 8 }}>
-												<Text style={{ color: 'white', fontWeight: '600' }}>Summary</Text>
+										<View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+											<TouchableOpacity 
+												onPress={async () => {
+													if (macAddress) {
+														setIsLoading(true);
+														await fetchDirectLogs(macAddress);
+														setIsLoading(false);
+													}
+												}} 
+												style={{ 
+													paddingHorizontal: 16, 
+													paddingVertical: 8, 
+													backgroundColor: '#f0f0f0', 
+													borderRadius: 8, 
+													marginBottom: 4,
+													marginTop: 15,
+													height: 36,
+													justifyContent: 'center',
+													alignItems: 'center'
+												}}
+											>
+												<Text style={{ color: '#666', fontWeight: '600', fontSize: 14 }}>Refresh</Text>
 											</TouchableOpacity>
-										)}
+											<Text style={{ color: '#666', fontSize: 10 }}>
+												{effectiveLogs.length} total logs • {Object.keys(groupedLogs).length} days
+											</Text>
+										</View>
+										<View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+											<TouchableOpacity 
+												onPress={() => setTimeSpanModalVisible(true)} 
+												style={{ 
+													paddingHorizontal: 16, 
+													paddingVertical: 8, 
+													backgroundColor: theme.colors.primary + '10', 
+													borderRadius: 8,
+													height: 36,
+													justifyContent: 'center',
+													alignItems: 'center'
+												}}
+											>
+												<Text style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 14 }}>{selectedTimeSpan}</Text>
+											</TouchableOpacity>
+											{showSummaryButton && (
+												<TouchableOpacity 
+													onPress={handleOpenSummary} 
+													style={{ 
+														paddingHorizontal: 16, 
+														paddingVertical: 8, 
+														backgroundColor: theme.colors.primary, 
+														borderRadius: 8,
+														height: 36,
+														justifyContent: 'center',
+														alignItems: 'center'
+													}}
+												>
+													<Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Summary</Text>
+												</TouchableOpacity>
+											)}
+										</View>
 									</View>
 
 									{/* Summary Modal */}
@@ -365,13 +808,20 @@ export const ToyLogsScreen: React.FC = () => {
 									</Modal>
 
 									{/* Time Span Modal */}
-									<Modal visible={timeSpanModalVisible} transparent animationType="fade">
+									<Modal visible={timeSpanModalVisible} transparent animationType="none">
 										<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
 											<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '70%' }}>
 												<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Select Time Span</Text>
 												{allowedTimeSpans.map(span => (
-													<TouchableOpacity key={span} onPress={() => { setSelectedTimeSpan(span); setTimeSpanModalVisible(false); }} style={{ paddingVertical: 10 }}>
+													<TouchableOpacity key={span} onPress={() => { 
+														console.log('[ToyLogs] User selected time span:', span);
+														setSelectedTimeSpan(span); 
+														setTimeSpanModalVisible(false); 
+													}} style={{ paddingVertical: 10 }}>
 														<Text style={{ color: span === selectedTimeSpan ? theme.colors.primary : '#444', fontWeight: span === selectedTimeSpan ? 'bold' : 'normal' }}>{span}</Text>
+														{span === selectedTimeSpan && (
+															<Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>Currently selected</Text>
+														)}
 													</TouchableOpacity>
 												))}
 												<TouchableOpacity onPress={() => setTimeSpanModalVisible(false)} style={{ marginTop: 16, alignSelf: 'flex-end' }}>
@@ -382,9 +832,19 @@ export const ToyLogsScreen: React.FC = () => {
 									</Modal>
 
 									<View style={styles.content}>
-										<Text style={[styles.dateText, { fontFamily: 'PlusJakartaSans_500Medium' }]}>
-											{format(new Date(), 'EEE h:mm a')}
-										</Text>
+										{/* Show current time span and total logs info */}
+										<View style={{ paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 16 }}>
+											<Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+												Showing logs for: <Text style={{ fontWeight: 'bold', color: theme.colors.primary }}>{selectedTimeSpan}</Text>
+											</Text>
+											{selectedTimeSpan !== 'All Time' && (
+												<Text style={{ fontSize: 14, color: '#999', textAlign: 'center' }}>
+													Switch to "All Time" to see all logs
+												</Text>
+											)}
+										</View>
+
+										{/* Remove the static date display since we'll show individual timestamps */}
 
 										<ScrollView
 											ref={scrollViewRef}
@@ -392,49 +852,118 @@ export const ToyLogsScreen: React.FC = () => {
 											showsVerticalScrollIndicator={false}
 											onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
 											<View style={styles.logsContainer}>
-												{logsToDisplay.length === 0 ? (
-													<Text style={{ color: '#9B9B9B', textAlign: 'center', marginTop: 32 }}>
-														No chat logs available for this period.
-													</Text>
-												) : (
-													logsToDisplay.map((log) => (
-														<View
-															style={[
-																styles.logRow,
-																log.type === "user_request" && styles.logRowUser
-															]}
-															key={log.id}>
-															{log.type !== "user_request" && (
-																<View style={styles.avatarContainer}>
-																	<WyloIcon width={20} height={20} />
-																</View>
-															)}
-
-															<View style={[
-																styles.messageContainer,
-																log.type === "user_request" && styles.messageContainerUser
-															]}>
-																<View style={[
-																	styles.messageBubble,
-																	log.type === "user_request" ? styles.messageBubbleUser : styles.messageBubbleWylo
-																]}>
-																	{log.audioUri ? (
-																		<AudioMessage uri={log.audioUri} />
-																	) : (
-																		<Text
-																			style={[
-																				styles.messageText,
-																				{ fontFamily: 'PlusJakartaSans_400Regular' },
-																				log.type === "user_request" ? styles.messageTextUser : styles.messageTextWylo
-																			]}>
-																			{log.message}
-																		</Text>
-																	)}
-																</View>
-																<Text style={[styles.timeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
-																	{format(new Date(log.time), 'h:mm a')}
+												{Object.keys(groupedLogs).length === 0 ? (
+													<View style={{ alignItems: 'center', marginTop: 32 }}>
+														<Text style={{ color: '#9B9B9B', textAlign: 'center', marginBottom: 8 }}>
+															No chat logs available for this period.
+														</Text>
+														{selectedTimeSpan !== 'All Time' && (
+															<View style={{ alignItems: 'center', marginTop: 8 }}>
+																<Text style={{ color: theme.colors.primary, textAlign: 'center', fontSize: 14, marginBottom: 8 }}>
+																	Try switching to "All Time" to see all available logs
 																</Text>
+																<TouchableOpacity 
+																	onPress={() => {
+																		console.log('[ToyLogs] User clicked "Show All Logs" button');
+																		setSelectedTimeSpan('All Time');
+																	}} 
+																	style={{ 
+																		paddingHorizontal: 16, 
+																		paddingVertical: 8, 
+														backgroundColor: theme.colors.primary, 
+														borderRadius: 8 
+																	}}
+																>
+																	<Text style={{ color: 'white', fontWeight: '600' }}>Show All Logs</Text>
+																</TouchableOpacity>
 															</View>
+														)}
+													</View>
+												) : (
+													Object.entries(groupedLogs).map(([date, dateLogs]) => (
+														<View key={date} style={styles.dateGroup}>
+															<Text style={styles.dateHeader}>
+																{(() => {
+																	try {
+																		// Parse the date string (YYYY-MM-DD) and create a local date
+																		const [year, month, day] = date.split('-').map(Number);
+																		if (!year || !month || !day) {
+																			return 'Invalid date';
+																		}
+																		// Create date in local timezone (month is 0-indexed)
+																		const dateObj = new Date(year, month - 1, day);
+																		if (isNaN(dateObj.getTime())) {
+																			return 'Invalid date';
+																		}
+																		return format(dateObj, 'EEEE, MMMM d, yyyy');
+																	} catch (error) {
+																		console.error('[ToyLogs] Error formatting date header:', error, 'date:', date);
+																		return 'Invalid date';
+																	}
+																})()}
+															</Text>
+															{dateLogs.map((log) => (
+																<View
+																	style={[
+																		styles.logRow,
+																		log.type === "user_request" && styles.logRowUser
+																	]}
+																	key={log.id}>
+																	{log.type !== "user_request" && (
+																		<View style={styles.avatarContainer}>
+																			<WyloIcon width={20} height={20} />
+																		</View>
+																	)}
+
+																	<View style={[
+																		styles.messageContainer,
+																		log.type === "user_request" && styles.messageContainerUser
+																	]}>
+																		<View style={[
+																			styles.messageBubble,
+																			log.type === "user_request" ? styles.messageBubbleUser : styles.messageBubbleWylo
+																		]}>
+																			{log.audioUri ? (
+																				<AudioMessage uri={log.audioUri} />
+																			) : (
+																				<Text
+																					style={[
+																						styles.messageText,
+																						{ fontFamily: 'PlusJakartaSans_400Regular' },
+																						log.type === "user_request" ? styles.messageTextUser : styles.messageTextWylo
+																					]}>
+																					{log.message}
+																					</Text>
+																			)}
+																		</View>
+																		<Text style={[styles.timeText, { fontFamily: 'PlusJakartaSans_400Regular' }]}>
+																			{(() => {
+																				try {
+																					let logTime: Date;
+																					if (log.time?.toDate && typeof log.time.toDate === 'function') {
+																						logTime = log.time.toDate();
+																					} else if (log.time?.seconds && typeof log.time.seconds === 'number') {
+																						logTime = new Date(log.time.seconds * 1000);
+																					} else if (log.time) {
+																						logTime = new Date(log.time);
+																					} else {
+																						return 'Invalid time';
+																					}
+																					
+																					if (isNaN(logTime.getTime())) {
+																						return 'Invalid time';
+																					}
+																					
+																					return format(logTime, 'h:mm a');
+																				} catch (error) {
+																					console.error('[ToyLogs] Error formatting time:', error, 'log:', log.id, 'time:', log.time);
+																					return 'Invalid time';
+																				}
+																			})()}
+																		</Text>
+																	</View>
+																</View>
+															))}
 														</View>
 													))
 												)}
@@ -608,5 +1137,16 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 14,
 		textAlign: 'right',
+	},
+	dateGroup: {
+		marginBottom: 24,
+	},
+	dateHeader: {
+		fontSize: 16,
+		fontWeight: 'bold',
+		color: theme.colors.primary,
+		marginBottom: 16,
+		textAlign: 'center',
+		fontFamily: 'PlusJakartaSans_600SemiBold',
 	},
 });
