@@ -1,114 +1,103 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+// index.js (Firebase Functions v2)
 
-require("dotenv").config();
-
-const functions = require("firebase-functions");
+const {onRequest} = require("firebase-functions/v2/https");
+const {defineSecret} = require("firebase-functions/params");
 const OpenAI = require("openai");
 const Stripe = require("stripe");
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Bind secrets from Firebase Secrets Manager
+const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
+const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
-// Use the key from Firebase config
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const stripe = new Stripe(
-    process.env.STRIPE_SECRET_KEY,
-    {apiVersion: "2023-10-16"},
-);
-
-exports.summarize = functions.https.onRequest(async (req, res) => {
-  // Allow CORS for local testing (optional, remove in production if not needed)
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST");
+/**
+ * Set CORS headers for the response
+ * @param {Object} res - Express response object
+ */
+function setCors(res) {
+  res.set("Access-Control-Allow-Origin", "*"); // tighten in prod
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+}
 
-  const {text} = req.body;
+// ---------- summarize ----------
+exports.summarize = onRequest({secrets: [OPENAI_API_KEY]}, async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") return res.status(204).send("");
+
+  const {text} = req.body || {};
   if (!text) return res.status(400).json({error: "No text provided"});
 
   try {
+    const openai = new OpenAI({apiKey: OPENAI_API_KEY.value()});
+
     const systemPrompt =
-      "You are an assistant that summarizes  " +
-      "chat logs between a child and an AI " +
-      "pet named Waylo. Your response MUST ALWAYS include ALL THREE sections " +
-      "in the following format, with each section on a new line:\n" +
+      "You are an assistant that summarizes chat logs between a child and an AI pet " +
+      "named Waylo. Respond with exactly three lines:\n" +
       "Summary: <1-2 sentence summary of the conversation>\n" +
       "Interest of child: <max 2 sentences about the child's interests>\n" +
-      "Suggestion to parents: <max 2 sentences with suggestions for the " +
-      "parents based on the chat>\n\n" +
-      "IMPORTANT RULES:\n" +
-      "1. ALL THREE sections MUST be present\n" +
-      "2. Each section MUST start with the exact heading shown above\n" +
-      "3. Each section MUST be on its own line\n" +
-      "4. If you cannot determine interests or suggestions, still include the section with 'Based on the limited conversation...'\n" +
-      "5. Do NOT add any other text or sections"
-    ;
+      "Suggestion to parents: <max 2 sentences with suggestions for the parents " +
+      "based on the chat>\n" +
+      "If something is unclear, still include the section and say 'Based on the limited " +
+      "conversation…'";
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: text,
-        },
+        {role: "system", content: systemPrompt},
+        {role: "user", content: text},
       ],
       max_tokens: 300,
     });
-    const summary = completion.choices[0].message.content;
-    res.json({summary});
+
+    const summary = completion.choices?.[0]?.message?.content ?? "";
+    return res.json({summary});
   } catch (err) {
-    res.status(500).json({error: err.message});
+    console.error("summarize error:", {
+      message: err?.message,
+      status: err?.status,
+      data: err?.response?.data,
+    });
+    return res.status(500).json({error: err?.message || "Unknown error"});
   }
 });
 
-exports.createPaymentIntent = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+// ---------- createPaymentIntent ----------
+exports.createPaymentIntent = onRequest(
+    {secrets: [STRIPE_SECRET_KEY]},
+    async (req, res) => {
+      setCors(res);
+      if (req.method === "OPTIONS") return res.status(204).send("");
 
-  try {
-    const customer = await stripe.customers.create();
-    const ephemeralKey = await stripe.ephemeralKeys.create(
-        {customer: customer.id},
-        {apiVersion: "2023-10-16"},
-    );
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: 1000, // $10.00 in cents
-      currency: "usd",
-      customer: customer.id,
-    });
+      try {
+        const stripe = new Stripe(STRIPE_SECRET_KEY.value(), {
+          apiVersion: "2023-10-16",
+        });
 
-    res.json({
-      paymentIntent: paymentIntent.client_secret,
-      ephemeralKey: ephemeralKey.secret,
-      customer: customer.id,
-    });
-  } catch (err) {
-    res.status(500).json({error: err.message});
-  }
-});
+        const customer = await stripe.customers.create();
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+            {customer: customer.id},
+            {apiVersion: "2023-10-16"},
+        );
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: 1000, // $10.00
+          currency: "usd",
+          customer: customer.id,
+        });
+
+        return res.json({
+          paymentIntent: paymentIntent.client_secret,
+          ephemeralKey: ephemeralKey.secret,
+          customer: customer.id,
+        });
+      } catch (err) {
+        console.error("createPaymentIntent error:", {
+          message: err?.message,
+          type: err?.type,
+          code: err?.code,
+        });
+        return res.status(500).json({
+          error: err?.message || "Unknown error",
+        });
+      }
+    },
+);
