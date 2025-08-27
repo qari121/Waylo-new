@@ -9,13 +9,15 @@ import {
   Platform,
   PermissionsAndroid,
   Linking,
+  Switch,
+  Modal,
 } from 'react-native';
 import { BleManager, Device, State } from 'react-native-ble-plx';
 import { toByteArray } from 'base64-js';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 interface BluetoothDevice {
   id: string;
@@ -42,6 +44,7 @@ interface ConnectedClient {
 
 export default function QRCodeScreen() {
   const router = useRouter();
+  const [permission, requestPermission] = useCameraPermissions();
   const [bluetoothState, setBluetoothState] = useState<State>(State.Unknown);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -50,11 +53,12 @@ export default function QRCodeScreen() {
   const [connectedClients, setConnectedClients] = useState<ConnectedClient[]>([]);
   const [bluetoothInitialized, setBluetoothInitialized] = useState(false);
   const [advertisementData, setAdvertisementData] = useState<any>(null);
-  const [autoConnectEnabled, setAutoConnectEnabled] = useState(false);
+  const [autoConnectEnabled, setAutoConnectEnabled] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [verificationStep, setVerificationStep] = useState<'idle' | 'step1' | 'step2' | 'complete'>('idle');
   const [qrCodeScanned, setQrCodeScanned] = useState<string | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [simulateConnection, setSimulateConnection] = useState(false);
 
   const bleManagerRef = useRef<BleManager | null>(null);
 
@@ -1125,80 +1129,18 @@ export default function QRCodeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Wailo BLE Client</Text>
-        <Text style={styles.subtitle}>iPhone scans for and connects to Orange Pi devices</Text>
-        <Text style={styles.scanSummary}>
-          🔍 This screen scans for nearby Orange Pi devices and extracts their MAC addresses when connected
-        </Text>
-      </View>
-
-      {/* Bluetooth Status */}
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Bluetooth Status:</Text>
-        <Text style={[styles.statusText, { color: getBluetoothStatusColor() }]}>
-          {getBluetoothStatusText()}
-        </Text>
-        {bluetoothState === State.PoweredOff && (
-          <TouchableOpacity style={styles.settingsButton} onPress={openBluetoothSettings}>
-            <Text style={styles.settingsButtonText}>Open Bluetooth Settings</Text>
+          <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>‹</Text>
           </TouchableOpacity>
-        )}
-      </View>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Device Pairing</Text>
+            <Text style={styles.subtitle}>iPhone scans for and connects to Waylo device</Text>
+          </View>
+        </View>
 
-      {/* Permission Status */}
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Permissions:</Text>
-        <Text style={[styles.statusText, { color: hasPermissions ? '#22c55e' : '#ef4444' }]}>
-          {hasPermissions ? 'Granted' : 'Not Granted'}
-        </Text>
-        {!hasPermissions && (
-          <TouchableOpacity style={styles.permissionButton} onPress={forcePermissionRequest}>
-            <Text style={styles.permissionButtonText}>Request Permission</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={[styles.permissionButton, { marginTop: 8, backgroundColor: '#6b7280' }]} onPress={checkCurrentPermissionStatus}>
-          <Text style={styles.permissionButtonText}>Check Permission Status</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Auto-Connect Toggle */}
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Auto-Connect:</Text>
-        <Text style={[styles.statusText, { color: autoConnectEnabled ? '#22c55e' : '#ef4444' }]}>
-          {autoConnectEnabled ? 'Enabled' : 'Disabled'}
-        </Text>
-        <TouchableOpacity 
-          style={[styles.toggleButton, { backgroundColor: autoConnectEnabled ? '#ef4444' : '#10b981' }]}
-          onPress={() => setAutoConnectEnabled(!autoConnectEnabled)}
-        >
-          <Text style={styles.toggleButtonText}>
-            {autoConnectEnabled ? 'Disable Auto-Connect' : 'Enable Auto-Connect'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Client Mode Info */}
-      <View style={styles.clientInfoContainer}>
-        <Text style={styles.clientInfoTitle}>🎯 BLE Client Mode</Text>
-        <Text style={styles.clientInfoDescription}>
-          iPhone scans for Orange Pi devices and connects to them to extract MAC addresses
-        </Text>
-        <Text style={styles.clientInfoNote}>
-          ✅ Orange Pi updated! Now exposes MAC address via standard Device Information Service (0x180A).
-        </Text>
-      </View>
-
-      {/* Scan Info */}
-      <View style={styles.scanInfoContainer}>
-        <Text style={styles.scanInfoText}>
-          🔍 Scan for nearby Orange Pi devices to extract their MAC addresses
-        </Text>
-        <Text style={styles.scanInfoSubtext}>
-          Orange Pi now exposes MAC address via standard Device Information Service (0x180A)
-        </Text>
-      </View>
+      
       
       {/* Scan Button */}
       <TouchableOpacity
@@ -1211,6 +1153,8 @@ export default function QRCodeScreen() {
         </Text>
       </TouchableOpacity>
 
+
+
       {/* Verification Status */}
       {verificationStep !== 'idle' && (
         <View style={styles.verificationContainer}>
@@ -1219,11 +1163,11 @@ export default function QRCodeScreen() {
           {/* Step 1: MAC Address Verification */}
           <View style={styles.verificationStep}>
             <Text style={[styles.stepStatus, { color: verificationStep === 'step1' || verificationStep === 'complete' ? '#22c55e' : '#ef4444' }]}>
-              {verificationStep === 'step1' || verificationStep === 'complete' ? '✅' : '❌'} Step 1/2: MAC Address Verification
+              {verificationStep === 'step1' || verificationStep === 'complete' ? '✅' : '❌'} Step 1/2: Pariing Verification
             </Text>
             <Text style={styles.stepDescription}>
               {verificationStep === 'step1' || verificationStep === 'complete' 
-                ? 'MAC address verified in Firebase database' 
+                ? 'Waylo device paired with iPhone' 
                 : 'Waiting for MAC address verification...'}
             </Text>
           </View>
@@ -1252,19 +1196,7 @@ export default function QRCodeScreen() {
                 <Text style={styles.qrScanButtonText}>📱 Scan QR Code</Text>
               </TouchableOpacity>
               
-              {/* Manual QR Code Input for Testing */}
-              <TouchableOpacity
-                style={[styles.qrScanButton, { backgroundColor: '#f59e0b', marginTop: 8 }]}
-                onPress={() => {
-                  // For testing: simulate QR code scan with expected value
-                  const testCode = '00112233445566';
-                  setQrCodeScanned(testCode);
-                  verifyQRCode(testCode);
-                  Alert.alert('Test QR Code', `Simulated QR code scan: ${testCode}`);
-                }}
-              >
-                <Text style={styles.qrScanButtonText}>🧪 Test QR Code (00112233445566)</Text>
-              </TouchableOpacity>
+
             </View>
           )}
           
@@ -1273,7 +1205,7 @@ export default function QRCodeScreen() {
             <View style={styles.successContainer}>
               <Text style={styles.successTitle}>🎉 VERIFICATION COMPLETE!</Text>
               <Text style={styles.successText}>
-                Both MAC address and QR code have been verified successfully.
+                Both Waylo device and QR code have been verified successfully.
                 This device is now fully authenticated.
               </Text>
             </View>
@@ -1362,26 +1294,70 @@ export default function QRCodeScreen() {
         </View>
       )}
 
-      {/* Debug Info */}
-      <View style={styles.debugContainer}>
-        <Text style={styles.debugTitle}>Debug Information</Text>
-        <Text style={styles.debugText}>Bluetooth Initialized: {bluetoothInitialized ? 'Yes' : 'No'}</Text>
-        <Text style={styles.debugText}>BLE State: {bluetoothState}</Text>
-        <Text style={styles.debugText}>Has Permissions: {hasPermissions ? 'Yes' : 'No'}</Text>
-        <Text style={styles.debugText}>Is Advertising: {isAdvertising ? 'Yes' : 'No'}</Text>
-        <Text style={styles.debugText}>Is Scanning: {isScanning ? 'Yes' : 'No'}</Text>
-        <Text style={styles.debugText}>Auto-Connect: {autoConnectEnabled ? 'Enabled' : 'Disabled'}</Text>
-        <Text style={styles.debugText}>Connected Clients: {connectedClients.length}</Text>
-        <Text style={styles.debugText}>Wailo Devices Found: {devices.length}</Text>
-        <Text style={styles.debugText}>Platform: {Platform.OS}</Text>
-        <Text style={styles.debugText}>Mode: BLE Client (Scanning for Orange Pi)</Text>
-        <Text style={styles.debugText}>MAC Extraction: {Platform.OS === 'ios' ? 'Limited (iOS privacy)' : 'Full (Android)'}</Text>
-        <Text style={styles.debugText}>Verification Step: {verificationStep}</Text>
-        <Text style={styles.debugText}>QR Code Scanned: {qrCodeScanned || 'None'}</Text>
-        {advertisementData && (
-          <Text style={styles.debugText}>Advertisement: {JSON.stringify(advertisementData)}</Text>
-        )}
-      </View>
+      {/* QR Code Scanner Modal */}
+      {showQRScanner && (
+        <Modal
+          visible={showQRScanner}
+          animationType="slide"
+          presentationStyle="fullScreen"
+        >
+          <View style={styles.cameraContainer}>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              onBarcodeScanned={({ data }) => {
+                console.log('🔍 QR Code scanned:', data);
+                setQrCodeScanned(data);
+                setShowQRScanner(false);
+                
+                // Verify the scanned QR code
+                const isValid = verifyQRCode(data);
+                
+                if (isValid) {
+                  Alert.alert(
+                    'QR Code Verified! 🎉',
+                    `Verification complete!`,
+                    [{ text: 'OK' }]
+                  );
+                } else {
+                  Alert.alert(
+                    'Invalid QR Code ❌',
+                    `Scanned: ${data}\n\nExpected: 00112233445566\n\nPlease try again.`,
+                    [
+                      { text: 'Try Again', onPress: () => setShowQRScanner(true) },
+                      { text: 'Cancel', onPress: () => setShowQRScanner(false) }
+                    ]
+                  );
+                }
+              }}
+            >
+              <View style={styles.cameraOverlay}>
+                <View style={styles.cameraHeader}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowQRScanner(false)}
+                  >
+                    <Text style={styles.closeButtonText}>✕</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.cameraTitle}>Scan QR Code</Text>
+                  <View style={styles.placeholder} />
+                </View>
+                
+                <View style={styles.scanFrame}>
+                  <View style={[styles.scanFrameCorner, { top: 0, left: 0, borderTopLeftRadius: 0, borderTopWidth: 3, borderLeftWidth: 3 }]} />
+                  <View style={[styles.scanFrameCorner, { top: 0, right: 0, borderTopRightRadius: 0, borderTopWidth: 3, borderRightWidth: 3 }]} />
+                  <View style={[styles.scanFrameCorner, { bottom: 0, left: 0, borderBottomLeftRadius: 0, borderBottomWidth: 3, borderLeftWidth: 3 }]} />
+                  <View style={[styles.scanFrameCorner, { bottom: 0, right: 0, borderBottomRightRadius: 0, borderBottomWidth: 3, borderRightWidth: 3 }]} />
+                </View>
+                
+                <Text style={styles.scanInstructions}>
+                  Position the QR code within the frame
+                </Text>
+              </View>
+            </CameraView>
+          </View>
+        </Modal>
+      )}
     </ScrollView>
   );
 }
@@ -1393,20 +1369,40 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 30,
+    paddingTop: 45,
+    paddingHorizontal: 25,
+  },
+  backButton: {
+    padding: 0,
+    marginRight: 0,
+    marginLeft: -15,
+    marginTop: -30,
+  },
+  backButtonText: {
+    fontSize: 52,
+    color: '#1e293b',
+    fontWeight: 'semibold',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1e293b',
     marginBottom: 8,
+    fontFamily: 'Plus Jakarta Sans',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#64748b',
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: 'Plus Jakarta Sans',
   },
   scanSummary: {
     fontSize: 14,
@@ -1461,16 +1457,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
-  toggleButton: {
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  toggleButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
+
   clientInfoContainer: {
     backgroundColor: 'white',
     padding: 20,
@@ -1578,7 +1565,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   scanButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#DC2626',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -1595,6 +1582,46 @@ const styles = StyleSheet.create({
   scanButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  simulateContainer: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  simulateLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  simulateStatus: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  simulateButton: {
+    backgroundColor: '#10b981',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  simulateButtonText: {
+    color: 'white',
+    fontSize: 14,
     fontWeight: '600',
   },
   clientsContainer: {
@@ -1732,7 +1759,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   connectButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#DC2626',
     padding: 8,
     borderRadius: 6,
     alignItems: 'center',
@@ -1741,23 +1768,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
-  },
-  debugContainer: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  debugTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#475569',
-    marginBottom: 12,
-  },
-  debugText: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 4,
+    fontFamily: 'Plus Jakarta Sans',
   },
   verificationContainer: {
     backgroundColor: 'white',
@@ -1776,6 +1787,7 @@ const styles = StyleSheet.create({
     color: '#1e40af',
     marginBottom: 16,
     textAlign: 'center',
+    fontFamily: 'Plus Jakarta Sans',
   },
   verificationStep: {
     marginBottom: 16,
@@ -1789,13 +1801,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    fontFamily: 'Plus Jakarta Sans',
   },
   stepDescription: {
     fontSize: 14,
     color: '#64748b',
+    fontFamily: 'Plus Jakarta Sans',
   },
   qrScanButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#DC2626',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -1805,6 +1819,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Plus Jakarta Sans',
   },
   successContainer: {
     backgroundColor: '#f0fdf4',
@@ -1825,5 +1840,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#16a34a',
     textAlign: 'center',
+  },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
+  },
+  closeButton: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  cameraTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  placeholder: {
+    width: 40,
+  },
+  scanFrame: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 250,
+    height: 250,
+    marginLeft: -125,
+    marginTop: -125,
+    borderWidth: 2,
+    borderColor: 'white',
+    borderRadius: 20,
+  },
+  scanFrameCorner: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderColor: '#10b981',
+    borderWidth: 3,
+  },
+  scanInstructions: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 16,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList, Switch } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList, Switch, ScrollView } from 'react-native';
 import Slider from '@react-native-community/slider';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
@@ -315,7 +315,7 @@ const ConnectedDeviceScreen = () => {
   </View>
 
   {/* Main content */}
-  <View style={styles.screen}>
+  <ScrollView style={styles.screen} showsVerticalScrollIndicator={false}>
     {/* DEVICE CARD */}
     <View style={styles.deviceCard}>
       <View style={styles.deviceIconWrapper}>
@@ -528,7 +528,7 @@ const ConnectedDeviceScreen = () => {
       onSelect={setEndTime}
       onClose={() => setPickerType(null)}
     />
-  </View>
+  </ScrollView>
 </SafeAreaView>
   );
 };
@@ -754,6 +754,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
+    marginBottom: 20,
     elevation: 4,
   },
   parentalTitle: {
