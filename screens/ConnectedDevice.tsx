@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Modal, FlatList, Switch } from 'react-native';
+import Slider from '@react-native-community/slider';
 import ConnectedDeviceIcon from '../assets/icons/connected_device.svg';
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +68,17 @@ interface ToyData {
   user_uid?: string;
 }
 
+interface AudioStatus {
+  microphone: {
+    volume: number;
+    muted: boolean;
+  };
+  speaker: {
+    volume: number;
+    muted: boolean;
+  };
+}
+
 const ConnectedDeviceScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -86,6 +98,14 @@ const ConnectedDeviceScreen = () => {
   const [toyData, setToyData] = useState<ToyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [macLoaded, setMacLoaded] = useState(false);
+
+  // Audio control state
+  const [audioStatus, setAudioStatus] = useState<AudioStatus>({
+    microphone: { volume: 50, muted: false },
+    speaker: { volume: 50, muted: false }
+  });
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [orangePiIP, setOrangePiIP] = useState<string>('192.168.87.249'); // Default IP from your Flask server
 
   useEffect(() => {
     const fetchMac = async () => {
@@ -185,6 +205,90 @@ const ConnectedDeviceScreen = () => {
     fetchDND();
   }, [macAddress]);
 
+  // Fetch audio status from Orange Pi
+  const fetchAudioStatus = async () => {
+    try {
+      setAudioLoading(true);
+      const response = await fetch(`http://${orangePiIP}:5001/api/audio/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setAudioStatus(data);
+        console.log('Audio status fetched:', data);
+      } else {
+        console.error('Failed to fetch audio status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching audio status:', error);
+      Alert.alert('Error', 'Could not connect to Orange Pi audio server');
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
+  // Set volume for microphone or speaker
+  const setVolume = async (type: 'microphone' | 'speaker', volume: number) => {
+    try {
+      const response = await fetch(`http://${orangePiIP}:5001/api/audio/volume`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ [type]: volume }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`${type} volume set to ${volume}%:`, data);
+        
+        // Update local state
+        setAudioStatus(prev => ({
+          ...prev,
+          [type]: { ...prev[type], volume }
+        }));
+      } else {
+        console.error(`Failed to set ${type} volume:`, response.status);
+        Alert.alert('Error', `Failed to set ${type} volume`);
+      }
+    } catch (error) {
+      console.error(`Error setting ${type} volume:`, error);
+      Alert.alert('Error', `Could not set ${type} volume`);
+    }
+  };
+
+  // Toggle mute for microphone or speaker
+  const toggleMute = async (type: 'microphone' | 'speaker') => {
+    try {
+      const response = await fetch(`http://${orangePiIP}:5001/api/audio/mute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ [type]: true }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`${type} mute toggled:`, data);
+        
+        // Fetch updated status
+        await fetchAudioStatus();
+      } else {
+        console.error(`Failed to toggle ${type} mute:`, response.status);
+        Alert.alert('Error', `Failed to toggle ${type} mute`);
+      }
+    } catch (error) {
+      console.error(`Error toggling ${type} mute:`, error);
+      Alert.alert('Error', `Could not toggle ${type} mute`);
+    }
+  };
+
+  // Fetch audio status when component mounts
+  useEffect(() => {
+    if (macLoaded && macAddress) {
+      fetchAudioStatus();
+    }
+  }, [macLoaded, macAddress]);
+
   // Toggle Lock/Unlock (DND)
   const handleToggleLock = async () => {
     if (!ensureMacAddress(macAddress)) return;
@@ -239,6 +343,114 @@ const ConnectedDeviceScreen = () => {
       ) : (
         <Text style={styles.errorText}>No device data found</Text>
       )}
+    </View>
+
+    {/* AUDIO CONTROLS */}
+    <View style={styles.audioCard}>
+      <Text style={styles.audioTitle}>🎵 Audio Controls</Text>
+      <Text style={styles.audioSubtitle}>Control Orange Pi audio from your iPhone</Text>
+      
+      {/* IP Address Input */}
+      <View style={styles.ipInputContainer}>
+        <Text style={styles.ipLabel}>Orange Pi IP Address:</Text>
+        <View style={styles.ipInputRow}>
+          <Text style={styles.ipAddress}>{orangePiIP}:5001</Text>
+          <TouchableOpacity
+            style={styles.changeIpButton}
+            onPress={() => {
+              Alert.prompt(
+                'Change IP Address',
+                'Enter the Orange Pi IP address:',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'OK', 
+                    onPress: (newIP) => {
+                      if (newIP && newIP.trim()) {
+                        setOrangePiIP(newIP.trim());
+                        Alert.alert('Success', `IP address changed to ${newIP.trim()}`);
+                      }
+                    }
+                  }
+                ],
+                'plain-text',
+                orangePiIP
+              );
+            }}
+          >
+            <Text style={styles.changeIpButtonText}>Change</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Microphone Controls */}
+      <View style={styles.audioControlSection}>
+        <View style={styles.audioHeader}>
+          <Text style={styles.audioDeviceLabel}>🎤 Microphone</Text>
+          <TouchableOpacity
+            style={[styles.muteButton, audioStatus.microphone.muted && styles.muteButtonActive]}
+            onPress={() => toggleMute('microphone')}
+          >
+            <Text style={[styles.muteButtonText, audioStatus.microphone.muted && styles.muteButtonTextActive]}>
+              {audioStatus.microphone.muted ? 'Unmute' : 'Mute'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.volumeContainer}>
+          <Text style={styles.volumeLabel}>Volume: {audioStatus.microphone.volume}%</Text>
+          <Slider
+            style={styles.volumeSlider}
+            minimumValue={0}
+            maximumValue={100}
+            value={audioStatus.microphone.volume}
+            onValueChange={(value: number) => setVolume('microphone', Math.round(value))}
+            minimumTrackTintColor={theme.colors.primary}
+            maximumTrackTintColor="#E5E7EB"
+            thumbTintColor={theme.colors.primary}
+          />
+        </View>
+      </View>
+
+      {/* Speaker Controls */}
+      <View style={styles.audioControlSection}>
+        <View style={styles.audioHeader}>
+          <Text style={styles.audioDeviceLabel}>🔊 Speaker</Text>
+          <TouchableOpacity
+            style={[styles.muteButton, audioStatus.speaker.muted && styles.muteButtonActive]}
+            onPress={() => toggleMute('speaker')}
+          >
+            <Text style={[styles.muteButtonText, audioStatus.speaker.muted && styles.muteButtonTextActive]}>
+              {audioStatus.speaker.muted ? 'Unmute' : 'Mute'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.volumeContainer}>
+          <Text style={styles.volumeLabel}>Volume: {audioStatus.speaker.volume}%</Text>
+          <Slider
+            style={styles.volumeSlider}
+            minimumValue={0}
+            maximumValue={100}
+            value={audioStatus.speaker.volume}
+            onValueChange={(value: number) => setVolume('speaker', Math.round(value))}
+            minimumTrackTintColor={theme.colors.primary}
+            maximumTrackTintColor="#E5E7EB"
+            thumbTintColor={theme.colors.primary}
+          />
+        </View>
+      </View>
+
+      {/* Refresh Button */}
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={fetchAudioStatus}
+        disabled={audioLoading}
+      >
+        <Text style={styles.refreshButtonText}>
+          {audioLoading ? 'Refreshing...' : '🔄 Refresh Audio Status'}
+        </Text>
+      </TouchableOpacity>
     </View>
     
     {/* PARENTAL CONTROLS */}
@@ -402,6 +614,135 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#E53E3E',
     fontStyle: 'italic',
+  },
+  audioCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'flex-start',
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  audioTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: 8,
+  },
+  audioSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  ipInputContainer: {
+    width: '100%',
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  ipLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  ipInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ipAddress: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  changeIpButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  changeIpButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  audioControlSection: {
+    width: '100%',
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  audioHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  audioDeviceLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  muteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  muteButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  muteButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  muteButtonTextActive: {
+    color: '#fff',
+  },
+  volumeContainer: {
+    width: '100%',
+  },
+  volumeLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  volumeSlider: {
+    width: '100%',
+    height: 40,
+  },
+  refreshButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    width: '100%',
+  },
+  refreshButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   parentalCard: {
     width: '100%',

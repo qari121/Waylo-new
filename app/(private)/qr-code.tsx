@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native'
 
-import { QRCodeScreen } from '../../screens/qrcode'
+import QRCodeScreen from '../../screens/qrcode'
 
 export default function Page() {
 	return (

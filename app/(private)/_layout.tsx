@@ -31,6 +31,7 @@ export default function PrivateLayout() {
           <Stack.Screen name="reports" />
           <Stack.Screen name="profile" />
           <Stack.Screen name="wylo-registration" />
+          <Stack.Screen name="qr-code" />
         </Stack>
 
         {/* single persistent bottom bar */}
