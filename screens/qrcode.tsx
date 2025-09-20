@@ -11,6 +11,7 @@ import {
   Linking,
   Switch,
   Modal,
+  TextInput,
 } from 'react-native';
 import { BleManager, Device, State } from 'react-native-ble-plx';
 import { toByteArray } from 'base64-js';
@@ -18,6 +19,11 @@ import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { auth } from '../firebase';
+import { Buffer } from 'buffer';
+
+// one-time polyfill (safe no-op if it already exists)
+(global as any).Buffer = (global as any).Buffer || Buffer;
 
 interface BluetoothDevice {
   id: string;
@@ -59,6 +65,11 @@ export default function QRCodeScreen() {
   const [qrCodeScanned, setQrCodeScanned] = useState<string | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [simulateConnection, setSimulateConnection] = useState(false);
+  const [isBindingDevice, setIsBindingDevice] = useState(false);
+  const [bindingStatus, setBindingStatus] = useState<'idle' | 'binding' | 'success' | 'error'>('idle');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordResolver, setPasswordResolver] = useState<((password: string) => void) | null>(null);
 
   const bleManagerRef = useRef<BleManager | null>(null);
 
@@ -949,7 +960,7 @@ export default function QRCodeScreen() {
           // Set verification step to step1 (MAC verified)
           setVerificationStep('step1');
           console.log('🎯 Client updated with Firebase verification data');
-          console.log('🎯 Ready for Step 2/2: QR Code verification');
+          console.log('🎯 Ready for Step 2/2: Send Login Credentials');
         } else {
           console.log('❌ STEP 1/2 FAILED: MAC address NOT found in Firebase toy collection');
           console.log('💡 This toy may not be registered in the system');
@@ -1125,6 +1136,217 @@ export default function QRCodeScreen() {
       }
     } catch (error) {
       console.error('❌ Force permission failed:', error);
+      }
+    };
+
+  // Add this function to send data to the Orange Pi via BLE
+  const sendDataToDevice = async (deviceId: string, email: string, password: string) => {
+    try {
+      console.log('📤 Sending credentials to device:', { email, password: '***' });
+      
+      // Get the connected device
+      const devices = await bleManagerRef.current?.devices([deviceId]);
+      if (!devices || devices.length === 0) {
+        throw new Error('Device not found');
+      }
+      
+      const device = devices[0];
+      
+      // ---- Encoding helpers (Buffer does UTF-8 and base64 cleanly) ----
+      const toBase64 = (buf: Buffer) => buf.toString('base64');
+
+      // Conservative payload <= 20 bytes on ATT; stick with 18 like you had
+      const PAYLOAD_CHUNK_BYTES = 18;
+
+      // Create credentials object
+      const credentials = { email, password };
+      const credentialsJson = JSON.stringify(credentials);
+      const credentialsBuf = Buffer.from(credentialsJson, 'utf8');
+      const totalChunks = Math.ceil(credentialsBuf.length / PAYLOAD_CHUNK_BYTES);
+      console.log(`📦 Credentials split into ${totalChunks} chunks of max ${PAYLOAD_CHUNK_BYTES} bytes each`);
+
+      console.log('🔍 Checking available characteristics for service:', SERVICE_UUID);
+      const characteristics = await device.characteristicsForService(SERVICE_UUID);
+      console.log('🔍 Available characteristics:', characteristics.map(c => ({
+        uuid: c.uuid,
+        isReadable: c.isReadable,
+        isWritable: c.isWritableWithResponse || c.isWritableWithoutResponse,
+        isNotifiable: c.isNotifiable
+      })));
+      
+      const TOKEN_CHAR = '33333333-4444-5555-6666-777777777777';
+
+      const targetChar = characteristics.find(
+        c => c.uuid.toLowerCase() === TOKEN_CHAR.toLowerCase()
+      );
+      if (!targetChar) {
+        throw new Error(`TokenCharacteristic ${TOKEN_CHAR} not found. Available: ${characteristics.map(c => c.uuid).join(', ')}`);
+      }
+
+      console.log('🔍 TokenCharacteristic caps:', {
+        isReadable: targetChar.isReadable,
+        isNotifiable: targetChar.isNotifiable,
+        isWritableWithResponse: targetChar.isWritableWithResponse,
+        isWritableWithoutResponse: targetChar.isWritableWithoutResponse,
+      });
+
+      // Decide the write function based on caps
+      type WriteFn = (serviceUUID: string, charUUID: string, valueB64: string) => Promise<any>;
+      let writeFn: WriteFn | null = null;
+      let mode: 'with' | 'without' | null = null;
+
+      if (targetChar.isWritableWithoutResponse) {
+        writeFn = device.writeCharacteristicWithoutResponseForService.bind(device);
+        mode = 'without';
+      } else if (targetChar.isWritableWithResponse) {
+        writeFn = device.writeCharacteristicWithResponseForService.bind(device);
+        mode = 'with';
+      } else {
+        throw new Error(`TokenCharacteristic ${TOKEN_CHAR} is not writable (no supported write mode)`);
+      }
+
+      console.log(`✍️  Using write-${mode}-response`);
+
+      const safeWrite = async (b64: string) => {
+        // Try selected mode first, then fall back to the other if available
+        try {
+          await writeFn!(SERVICE_UUID, TOKEN_CHAR, b64);
+        } catch (e1) {
+          console.warn(`⚠️ write-${mode}-response failed once:`, e1);
+          // Fallback
+          if (mode === 'without' && targetChar.isWritableWithResponse) {
+            console.log('↩️  Falling back to write-with-response');
+            await device.writeCharacteristicWithResponseForService(SERVICE_UUID, TOKEN_CHAR, b64);
+          } else if (mode === 'with' && targetChar.isWritableWithoutResponse) {
+            console.log('↩️  Falling back to write-without-response');
+            await device.writeCharacteristicWithoutResponseForService(SERVICE_UUID, TOKEN_CHAR, b64);
+          } else {
+            throw e1;
+          }
+        }
+      };
+
+      // 1) Send header (JSON → base64)
+      const headerObj = { type: 'credentials', total: totalChunks };
+      const headerB64 = toBase64(Buffer.from(JSON.stringify(headerObj), 'utf8'));
+      console.log('📤 Sending header:', headerObj, `(mode: ${mode})`);
+      await safeWrite(headerB64);
+
+      // 2) Send chunks
+      for (let offset = 0; offset < credentialsBuf.length; offset += PAYLOAD_CHUNK_BYTES) {
+        const slice = credentialsBuf.subarray(offset, Math.min(offset + PAYLOAD_CHUNK_BYTES, credentialsBuf.length));
+        const sliceB64 = toBase64(slice);
+        const idx = Math.floor(offset / PAYLOAD_CHUNK_BYTES) + 1;
+        console.log(`📤 Sending chunk ${idx}/${totalChunks} (${slice.length} bytes)`);
+        await safeWrite(sliceB64);
+        await new Promise(r => setTimeout(r, 60)); // slightly slower pacing helps CoreBluetooth/BlueZ
+      }
+
+      // 3) EOF
+      const eofB64 = toBase64(Buffer.from('__EOF__', 'utf8'));
+      console.log('📤 Sending EOF');
+      await safeWrite(eofB64);
+
+      await new Promise(r => setTimeout(r, 1000)); // allow Pi to process
+      console.log('✅ Credentials sent successfully');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Failed to send credentials:', error);
+      throw error;
+    }
+  };
+
+  // Function to show password input modal
+  const showPasswordInput = (): Promise<string> => {
+    return new Promise((resolve) => {
+      setPasswordResolver(() => resolve);
+      setPasswordInput('');
+      setShowPasswordModal(true);
+    });
+  };
+
+  // Function to handle password modal submission
+  const handlePasswordSubmit = () => {
+    if (passwordResolver) {
+      passwordResolver(passwordInput);
+      setPasswordResolver(null);
+    }
+    setShowPasswordModal(false);
+    setPasswordInput('');
+  };
+
+  // Function to handle password modal cancellation
+  const handlePasswordCancel = () => {
+    if (passwordResolver) {
+      passwordResolver('');
+      setPasswordResolver(null);
+    }
+    setShowPasswordModal(false);
+    setPasswordInput('');
+  };
+
+  // Add this function to handle sending login credentials to the device
+  const bindDeviceToUser = async (deviceId: string) => {
+    try {
+      setIsBindingDevice(true);
+      setBindingStatus('binding');
+      
+      console.log('🔗 Starting credentials sending process...');
+      
+      // Get user's Firebase ID token
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      const idToken = await user.getIdToken();
+      console.log('🔐 Got Firebase ID token');
+      
+      // Get user's email for device authentication
+      const userEmail = user.email;
+      if (!userEmail) {
+        throw new Error('User email not available');
+      }
+      
+      // Always prompt user for password verification
+      console.log('🔐 Requesting password verification for device authentication');
+      
+      const userPassword = await showPasswordInput();
+      
+      if (!userPassword) {
+        throw new Error('Password verification cancelled by user.');
+      }
+      
+      console.log('📧 Sending user credentials to device...');
+      console.log('📧 User email:', userEmail);
+      console.log('🔐 Password verified, proceeding with BLE transmission');
+      
+      // Send user credentials to Pi via BLE
+      await sendDataToDevice(deviceId, userEmail, userPassword);
+      console.log('📤 User credentials sent to device');
+      
+      setBindingStatus('success');
+      console.log('✅ Device credentials sent successfully');
+      
+      // Show success message
+      Alert.alert(
+        'Credentials Sent Successfully! 🎉',
+        'Your login credentials have been sent to the Waylo device.\n\nThe device can now authenticate with your account.',
+        [{ text: 'OK' }]
+      );
+      
+    } catch (error) {
+      console.error('❌ Failed to send credentials:', error);
+      setBindingStatus('error');
+      
+      Alert.alert(
+        'Credentials Send Failed',
+        `Failed to send credentials to device: ${error instanceof Error ? error.message : String(error)}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsBindingDevice(false);
     }
   };
 
@@ -1165,23 +1387,23 @@ export default function QRCodeScreen() {
             <Text style={[styles.stepStatus, { color: verificationStep === 'step1' || verificationStep === 'complete' ? '#22c55e' : '#ef4444' }]}>
               {verificationStep === 'step1' || verificationStep === 'complete' ? '✅' : '❌'} Step 1/2: Pariing Verification
             </Text>
-            <Text style={styles.stepDescription}>
-              {verificationStep === 'step1' || verificationStep === 'complete' 
-                ? 'Waylo device paired with iPhone' 
-                : 'Waiting for MAC address verification...'}
-            </Text>
+              <Text style={styles.stepDescription}>
+                {verificationStep === 'step1' || verificationStep === 'complete' 
+                  ? 'Waylo device paired and bound to your account' 
+                  : 'Waiting for device pairing and binding...'}
+              </Text>
           </View>
           
           {/* Step 2: QR Code Verification */}
           <View style={styles.verificationStep}>
             <Text style={[styles.stepStatus, { color: verificationStep === 'complete' ? '#22c55e' : '#6b7280' }]}>
-              {verificationStep === 'complete' ? '✅' : '⏳'} Step 2/2: QR Code Verification
+              {verificationStep === 'complete' ? '✅' : '⏳'} Step 2/2: Send Login Credentials
             </Text>
             <Text style={styles.stepDescription}>
               {verificationStep === 'complete' 
-                ? 'QR code verified successfully!' 
+                ? 'Credentials sent successfully!' 
                 : verificationStep === 'step1' 
-                  ? 'Ready to scan QR code: 00112233445566'
+                  ? 'Ready to send your login credentials to the device'
                   : 'Waiting for Step 1 completion...'}
             </Text>
           </View>
@@ -1234,12 +1456,45 @@ export default function QRCodeScreen() {
                 Source: {client.macAddressSource}
               </Text>
               {client.isConnected && (
-                <TouchableOpacity
-                  style={styles.disconnectButton}
-                  onPress={() => disconnectFromDevice(client.id)}
-                >
-                  <Text style={styles.disconnectButtonText}>Disconnect</Text>
-                </TouchableOpacity>
+                <View style={styles.bindingControls}>
+                  <TouchableOpacity
+                    style={[
+                      styles.bindButton,
+                      { backgroundColor: bindingStatus === 'success' ? '#22c55e' : '#3b82f6' }
+                    ]}
+                    onPress={() => bindDeviceToUser(client.id)}
+                    disabled={isBindingDevice || bindingStatus === 'success'}
+                  >
+                    <Text style={styles.bindButtonText}>
+                      {isBindingDevice 
+                        ? 'Binding...' 
+                        : bindingStatus === 'success' 
+                          ? 'Credentials Sent ✅' 
+                          : 'Send Login Credentials'
+                      }
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {bindingStatus === 'error' && (
+                    <TouchableOpacity
+                      style={[styles.bindButton, { backgroundColor: '#ef4444' }]}
+                      onPress={() => {
+                        setBindingStatus('idle');
+                        bindDeviceToUser(client.id);
+                      }}
+                    >
+                      <Text style={styles.bindButtonText}>Retry Binding</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  
+                  <TouchableOpacity
+                    style={styles.disconnectButton}
+                    onPress={() => disconnectFromDevice(client.id)}
+                  >
+                    <Text style={styles.disconnectButtonText}>Disconnect</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           ))}
@@ -1358,6 +1613,47 @@ export default function QRCodeScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Password Input Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handlePasswordCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Device Verification</Text>
+            <Text style={styles.modalMessage}>
+              Please enter your password to verify your identity and authenticate with the Waylo device:
+            </Text>
+            <TextInput
+              style={styles.passwordInput}
+              value={passwordInput}
+              onChangeText={setPasswordInput}
+              placeholder="Enter your password"
+              secureTextEntry={true}
+              autoFocus={true}
+              onSubmitEditing={handlePasswordSubmit}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handlePasswordCancel}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.submitButton]}
+                onPress={handlePasswordSubmit}
+                disabled={!passwordInput.trim()}
+              >
+                <Text style={styles.submitButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1694,6 +1990,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  bindingControls: {
+    marginTop: 8,
+    gap: 8,
+  },
+  bindButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  bindButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Plus Jakarta Sans',
+  },
   deviceList: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -1910,5 +2221,72 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 16,
+  },
+  // Password Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    backgroundColor: '#f9fafb',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  submitButton: {
+    backgroundColor: '#3b82f6',
+  },
+  cancelButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  submitButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

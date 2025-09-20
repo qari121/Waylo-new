@@ -22,6 +22,7 @@ export const login = createAsyncThunk(
 					profileImageUrl: rawData.profileImageUrl || '',
 				} as AuthState;
 				
+				
 				// sync MAC to local storage for first-install restore
 				if (userData?.mac_address) {
 					await AsyncStorage.setItem('macAddress', userData.mac_address as string);
