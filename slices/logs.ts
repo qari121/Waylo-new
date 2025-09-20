@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { differenceInCalendarWeeks, min, parseISO } from 'date-fns'
 import { db } from '../firebase'
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query, where, limit } from 'firebase/firestore'
 
 export const toyLogs = createAsyncThunk('logs/toy', async (macAddress: string, thunkAPI) => {
 	try {
@@ -9,13 +9,34 @@ export const toyLogs = createAsyncThunk('logs/toy', async (macAddress: string, t
 		const q = query(
 			toyLogsRef,
 			where('toy_mac_address', '==', macAddress),
-			orderBy('time', 'asc')
+			orderBy('time', 'asc'),
+			limit(1000) // Limit to prevent memory issues
 		)
 		const querySnapshot = await getDocs(q)
 
 		const logs: any[] = []
 		querySnapshot.forEach((doc) => {
-			logs.push({ id: doc.id, ...doc.data(), time: doc.data().time?.toDate().toISOString() })
+			const data = doc.data()
+			let timeValue: string
+			
+			// Safe timestamp conversion
+			try {
+				if (data.time?.toDate && typeof data.time.toDate === 'function') {
+					timeValue = data.time.toDate().toISOString()
+				} else if (data.time?.seconds && typeof data.time.seconds === 'number') {
+					timeValue = new Date(data.time.seconds * 1000).toISOString()
+				} else if (data.time) {
+					timeValue = new Date(data.time).toISOString()
+				} else {
+					console.warn('[Logs] Log without valid time field:', doc.id)
+					timeValue = new Date().toISOString() // Fallback to current time
+				}
+			} catch (timeError) {
+				console.error('[Logs] Error converting timestamp:', timeError, 'for doc:', doc.id)
+				timeValue = new Date().toISOString() // Fallback to current time
+			}
+			
+			logs.push({ id: doc.id, ...data, time: timeValue })
 		})
 		return thunkAPI.fulfillWithValue(logs)
 	} catch (error: any) {
@@ -37,8 +58,27 @@ export const fetchDailyLogRanges = createAsyncThunk(
 
 			querySnapshot.forEach((doc) => {
 				const { time } = doc.data()
-				const date = new Date(time.seconds * 1000).toISOString().split('T')[0]
-				const timestamp = time.seconds
+				
+				// Safe date parsing
+				let date: string
+				let timestamp: number
+				
+				try {
+					if (time?.seconds && typeof time.seconds === 'number') {
+						timestamp = time.seconds
+						date = new Date(time.seconds * 1000).toISOString().split('T')[0]
+					} else if (time?.toDate && typeof time.toDate === 'function') {
+						const dateObj = time.toDate()
+						timestamp = dateObj.getTime() / 1000
+						date = dateObj.toISOString().split('T')[0]
+					} else {
+						console.warn('[Logs] Invalid time field in document:', doc.id)
+						return
+					}
+				} catch (error) {
+					console.error('[Logs] Error parsing time for document:', doc.id, error)
+					return
+				}
 
 				if (!logsByDate[date]) {
 					logsByDate[date] = []
@@ -51,11 +91,22 @@ export const fetchDailyLogRanges = createAsyncThunk(
 			Object.entries(logsByDate).forEach(([date, timestamps]) => {
 				if (timestamps.length < 2) return
 
-				const earliest = Math.min(...timestamps)
-				const latest = Math.max(...timestamps)
-				const hours = (latest - earliest) / 3600
-
-				dailyTimeRanges.push({ date, hours: Math.round(hours) })
+				// Safe min/max calculation
+				try {
+					const earliest = Math.min(...timestamps)
+					const latest = Math.max(...timestamps)
+					
+					// Validate timestamps
+					if (isNaN(earliest) || isNaN(latest)) {
+						console.warn('[Logs] Invalid timestamps for date:', date)
+						return
+					}
+					
+					const hours = (latest - earliest) / 3600
+					dailyTimeRanges.push({ date, hours: Math.round(hours) })
+				} catch (error) {
+					console.error('[Logs] Error calculating time range for date:', date, error)
+				}
 			})
 
 			if (dailyTimeRanges.length > 0) {

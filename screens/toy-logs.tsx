@@ -7,7 +7,7 @@ import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, where, startAfter } from 'firebase/firestore'
 import { db } from '../firebase'
 
 import { toyLogs } from '../slices/logs'
@@ -116,6 +116,9 @@ export const ToyLogsScreen: React.FC = () => {
 	const [macAddress, setMacAddress] = useState<string | null>(null);
 	const [macLoaded, setMacLoaded] = useState<boolean>(false);
 	const [directLogs, setDirectLogs] = useState<any[]>([]);
+	const [hasMoreLogs, setHasMoreLogs] = useState<boolean>(false);
+	const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+	const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
 
 	let [fontsLoaded] = useFonts({
 		PlusJakartaSans_400Regular,
@@ -142,54 +145,91 @@ export const ToyLogsScreen: React.FC = () => {
 		AsyncStorage.getItem('macAddress').then(setMacAddress).finally(() => setMacLoaded(true));
 	}, []);
 
-	// Direct fetch function - fetch ALL toy logs without any filtering
-	const fetchDirectLogs = async (mac: string) => {
+	// Direct fetch function - fetch toy logs with pagination support
+	const fetchDirectLogs = async (mac: string, loadMore: boolean = false) => {
 		try {
-			console.log('[ToyLogs] Fetching ALL toy logs for MAC:', mac);
-			
-			// Now fetch logs for specific MAC address
-			const directQuery = query(
-				collection(db, 'toy_logs'),
-				where('toy_mac_address', '==', mac)
-			);
-			const directSnapshot = await getDocs(directQuery);
-			console.log('[ToyLogs] MAC-specific query found', directSnapshot.size, 'documents');
+			console.log('[ToyLogs] Fetching toy logs for MAC:', mac, loadMore ? '(loading more)' : '(initial load)');
 			
 			let directLogsData: any[] = [];
+			let querySnapshot: any;
 			
-			// If MAC-specific query returns no results, try to get ALL logs as fallback
-			if (directSnapshot.size === 0) {
-				console.log('[ToyLogs] No logs for specific MAC, trying to fetch ALL logs...');
+			// Try MAC-specific query first, but handle index error gracefully
+			try {
+				let directQuery;
+				if (loadMore && lastVisibleDoc) {
+					// Load more logs after the last visible document
+					directQuery = query(
+						collection(db, 'toy_logs'),
+						where('toy_mac_address', '==', mac),
+						orderBy('time', 'desc'),
+						startAfter(lastVisibleDoc),
+						limit(100) // Smaller batches for pagination
+					);
+				} else {
+					// Initial load
+					directQuery = query(
+						collection(db, 'toy_logs'),
+						where('toy_mac_address', '==', mac),
+						orderBy('time', 'desc'),
+						limit(100) // Initial batch
+					);
+				}
+				
+				querySnapshot = await getDocs(directQuery);
+				console.log('[ToyLogs] MAC-specific query found', querySnapshot.size, 'documents');
+			} catch (indexError) {
+				console.warn('[ToyLogs] MAC-specific query failed (index error), falling back to all logs:', indexError);
+				querySnapshot = null;
+			}
+			
+			// If MAC-specific query failed or returned no results, use all logs fallback
+			if (!querySnapshot || querySnapshot.size === 0) {
+				console.log('[ToyLogs] Using fallback query for all logs...');
 				try {
-					const allLogsQuery = query(collection(db, 'toy_logs'), limit(100));
-					const allLogsSnapshot = await getDocs(allLogsQuery);
-					console.log('[ToyLogs] All logs query found', allLogsSnapshot.size, 'documents');
+					let allLogsQuery;
+					if (loadMore && lastVisibleDoc) {
+						// Load more logs after the last visible document
+						allLogsQuery = query(
+							collection(db, 'toy_logs'),
+							orderBy('time', 'desc'),
+							startAfter(lastVisibleDoc),
+							limit(100) // Smaller batches for pagination
+						);
+					} else {
+						// Initial load
+						allLogsQuery = query(
+							collection(db, 'toy_logs'),
+							orderBy('time', 'desc'),
+							limit(100) // Initial batch
+						);
+					}
 					
-					allLogsSnapshot.forEach((doc) => {
-						const data = doc.data();
-						
-						// Keep the original Firestore timestamp - NO conversion
-						directLogsData.push({ 
-							id: doc.id, 
-							...data
-							// Keep original time field as is
-						});
-					});
+					querySnapshot = await getDocs(allLogsQuery);
+					console.log('[ToyLogs] All logs query found', querySnapshot.size, 'documents');
 				} catch (allLogsErr) {
 					console.error('[ToyLogs] All logs fallback failed:', allLogsErr);
+					return [];
 				}
-			} else {
-				// Process MAC-specific logs
-				directSnapshot.forEach((doc) => {
-					const data = doc.data();
-					
-					// Keep the original Firestore timestamp - NO conversion
-					directLogsData.push({ 
-						id: doc.id, 
-						...data
-						// Keep original time field as is
-					});
+			}
+			
+			// Process the results
+			querySnapshot.forEach((doc: any) => {
+				const data = doc.data();
+				
+				// Keep the original Firestore timestamp - NO conversion
+				directLogsData.push({ 
+					id: doc.id, 
+					...data
+					// Keep original time field as is
 				});
+			});
+			
+			// Update pagination state
+			if (querySnapshot.docs.length > 0) {
+				setLastVisibleDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+				setHasMoreLogs(querySnapshot.docs.length === 100); // If we got exactly 100, there might be more
+			} else {
+				setHasMoreLogs(false);
 			}
 			
 			// Sort by time using original Firestore timestamp with error handling
@@ -257,7 +297,10 @@ export const ToyLogsScreen: React.FC = () => {
 				});
 			}
 			
-			setDirectLogs(directLogsData);
+			// Only set directLogs if this is not a loadMore operation
+			if (!loadMore) {
+				setDirectLogs(directLogsData);
+			}
 			return directLogsData;
 		} catch (error) {
 			console.error('[ToyLogs] Direct fetch error:', error);
@@ -270,6 +313,30 @@ export const ToyLogsScreen: React.FC = () => {
 		console.log('[ToyLogs] Time span changed to:', selectedTimeSpan);
 	}, [selectedTimeSpan]);
 
+	// Load more logs function
+	const loadMoreLogs = async () => {
+		if (!macAddress || !hasMoreLogs || isLoadingMore) return;
+		
+		setIsLoadingMore(true);
+		try {
+			const moreLogs = await fetchDirectLogs(macAddress, true);
+			if (moreLogs.length > 0) {
+				setDirectLogs(prev => {
+					const newLogs = [...prev, ...moreLogs];
+					console.log('[ToyLogs] Loaded', moreLogs.length, 'more logs. Total:', newLogs.length);
+					return newLogs;
+				});
+			} else {
+				setHasMoreLogs(false);
+			}
+		} catch (error) {
+			console.error('[ToyLogs] Error loading more logs:', error);
+			Toast.show({ type: 'error', text1: 'Failed to load more logs' });
+		} finally {
+			setIsLoadingMore(false);
+		}
+	};
+
 	// 2) Fetch logs once MAC is available - ALWAYS use direct fetch for complete data
 	useEffect(() => {
 		const run = async () => {
@@ -279,52 +346,13 @@ export const ToyLogsScreen: React.FC = () => {
 			try {
 				console.log('[ToyLogs] Starting data fetch for MAC:', macAddress);
 				
+				// Reset pagination state
+				setLastVisibleDoc(null);
+				setHasMoreLogs(false);
+				
 				// ALWAYS fetch directly from Firestore to get COMPLETE dataset
 				const directList = await fetchDirectLogs(macAddress!);
 				console.log('[ToyLogs] Direct fetch completed, got', directList.length, 'logs');
-				
-				// If we still have no logs, try fetching ALL logs without MAC filtering
-				if (directList.length === 0) {
-					console.warn('[ToyLogs] No logs found for MAC. Trying to fetch ALL logs without MAC filtering...');
-					try {
-						const allLogsQuery = query(collection(db, 'toy_logs'), limit(100));
-						const allLogsSnapshot = await getDocs(allLogsQuery);
-						console.log('[ToyLogs] All logs without MAC filter: found', allLogsSnapshot.size, 'documents');
-						
-						if (allLogsSnapshot.size > 0) {
-							const allLogsData: any[] = [];
-							allLogsSnapshot.forEach((doc) => {
-								const data = doc.data();
-								let timeValue: string;
-								
-								// Enhanced timestamp handling
-								if (data.time?.toDate && typeof data.time.toDate === 'function') {
-									timeValue = data.time.toDate().toISOString();
-								} else if (data.time?.seconds && typeof data.time.seconds === 'number') {
-									timeValue = new Date(data.time.seconds * 1000).toISOString();
-								} else if (data.time) {
-									timeValue = new Date(data.time).toISOString();
-								} else {
-									console.warn('[ToyLogs] Log without time field:', doc.id);
-									return;
-								}
-								
-								allLogsData.push({ 
-									id: doc.id, 
-									...data, 
-									time: timeValue 
-								});
-							});
-							
-							// Sort and set the data
-							allLogsData.sort((a, b) => new Date(a.time).getTime() - new Date(a.time).getTime());
-							setDirectLogs(allLogsData);
-							console.log('[ToyLogs] Set all logs data:', allLogsData.length, 'logs');
-						}
-					} catch (allLogsErr) {
-						console.error('[ToyLogs] All logs fetch failed:', allLogsErr);
-					}
-				}
 				
 				// Also try Redux for comparison (but don't rely on it)
 				try {
@@ -464,20 +492,34 @@ export const ToyLogsScreen: React.FC = () => {
 	// NEW: Fetch summary from OpenAI via Firebase Function
 	const fetchSummary = async () => {
 		const logsToSummarize = getLogsForSelectedTimeSpan()
-		const textToSummarize = logsToSummarize
-			.filter(log => !log.audioUri)
+		
+		// Limit logs to prevent memory issues and API limits
+		const limitedLogs = logsToSummarize.slice(0, 100) // Only process last 100 logs
+		
+		const textToSummarize = limitedLogs
+			.filter(log => !log.audioUri && log.message) // Only text messages
 			.map(log => log.message)
 			.join(' ')
+			
 		if (!textToSummarize) {
 			setSummary('No chat interactions to summarize.')
 			return
 		}
+		
+		// Limit text length to prevent API issues
+		const maxTextLength = 10000; // 10k characters max
+		const truncatedText = textToSummarize.length > maxTextLength 
+			? textToSummarize.substring(0, maxTextLength) + '...'
+			: textToSummarize;
+			
+		console.log(`[Summary] Processing ${limitedLogs.length} logs, text length: ${truncatedText.length}`);
+		
 		setIsSummarizing(true)
 		try {
 			const response = await fetch('https://summarize-k3jpln37bq-uc.a.run.app', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ text: textToSummarize }),
+				body: JSON.stringify({ text: truncatedText }),
 			})
 			const data = await response.json()
 			setSummary(data.summary)
@@ -915,7 +957,8 @@ export const ToyLogsScreen: React.FC = () => {
 														)}
 													</View>
 												) : (
-													Object.entries(groupedLogs).map(([date, dateLogs]) => (
+													<>
+														{Object.entries(groupedLogs).map(([date, dateLogs]) => (
 														<View key={date} style={styles.dateGroup}>
 															<Text style={styles.dateHeader}>
 																{(() => {
@@ -1000,7 +1043,28 @@ export const ToyLogsScreen: React.FC = () => {
 																</View>
 															))}
 														</View>
-													))
+														))}
+														
+														{/* Load More Button */}
+														{hasMoreLogs && (
+															<View style={styles.loadMoreContainer}>
+																<TouchableOpacity 
+																	onPress={loadMoreLogs}
+																	disabled={isLoadingMore}
+																	style={[styles.loadMoreButton, isLoadingMore && styles.loadMoreButtonDisabled]}
+																>
+																	{isLoadingMore ? (
+																		<>
+																			<Chase size={16} color={theme.colors.primary} />
+																			<Text style={styles.loadMoreText}>Loading more logs...</Text>
+																		</>
+																	) : (
+																		<Text style={styles.loadMoreText}>Load More Logs</Text>
+																	)}
+																</TouchableOpacity>
+															</View>
+														)}
+													</>
 												)}
 											</View>
 										</ScrollView>
@@ -1183,5 +1247,27 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 		textAlign: 'center',
 		fontFamily: 'PlusJakartaSans_600SemiBold',
+	},
+	loadMoreContainer: {
+		padding: 20,
+		alignItems: 'center',
+	},
+	loadMoreButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: theme.colors.primary,
+		paddingHorizontal: 24,
+		paddingVertical: 12,
+		borderRadius: 8,
+		gap: 8,
+	},
+	loadMoreButtonDisabled: {
+		backgroundColor: '#ccc',
+	},
+	loadMoreText: {
+		color: 'white',
+		fontSize: 16,
+		fontWeight: '600',
 	},
 });

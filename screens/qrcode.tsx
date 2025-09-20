@@ -210,28 +210,8 @@ export default function QRCodeScreen() {
         }
       }, true);
 
-      // Listen for device disconnections
-      bleManagerRef.current.onDeviceDisconnected((error, device) => {
-        if (device) {
-          console.log('🔌 Device disconnected:', device.id);
-          // Update device connection status
-          setDevices(prevDevices => 
-            prevDevices.map(d => 
-              d.id === device.id 
-                ? { ...d, isConnected: false }
-                : d
-            )
-          );
-          // Update connected clients
-          setConnectedClients(prev => 
-            prev.map(c => 
-              c.id === device.id 
-                ? { ...c, isConnected: false, lastSeen: new Date() }
-                : c
-            )
-          );
-        }
-      });
+      // Note: Device disconnection handling is managed in the disconnectFromDevice function
+      // The onDeviceDisconnected callback has compatibility issues with the current BLE library version
 
       // If already powered on, request permissions
       if (state === State.PoweredOn) {
@@ -402,8 +382,20 @@ export default function QRCodeScreen() {
   };
 
   const startScanning = async () => {
-    if (!bleManagerRef.current || bluetoothState !== State.PoweredOn) {
-      Alert.alert('Error', 'Bluetooth is not available');
+    if (!bleManagerRef.current) {
+      Alert.alert('Error', 'Bluetooth manager not initialized');
+      return;
+    }
+
+    if (bluetoothState !== State.PoweredOn) {
+      Alert.alert(
+        'Bluetooth Required',
+        'Please turn on Bluetooth in your iPhone Settings to scan for Wailo devices.\n\nGo to Settings > Bluetooth and make sure it\'s enabled.',
+        [
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
       return;
     }
 
@@ -1411,11 +1403,25 @@ export default function QRCodeScreen() {
 
       
       
+      {/* Bluetooth Status Indicator */}
+      <View style={styles.bluetoothStatusContainer}>
+        <Text style={styles.bluetoothStatusLabel}>Bluetooth Status:</Text>
+        <Text style={[styles.bluetoothStatusText, { color: getBluetoothStatusColor() }]}>
+          {getBluetoothStatusText()}
+        </Text>
+        {bluetoothState !== State.PoweredOn && (
+          <Text style={styles.bluetoothStatusHelp}>
+            Tap the scan button below to get help turning on Bluetooth
+          </Text>
+        )}
+      </View>
+
       {/* Scan Button */}
       <TouchableOpacity
         style={[
           styles.scanButton, 
-          (isScanning || devices.some(device => device.isConnected)) && styles.scanningButton
+          (isScanning || devices.some(device => device.isConnected)) && styles.scanningButton,
+          bluetoothState !== State.PoweredOn && styles.bluetoothOffButton
         ]}
         onPress={startScanning}
         disabled={!bluetoothInitialized || bluetoothState !== State.PoweredOn || isScanning || devices.some(device => device.isConnected)}
@@ -1425,7 +1431,9 @@ export default function QRCodeScreen() {
             ? 'Scanning for Wailo devices...' 
             : devices.some(device => device.isConnected)
               ? 'Already connected to device' 
-              : 'Scan for Wailo devices'
+              : bluetoothState !== State.PoweredOn
+                ? 'Turn on Bluetooth to scan'
+                : 'Scan for Wailo devices'
           }
         </Text>
       </TouchableOpacity>
@@ -1873,6 +1881,10 @@ const styles = StyleSheet.create({
   },
   scanningButton: {
     backgroundColor: '#6b7280',
+  },
+  bluetoothOffButton: {
+    backgroundColor: '#9ca3af',
+    opacity: 0.7,
   },
   scanButtonText: {
     color: 'white',
@@ -2362,5 +2374,33 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  bluetoothStatusContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  bluetoothStatusLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  bluetoothStatusText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  bluetoothStatusHelp: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
