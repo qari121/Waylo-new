@@ -21,6 +21,7 @@ import { db } from '../config/firebase';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { auth } from '../firebase';
 import { Buffer } from 'buffer';
+import { BackButton } from '../components/ui/back-button';
 
 // one-time polyfill (safe no-op if it already exists)
 (global as any).Buffer = (global as any).Buffer || Buffer;
@@ -70,6 +71,9 @@ export default function QRCodeScreen() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordResolver, setPasswordResolver] = useState<((password: string) => void) | null>(null);
+  const [isProcessingQR, setIsProcessingQR] = useState(false);
+  const [qrCodeInvalid, setQrCodeInvalid] = useState(false);
+  const [hasScannedOnce, setHasScannedOnce] = useState(false);
 
   const bleManagerRef = useRef<BleManager | null>(null);
 
@@ -153,8 +157,10 @@ export default function QRCodeScreen() {
     
     if (isMatch) {
       setVerificationStep('complete');
+      setQrCodeInvalid(false); // Clear any previous invalid state
       console.log('🎉 VERIFICATION COMPLETE! Both steps passed!');
     } else {
+      setQrCodeInvalid(true);
       console.log('❌ QR Code verification failed');
     }
     
@@ -173,6 +179,17 @@ export default function QRCodeScreen() {
   const initializeBluetooth = async () => {
     try {
       console.log('🚀 Initializing BLE as GATT Server...');
+      
+      // Clean up existing BLE manager if it exists
+      if (bleManagerRef.current) {
+        console.log('🧹 Cleaning up existing BLE manager...');
+        try {
+          await bleManagerRef.current.destroy();
+        } catch (cleanupError) {
+          console.log('⚠️ Cleanup error (expected):', cleanupError);
+        }
+        bleManagerRef.current = null;
+      }
       
       // Create BLE manager instance
       bleManagerRef.current = new BleManager();
@@ -193,6 +210,29 @@ export default function QRCodeScreen() {
         }
       }, true);
 
+      // Listen for device disconnections
+      bleManagerRef.current.onDeviceDisconnected((error, device) => {
+        if (device) {
+          console.log('🔌 Device disconnected:', device.id);
+          // Update device connection status
+          setDevices(prevDevices => 
+            prevDevices.map(d => 
+              d.id === device.id 
+                ? { ...d, isConnected: false }
+                : d
+            )
+          );
+          // Update connected clients
+          setConnectedClients(prev => 
+            prev.map(c => 
+              c.id === device.id 
+                ? { ...c, isConnected: false, lastSeen: new Date() }
+                : c
+            )
+          );
+        }
+      });
+
       // If already powered on, request permissions
       if (state === State.PoweredOn) {
         setBluetoothInitialized(true);
@@ -201,7 +241,23 @@ export default function QRCodeScreen() {
 
     } catch (error) {
       console.error('❌ BLE initialization failed:', error);
-      Alert.alert('Error', 'Failed to initialize Bluetooth');
+      
+      // Try to get more details about the error
+      if (error && typeof error === 'object' && 'reason' in error) {
+        console.error('❌ BLE Error reason:', (error as any).reason);
+      }
+      
+      // Show more specific error message
+      Alert.alert(
+        'Bluetooth Error', 
+        'Failed to initialize Bluetooth. Please try:\n\n1. Restart the app\n2. Check Bluetooth is enabled\n3. Try again',
+        [
+          { text: 'Retry', onPress: () => {
+            setTimeout(() => initializeBluetooth(), 1000);
+          }},
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
     }
   };
 
@@ -322,7 +378,7 @@ export default function QRCodeScreen() {
         console.log('📡 Simulating GATT Server advertising...');
         Alert.alert(
           'GATT Server Mode',
-          'iPhone is now advertising as "Wailo-Device"!\n\nOrange Pi should be able to discover and connect to this device.',
+          'iPhone is now advertising as "Waylo-Device"!\n\nOrange Pi should be able to discover and connect to this device.',
           [{ text: 'OK' }]
         );
       }, 2000);
@@ -354,6 +410,7 @@ export default function QRCodeScreen() {
     try {
       setIsScanning(true);
       setDevices([]);
+      setHasScannedOnce(true);
       console.log('🔍 Starting BLE device scan for "Wailo-Device"...');
 
       // Start scanning for devices with specific focus on "Wailo" devices
@@ -957,10 +1014,16 @@ export default function QRCodeScreen() {
           newClient.toyName = verificationResult.toyData?.name || undefined;
           newClient.macAddressSource = `custom characteristic + Firebase verified (Toy: ${verificationResult.toyData?.name || verificationResult.toyId})`;
           
-          // Set verification step to step1 (MAC verified)
-          setVerificationStep('step1');
+          // Don't set verification step to step1 yet - wait for password entry
           console.log('🎯 Client updated with Firebase verification data');
-          console.log('🎯 Ready for Step 2/2: Send Login Credentials');
+          console.log('🎯 Ready for password entry to complete Step 1/2');
+          
+          // AUTO-START: Automatically proceed to send login credentials after MAC verification
+          console.log('🚀 AUTO-STARTING: Login credentials sending process...');
+          setTimeout(() => {
+            console.log('🔐 Auto-triggering credential binding for device:', connectedDevice.id);
+            bindDeviceToUser(connectedDevice.id);
+          }, 2000); // 2 second delay to allow UI to update
         } else {
           console.log('❌ STEP 1/2 FAILED: MAC address NOT found in Firebase toy collection');
           console.log('💡 This toy may not be registered in the system');
@@ -990,20 +1053,8 @@ export default function QRCodeScreen() {
         return [...prev, newClient];
       });
 
-      // Show success message with MAC address if found
-      if (macAddress) {
-        Alert.alert(
-          'Connected & MAC Found! 🎉',
-          `Successfully connected to ${connectedDevice.name || 'Wailo-Device'}\n\nMAC Address: ${macAddress}\nSource: ${macSource}`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'Connected!',
-          `Successfully connected to ${connectedDevice.name || 'Wailo-Device'}\n\nNote: MAC address extraction is still in progress...`,
-          [{ text: 'OK' }]
-        );
-      }
+      // Don't show connection alerts - let QR code scan be the only user-facing success
+      console.log('✅ Device connected and MAC found:', macAddress);
       
       // Reset connecting state
       setIsConnecting(false);
@@ -1327,22 +1378,20 @@ export default function QRCodeScreen() {
       console.log('📤 User credentials sent to device');
       
       setBindingStatus('success');
+      setVerificationStep('step1'); // Now mark Step 1 as complete after password entry
+      // Don't set verificationStep to 'complete' here - wait for QR code scan
       console.log('✅ Device credentials sent successfully');
       
-      // Show success message
-      Alert.alert(
-        'Credentials Sent Successfully! 🎉',
-        'Your login credentials have been sent to the Waylo device.\n\nThe device can now authenticate with your account.',
-        [{ text: 'OK' }]
-      );
+      // Don't show alert - let QR code scan be the only user-facing success
+      console.log('✅ Device paired successfully - waiting for QR code scan');
       
     } catch (error) {
       console.error('❌ Failed to send credentials:', error);
       setBindingStatus('error');
       
       Alert.alert(
-        'Credentials Send Failed',
-        `Failed to send credentials to device: ${error instanceof Error ? error.message : String(error)}`,
+        'Device Verification Failed',
+        `Failed to complete device verification: ${error instanceof Error ? error.message : String(error)}`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -1353,12 +1402,10 @@ export default function QRCodeScreen() {
   return (
           <ScrollView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>‹</Text>
-          </TouchableOpacity>
+          <BackButton style={styles.backButtonContainer} />
           <View style={styles.headerContent}>
             <Text style={styles.title}>Device Pairing</Text>
-            <Text style={styles.subtitle}>iPhone scans for and connects to Waylo device</Text>
+            <Text style={styles.subtitle}>iPhone scans for and connects to Waylo</Text>
           </View>
         </View>
 
@@ -1366,12 +1413,20 @@ export default function QRCodeScreen() {
       
       {/* Scan Button */}
       <TouchableOpacity
-        style={[styles.scanButton, isScanning && styles.scanningButton]}
+        style={[
+          styles.scanButton, 
+          (isScanning || devices.some(device => device.isConnected)) && styles.scanningButton
+        ]}
         onPress={startScanning}
-        disabled={!bluetoothInitialized || bluetoothState !== State.PoweredOn || isScanning}
+        disabled={!bluetoothInitialized || bluetoothState !== State.PoweredOn || isScanning || devices.some(device => device.isConnected)}
       >
         <Text style={styles.scanButtonText}>
-          {isScanning ? 'Scanning for Wailo devices...' : 'Scan for Wailo devices'}
+          {isScanning 
+            ? 'Scanning for Wailo devices...' 
+            : devices.some(device => device.isConnected)
+              ? 'Already connected to device' 
+              : 'Scan for Wailo devices'
+          }
         </Text>
       </TouchableOpacity>
 
@@ -1385,167 +1440,126 @@ export default function QRCodeScreen() {
           {/* Step 1: MAC Address Verification */}
           <View style={styles.verificationStep}>
             <Text style={[styles.stepStatus, { color: verificationStep === 'step1' || verificationStep === 'complete' ? '#22c55e' : '#ef4444' }]}>
-              {verificationStep === 'step1' || verificationStep === 'complete' ? '✅' : '❌'} Step 1/2: Pariing Verification
+              {verificationStep === 'step1' || verificationStep === 'complete' ? '✅' : '❌'} Step 1/2: Device Pairing Verification
             </Text>
               <Text style={styles.stepDescription}>
                 {verificationStep === 'step1' || verificationStep === 'complete' 
-                  ? 'Waylo device paired and bound to your account' 
-                  : 'Waiting for device pairing and binding...'}
+                  ? 'Waylo device paired and verified successfully' 
+                  : 'Waiting for device pairing and verification...'}
               </Text>
           </View>
           
           {/* Step 2: QR Code Verification */}
           <View style={styles.verificationStep}>
             <Text style={[styles.stepStatus, { color: verificationStep === 'complete' ? '#22c55e' : '#6b7280' }]}>
-              {verificationStep === 'complete' ? '✅' : '⏳'} Step 2/2: Send Login Credentials
+              {verificationStep === 'complete' ? '✅' : '⏳'} Step 2/2: QR Code Verification
             </Text>
             <Text style={styles.stepDescription}>
               {verificationStep === 'complete' 
-                ? 'Credentials sent successfully!' 
+                ? 'QR code verified successfully!' 
                 : verificationStep === 'step1' 
-                  ? 'Ready to send your login credentials to the device'
+                  ? 'Ready to scan QR code for verification'
                   : 'Waiting for Step 1 completion...'}
             </Text>
           </View>
           
-          {/* QR Code Scanner Button */}
+          {/* QR Code Scanner Button - Only show when Step 1 is complete */}
           {verificationStep === 'step1' && (
             <View>
               <TouchableOpacity
                 style={styles.qrScanButton}
-                onPress={() => setShowQRScanner(true)}
+                onPress={() => {
+                  setIsProcessingQR(false);
+                  setShowQRScanner(true);
+                }}
               >
                 <Text style={styles.qrScanButtonText}>📱 Scan QR Code</Text>
               </TouchableOpacity>
-              
-
             </View>
           )}
+          
           
           {/* Success Message */}
           {verificationStep === 'complete' && (
             <View style={styles.successContainer}>
               <Text style={styles.successTitle}>🎉 VERIFICATION COMPLETE!</Text>
               <Text style={styles.successText}>
-                Both Waylo device and QR code have been verified successfully.
+               
                 This device is now fully authenticated.
+              </Text>
+            </View>
+          )}
+          
+          {/* Unsuccessful Message */}
+          {bindingStatus === 'error' && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorTitle}>❌ VERIFICATION FAILED</Text>
+              <Text style={styles.errorText}>
+                Device verification failed. Please try again.
+              </Text>
+            </View>
+          )}
+          
+          {/* Invalid QR Code Message */}
+          {qrCodeInvalid && (
+            <View style={styles.invalidContainer}>
+              <Text style={styles.invalidTitle}>❌ INVALID QR CODE</Text>
+              <Text style={styles.invalidText}>
+                The scanned QR code is not valid. Please try again.
               </Text>
             </View>
           )}
         </View>
       )}
 
-      {/* Connected Clients */}
-      {connectedClients.length > 0 && (
-        <View style={styles.clientsContainer}>
-          <Text style={styles.clientsTitle}>Connected Orange Pi Clients ({connectedClients.length})</Text>
-          {connectedClients.map((client) => (
-            <View key={client.id} style={styles.clientItem}>
-              <Text style={styles.clientName}>{client.name}</Text>
-              <Text style={styles.clientId}>ID: {client.id}</Text>
-              <Text style={styles.clientStatus}>
-                Status: {client.isConnected ? 'Connected' : 'Disconnected'}
-              </Text>
-              <Text style={styles.clientLastSeen}>
-                Last Seen: {client.lastSeen.toLocaleTimeString()}
-              </Text>
-              <Text style={styles.clientMacAddress}>
-                MAC: {client.macAddress}
-              </Text>
-              <Text style={styles.clientMacSource}>
-                Source: {client.macAddressSource}
-              </Text>
-              {client.isConnected && (
-                <View style={styles.bindingControls}>
-                  <TouchableOpacity
-                    style={[
-                      styles.bindButton,
-                      { backgroundColor: bindingStatus === 'success' ? '#22c55e' : '#3b82f6' }
-                    ]}
-                    onPress={() => bindDeviceToUser(client.id)}
-                    disabled={isBindingDevice || bindingStatus === 'success'}
-                  >
-                    <Text style={styles.bindButtonText}>
-                      {isBindingDevice 
-                        ? 'Binding...' 
-                        : bindingStatus === 'success' 
-                          ? 'Credentials Sent ✅' 
-                          : 'Send Login Credentials'
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  {bindingStatus === 'error' && (
-                    <TouchableOpacity
-                      style={[styles.bindButton, { backgroundColor: '#ef4444' }]}
-                      onPress={() => {
-                        setBindingStatus('idle');
-                        bindDeviceToUser(client.id);
-                      }}
-                    >
-                      <Text style={styles.bindButtonText}>Retry Binding</Text>
-                    </TouchableOpacity>
+      {/* Device List - Shows both found and connected devices */}
+      {devices.length > 0 ? (
+        <View style={styles.deviceList}>
+          <Text style={styles.deviceListTitle}>Wailo Devices ({devices.length})</Text>
+          {devices.map((device) => {
+            // Find connected client info if this device is connected
+            const connectedClient = connectedClients.find(client => client.id === device.id);
+            
+            return (
+              <View key={device.id} style={styles.deviceItem}>
+                <View style={styles.deviceInfo}>
+                  <Text style={styles.deviceName}>{device.name}</Text>
+                  <Text style={styles.deviceAddress}>
+                    {/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(device.address) ? 'MAC: ' : 'ID: '}
+                    {device.address}
+                  </Text>
+                  <Text style={styles.deviceRSSI}>Signal: {device.rssi} dBm</Text>
+                  {device.localName && device.localName !== device.name && (
+                    <Text style={styles.deviceLocalName}>Local: {device.localName}</Text>
+                  )}
+                  <Text style={styles.deviceConnectable}>
+                    Connectable: {device.isConnectable ? 'Yes' : 'No'}
+                  </Text>
+                  <Text style={[styles.deviceStatus, { color: device.isConnected ? '#22c55e' : '#ef4444' }]}>
+                    Status: {device.isConnected ? 'Connected' : 'Disconnected'}
+                  </Text>
+                  {device.manufacturerData && (
+                    <Text style={styles.deviceManufacturer}>Manufacturer: {device.manufacturerData}</Text>
                   )}
                   
-                  
-                  <TouchableOpacity
-                    style={styles.disconnectButton}
-                    onPress={() => disconnectFromDevice(client.id)}
-                  >
-                    <Text style={styles.disconnectButtonText}>Disconnect</Text>
-                  </TouchableOpacity>
+                  {/* Show additional info if connected */}
+                  {connectedClient && device.isConnected && (
+                    <Text style={styles.clientLastSeen}>
+                      Last Seen: {connectedClient.lastSeen.toLocaleTimeString()}
+                    </Text>
+                  )}
                 </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Device List */}
-      {devices.length > 0 && (
-        <View style={styles.deviceList}>
-          <Text style={styles.deviceListTitle}>Found Wailo Devices ({devices.length})</Text>
-          {devices.map((device) => (
-            <View key={device.id} style={styles.deviceItem}>
-              <View style={styles.deviceInfo}>
-                <Text style={styles.deviceName}>{device.name}</Text>
-                <Text style={styles.deviceAddress}>
-                  {/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(device.address) ? 'MAC: ' : 'ID: '}
-                  {device.address}
-                </Text>
-                <Text style={styles.deviceRSSI}>Signal: {device.rssi} dBm</Text>
-                {device.localName && device.localName !== device.name && (
-                  <Text style={styles.deviceLocalName}>Local: {device.localName}</Text>
-                )}
-                <Text style={styles.deviceConnectable}>
-                  Connectable: {device.isConnectable ? 'Yes' : 'No'}
-                </Text>
-                <Text style={[styles.deviceStatus, { color: device.isConnected ? '#22c55e' : '#ef4444' }]}>
-                  Status: {device.isConnected ? 'Connected' : 'Disconnected'}
-                </Text>
-                {device.manufacturerData && (
-                  <Text style={styles.deviceManufacturer}>Manufacturer: {device.manufacturerData}</Text>
-                )}
+                
               </View>
-                                                          {!device.isConnected && (device.isConnectable || device.isConnectable === null) && (
-                                 <TouchableOpacity
-                                   style={styles.connectButton}
-                                   onPress={async () => {
-                                     try {
-                                       const foundDevices = await bleManagerRef.current?.devices([device.id]);
-                                       if (foundDevices && foundDevices.length > 0) {
-                                         connectToDevice(foundDevices[0]);
-                                       }
-                                     } catch (error) {
-                                       console.error('❌ Error finding device:', error);
-                                     }
-                                   }}
-                                 >
-                                   <Text style={styles.connectButtonText}>Connect</Text>
-                                 </TouchableOpacity>
-                               )}
-            </View>
-          ))}
+            );
+          })}
+        </View>
+      ) : !isScanning && hasScannedOnce && devices.length === 0 && (
+        <View style={styles.noDevicesContainer}>
+          <Text style={styles.noDevicesTitle}>No Waylo Devices Found</Text>
+          <Text style={styles.noDevicesText}>
+            Make sure your Waylo device is powered on and within range. Try scanning again.
+          </Text>
         </View>
       )}
 
@@ -1561,29 +1575,19 @@ export default function QRCodeScreen() {
               style={styles.camera}
               facing="back"
               onBarcodeScanned={({ data }) => {
+                // Prevent multiple scans
+                if (isProcessingQR) {
+                  console.log('🔍 QR Code already being processed, ignoring...');
+                  return;
+                }
+                
                 console.log('🔍 QR Code scanned:', data);
+                setIsProcessingQR(true);
                 setQrCodeScanned(data);
                 setShowQRScanner(false);
                 
-                // Verify the scanned QR code
-                const isValid = verifyQRCode(data);
-                
-                if (isValid) {
-                  Alert.alert(
-                    'QR Code Verified! 🎉',
-                    `Verification complete!`,
-                    [{ text: 'OK' }]
-                  );
-                } else {
-                  Alert.alert(
-                    'Invalid QR Code ❌',
-                    `Scanned: ${data}\n\nExpected: 00112233445566\n\nPlease try again.`,
-                    [
-                      { text: 'Try Again', onPress: () => setShowQRScanner(true) },
-                      { text: 'Cancel', onPress: () => setShowQRScanner(false) }
-                    ]
-                  );
-                }
+                // Verify the scanned QR code (alerts are handled inside this function)
+                verifyQRCode(data);
               }}
             >
               <View style={styles.cameraOverlay}>
@@ -1671,16 +1675,10 @@ const styles = StyleSheet.create({
     paddingTop: 45,
     paddingHorizontal: 25,
   },
-  backButton: {
-    padding: 0,
+  backButtonContainer: {
     marginRight: 0,
-    marginLeft: -15,
-    marginTop: -30,
-  },
-  backButtonText: {
-    fontSize: 52,
-    color: '#1e293b',
-    fontWeight: 'semibold',
+    marginLeft: -35,
+    marginTop: -55,
   },
   headerContent: {
     flex: 1,
@@ -1697,6 +1695,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
     textAlign: 'center',
+    marginTop: 20,
     marginBottom: 8,
     fontFamily: 'Plus Jakarta Sans',
   },
@@ -2023,9 +2022,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   deviceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -2150,6 +2146,46 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 14,
     color: '#16a34a',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#dc2626',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#dc2626',
+    textAlign: 'center',
+  },
+  invalidContainer: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  invalidTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#d97706',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  invalidText: {
+    fontSize: 14,
+    color: '#d97706',
     textAlign: 'center',
   },
   cameraContainer: {
@@ -2288,5 +2324,43 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  waitingContainer: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  waitingText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  noDevicesContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  noDevicesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ef4444',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noDevicesText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

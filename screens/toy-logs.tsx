@@ -2,7 +2,7 @@ import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_
 import { Audio } from 'expo-av'
 import { useRouter } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, StyleSheet, Modal, TouchableOpacity } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, StyleSheet, Modal, TouchableOpacity, Clipboard } from 'react-native'
 import { Chase } from 'react-native-animated-spinkit'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
@@ -18,6 +18,7 @@ import { ensureMacAddress } from '../utils/ensureMacAddress'
 import ChevronLeftIcon from '../assets/icons/chevron-left.svg'
 import PlayIcon from '../assets/icons/play.svg'
 import WyloIcon from '../assets/icons/wylo.svg'
+import CopyIcon from '../assets/icons/copy.svg'
 import { theme } from '../lib/theme'
 import { BackButton } from '../components/ui/back-button'
 
@@ -494,6 +495,26 @@ export const ToyLogsScreen: React.FC = () => {
 		fetchSummary()
 	}
 
+	// Copy summary to clipboard
+	const handleCopySummary = async () => {
+		if (!summary) return;
+		
+		try {
+			await Clipboard.setString(summary);
+			Toast.show({ 
+				type: 'success', 
+				text1: 'Summary copied to clipboard!',
+				position: 'bottom'
+			});
+		} catch (error) {
+			Toast.show({ 
+				type: 'error', 
+				text1: 'Failed to copy summary',
+				position: 'bottom'
+			});
+		}
+	}
+
 	const isFreemium = (auth.plan ?? '').toLowerCase() === 'freemium';
 	
 	// ALWAYS use direct logs as the source of truth (complete dataset)
@@ -786,7 +807,21 @@ export const ToyLogsScreen: React.FC = () => {
 									<Modal visible={summaryVisible} transparent animationType="fade">
 										<View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
 											<View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '80%' }}>
-												<Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Summary</Text>
+												<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+													<Text style={{ fontWeight: 'bold', fontSize: 18 }}>Summary</Text>
+													{summary && !isSummarizing && (
+														<TouchableOpacity 
+															onPress={handleCopySummary}
+															style={{ 
+																padding: 8, 
+																borderRadius: 8, 
+																backgroundColor: theme.colors.primary + '10' 
+															}}
+														>
+															<CopyIcon width={20} height={20} color={theme.colors.primary} />
+														</TouchableOpacity>
+													)}
+												</View>
 												<ScrollView
 													style={{ maxHeight: 400 }}
 													contentContainerStyle={{ paddingBottom: 24 }}
