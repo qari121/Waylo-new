@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "WAYLO",
-    "slug": "WAYLO",
+    "name": "Waylo IO",
+    "slug": "waylo-io",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.waylo.app",
+      "bundleIdentifier": "com.waylo.ai",
       "infoPlist": {
         "NSCameraUsageDescription": "WAYLO needs camera access to take photos and scan QR codes",
         "NSPhotoLibraryUsageDescription": "WAYLO needs photo library access to save and upload photos",
@@ -29,7 +29,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.waylo.app",
+      "package": "com.waylo.ai",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

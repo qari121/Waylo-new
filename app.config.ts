@@ -2,22 +2,22 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Waylo',
-  slug: 'waylo',
+  name: 'Waylo IO',
+  slug: 'waylo-io',
   version: '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.waylo.app',
+    bundleIdentifier: 'com.waylo.ai',
     infoPlist: {
       NSCameraUsageDescription: 'This app needs access to your camera to take profile pictures.',
       NSPhotoLibraryUsageDescription: 'This app needs access to your photo library to select profile pictures.'
     }
   },
   android: {
-    package: 'com.waylo.app',
+    package: 'com.waylo.ai',
     permissions: [
       'android.permission.CAMERA',
       'android.permission.READ_EXTERNAL_STORAGE',
